@@ -1,15 +1,14 @@
-# Presentation script: every modeling stage
+# Presentation script: condensed backup (12–15 minutes)
 
-Use this as your screen-share narrative. Speak the quoted lines. Open the
-files listed under **Show**. Keep answers short; point to artifacts when a
-senior analyst asks for proof.
+For the **90-minute Bet365 interview**, use
+`docs/PRESENTATION_SCRIPT_90MIN.md` instead. That file is the full
+chronological build story.
 
-Suggested total length: **12-15 minutes**, then Q&A.
+This file is a short backup if they ask for a rapid overview. Speak the quoted
+lines. Open the files listed under **Show**.
 
 Interviewers are likely scoring the eight dimensions in
-`docs/EVALUATION_MATRIX_PREP.md` (leakage, pricing thinking, architecture,
-selection integrity, statistical depth, code fluency, honesty, sportsbook
-domain). Hit each one at least once.
+`docs/EVALUATION_MATRIX_PREP.md`.
 
 ---
 

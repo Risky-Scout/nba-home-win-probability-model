@@ -49,8 +49,8 @@ The strongest claim is not "every target was beaten." It is:
 
 Open next:
 
-1. `docs/EVALUATION_MATRIX_PREP.md` — eight scoring dimensions + PDF corrections
-2. `docs/PRESENTATION_SCRIPT.md` — stage-by-stage interview narrative
+1. `docs/PRESENTATION_SCRIPT_90MIN.md` — full 90-minute build story (primary)
+2. `docs/EVALUATION_MATRIX_PREP.md` — eight scoring dimensions + PDF corrections
 3. `docs/PRESENTATION_ONE_PAGER.md` — five-minute version
 4. `docs/INTERVIEW_QA_CHEATSHEET.md` — expected hard questions
 5. `artifacts/selection_proof.json`

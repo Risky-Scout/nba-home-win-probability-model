@@ -24,7 +24,8 @@ gitignored. Tell them the expected local path.
 - [ ] Clone a clean copy and run `validate_submission.py` successfully
 - [ ] Green-check the self-scorecard in `docs/EVALUATION_MATRIX_PREP.md`
 - [ ] Memorize the one-pager: `docs/PRESENTATION_ONE_PAGER.md`
-- [ ] Rehearse `docs/PRESENTATION_SCRIPT.md` once out loud (12-15 min)
+- [ ] Rehearse `docs/PRESENTATION_SCRIPT_90MIN.md` once out loud (full pass)
+- [ ] Know the condensed backup `docs/PRESENTATION_SCRIPT.md` if they ask for a short version
 - [ ] Drill Q&A: AUC miss, March selection bias, correct blend formula, April 5 info set
 - [ ] Open the tab checklist from the presentation script
 - [ ] Know your live demo command by heart
@@ -43,16 +44,17 @@ Leave the terminal green/`PASS` visible when you join the call.
 
 ## Presentation order (do not skip)
 
-1. Objective / metrics
-2. Data audit
-3. Leakage / feature timing
-4. Feature engineering
-5. Model (Elo, BT/trend, blend)
-6. Selection protocol + proof
-7. Ablation / importance
-8. Results (including AUC miss)
+Follow `docs/PRESENTATION_SCRIPT_90MIN.md` Acts I–VII. Never skip:
+
+1. Pricing objective / log loss primary
+2. Pregame vs postgame
+3. Leakage / feature-before-update
+4. Ablation story (kitchen sink loses)
+5. Elo + BT/trend + correct blend formula
+6. March selection with April excluded
+7. April results including AUC miss
+8. Live game trace
 9. Limitations / production next steps
-10. Live validate or score
 
 ## Mindset for senior QAs at Bet365
 

@@ -12,10 +12,11 @@ artifact, or an automated test.
 | 2 minutes | Read `SUMMARY.md`, then open `artifacts/final_metrics.json`. |
 | 5 minutes | Memorize `docs/PRESENTATION_ONE_PAGER.md`. |
 | Scorecard | Drill `docs/EVALUATION_MATRIX_PREP.md` (8 interview dimensions). |
-| 12-15 minutes | Present with `docs/PRESENTATION_SCRIPT.md` (every modeling stage). |
+| **90 minutes** | **Present with `docs/PRESENTATION_SCRIPT_90MIN.md` (full build story).** |
+| Condensed | `docs/PRESENTATION_SCRIPT.md` (12–15 min backup). |
 | Q&A prep | Drill `docs/INTERVIEW_QA_CHEATSHEET.md`. |
 | Submit | Follow `docs/SUBMIT_AND_PREP_CHECKLIST.md`. |
-| 10 minutes | Follow `docs/INTERVIEW_WALKTHROUGH.md` for screen-share setup. |
+| Setup | Follow `docs/INTERVIEW_WALKTHROUGH.md` for screen-share setup. |
 | Reproduce | Run `make reproduce DATA=/absolute/path/to/nba-win-probability-data.csv`. |
 | Audit | Run `make verify DATA=/absolute/path/to/nba-win-probability-data.csv`. |
 | Trace claims | Open `docs/CLAIM_TO_ARTIFACT_MAP.md`. |

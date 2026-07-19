@@ -1,8 +1,9 @@
 # Interview walkthrough
 
-For the scoring rubric they are likely using, start with
-`docs/EVALUATION_MATRIX_PREP.md`. For the full stage-by-stage narrative, use
-`docs/PRESENTATION_SCRIPT.md`. For compressed recall, use
+For the **90-minute interview**, present from
+`docs/PRESENTATION_SCRIPT_90MIN.md` — it tells the full build story in order.
+For the scoring rubric, use `docs/EVALUATION_MATRIX_PREP.md`. For a condensed
+backup, use `docs/PRESENTATION_SCRIPT.md`. For compressed recall, use
 `docs/PRESENTATION_ONE_PAGER.md`. For aggressive questions, use
 `docs/INTERVIEW_QA_CHEATSHEET.md`.
 
@@ -20,7 +21,7 @@ python validate_submission.py --root . --data "$NBA_DATA_PATH"
 
 Keep these files open in editor tabs:
 
-1. `docs/PRESENTATION_SCRIPT.md` (speaker notes)
+1. `docs/PRESENTATION_SCRIPT_90MIN.md` (primary speaker script)
 2. `SUMMARY.md`
 3. `nba_wp/features.py`
 4. `nba_wp/model.py`
