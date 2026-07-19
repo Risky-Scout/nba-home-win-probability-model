@@ -13,6 +13,7 @@ artifact, or an automated test.
 | 5 minutes | Memorize `docs/PRESENTATION_ONE_PAGER.md`. |
 | Scorecard | Drill `docs/EVALUATION_MATRIX_PREP.md` (8 interview dimensions). |
 | **90 minutes** | **Present with `docs/PRESENTATION_SCRIPT_90MIN.md` (full build story).** |
+| Cursor + Mac setup | `docs/CURSOR_PRESENTATION_SETUP.md` (open folder, venv, PASS checkpoint). |
 | Condensed | `docs/PRESENTATION_SCRIPT.md` (12–15 min backup). |
 | Q&A prep | Drill `docs/INTERVIEW_QA_CHEATSHEET.md`. |
 | Submit | Follow `docs/SUBMIT_AND_PREP_CHECKLIST.md`. |

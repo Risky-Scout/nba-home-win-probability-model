@@ -1,8 +1,9 @@
 # Bet365 evaluation matrix prep
 
 This maps the eight dimensions interviewers are likely scoring to exact
-moments, files, and answers. Use it with `PRESENTATION_SCRIPT.md` and
-`INTERVIEW_QA_CHEATSHEET.md`.
+moments, files, and answers. Deliver the interview from
+`PRESENTATION_SCRIPT_90MIN.md`. Use this file and
+`INTERVIEW_QA_CHEATSHEET.md` for drills.
 
 ## Critical correction to the attached prep PDF
 

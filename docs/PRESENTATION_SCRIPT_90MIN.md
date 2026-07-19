@@ -7,14 +7,18 @@ fight.
 
 **Setup before you join (2 minutes early):**
 
+Use `docs/CURSOR_PRESENTATION_SETUP.md`. Short version:
+
 ```bash
-cd /path/to/nba-home-win-probability-model
+cd "/Users/josephshackelford/nba-home-win-probability-model"
+cursor .
+# Cursor integrated terminal:
 source .venv/bin/activate
 export NBA_DATA_PATH="$PWD/data/nba-win-probability-data.csv"
 python validate_submission.py --root . --data "$NBA_DATA_PATH"
 ```
 
-Leave the terminal showing `PASS`. Open these tabs:
+Leave Checkpoint **A** (`PASS`) visible. Open these tabs:
 
 1. This file  
 2. `SUMMARY.md`  

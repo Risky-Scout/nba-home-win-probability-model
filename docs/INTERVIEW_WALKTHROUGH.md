@@ -7,30 +7,45 @@ backup, use `docs/PRESENTATION_SCRIPT.md`. For compressed recall, use
 `docs/PRESENTATION_ONE_PAGER.md`. For aggressive questions, use
 `docs/INTERVIEW_QA_CHEATSHEET.md`.
 
-## Screen-share setup
+## Screen-share setup (Cursor on your Mac)
 
-Before the call:
+Full Mac + Cursor checklist with your real path:
+`docs/CURSOR_PRESENTATION_SETUP.md`.
 
 ```bash
-PROJECT="/absolute/path/to/nba-home-win-probability-model"
-cd "$PROJECT"
+cd "/Users/josephshackelford/nba-home-win-probability-model"
+cursor .   # or File → Open Folder
+
+# in Cursor's integrated terminal:
 source .venv/bin/activate
-export NBA_DATA_PATH="$PROJECT/data/nba-win-probability-data.csv"
+which python   # must be .../nba-home-win-probability-model/.venv/bin/python
+export NBA_DATA_PATH="$PWD/data/nba-win-probability-data.csv"
 python validate_submission.py --root . --data "$NBA_DATA_PATH"
 ```
+
+**Checkpoint A:** validator prints `"status": "PASS"` — you are ready.  
+**Checkpoint B:** it fails — fix CSV/venv path using `CURSOR_PRESENTATION_SETUP.md`.
+
+This validator is the safest live demo: data contract, selection cutoff,
+prediction counts, probability checks — without re-running the expensive
+March selection search.
 
 Keep these files open in editor tabs:
 
 1. `docs/PRESENTATION_SCRIPT_90MIN.md` (primary speaker script)
-2. `SUMMARY.md`
-3. `nba_wp/features.py`
-4. `nba_wp/model.py`
-5. `nba_wp/selection.py`
-6. `artifacts/selection_proof.json`
-7. `artifacts/feature_group_ablation.csv`
-8. `outputs/april_predictions.csv`
-9. `docs/LIMITATIONS_AND_ROADMAP.md`
-10. `docs/INTERVIEW_QA_CHEATSHEET.md`
+2. `docs/CURSOR_PRESENTATION_SETUP.md`
+3. `SUMMARY.md`
+4. `nba_wp/features.py`
+5. `nba_wp/model.py`
+6. `nba_wp/selection.py`
+7. `artifacts/selection_proof.json`
+8. `artifacts/selected_spec.json`
+9. `artifacts/final_metrics.json`
+10. `artifacts/feature_group_ablation.csv`
+11. `outputs/april_predictions.csv`
+12. `validate_submission.py`
+13. `docs/LIMITATIONS_AND_ROADMAP.md`
+14. `docs/INTERVIEW_QA_CHEATSHEET.md`
 
 ## Ten-minute presentation
 

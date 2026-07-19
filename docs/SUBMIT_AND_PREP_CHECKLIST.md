@@ -33,14 +33,18 @@ gitignored. Tell them the expected local path.
 
 ## Day of interview
 
+Follow `docs/CURSOR_PRESENTATION_SETUP.md`. Short version:
+
 ```bash
-cd /path/to/nba-home-win-probability-model
+cd "/Users/josephshackelford/nba-home-win-probability-model"
+cursor .
+# Cursor integrated terminal:
 source .venv/bin/activate
 export NBA_DATA_PATH="$PWD/data/nba-win-probability-data.csv"
 python validate_submission.py --root . --data "$NBA_DATA_PATH"
 ```
 
-Leave the terminal green/`PASS` visible when you join the call.
+Leave Checkpoint **A** (`"status": "PASS"`) visible when you join the call.
 
 ## Presentation order (do not skip)
 
