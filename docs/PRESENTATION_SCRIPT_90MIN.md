@@ -1,39 +1,66 @@
 # 90-minute presentation script
 
 **How to use this.** Read the lines under **Say** almost verbatim. Do the
-actions under **Do**. Pause at **Invite questions** if they jump in — that is
-expected in a 90-minute technical interview. Timing is a guide, not a clock to
-fight.
+actions under **Do**. When you see **Show the work**, open that file and
+leave it on screen while you speak — that is the evidence for how a number
+was calculated or selected. Pause at **Invite questions** if they jump in.
+
+Timing is a guide, not a clock to fight.
+
+**Parameter rule you will repeat:**
+
+> Every number in this model is one of three things:
+> 1. **Fitted** from data (MLE / logistic / sequential Elo update),
+> 2. **Selected** on March by a declared search, or
+> 3. **Fixed by design** as a standard convention.
+> I will show the file that proves which class each number belongs to.
 
 **Setup before you join (2 minutes early):**
 
-Use `docs/CURSOR_PRESENTATION_SETUP.md`. Short version:
+Use `docs/CURSOR_PRESENTATION_SETUP.md`. In this cloud workspace:
+
+```bash
+cd /workspace
+export NBA_DATA_PATH="$PWD/data/nba-win-probability-data.csv"
+python3 validate_submission.py --root . --data "$NBA_DATA_PATH"
+```
+
+On your Mac for the real interview:
 
 ```bash
 cd "/Users/josephshackelford/nba-home-win-probability-model"
 cursor .
-# Cursor integrated terminal:
 source .venv/bin/activate
 export NBA_DATA_PATH="$PWD/data/nba-win-probability-data.csv"
 python validate_submission.py --root . --data "$NBA_DATA_PATH"
 ```
 
-Leave Checkpoint **A** (`PASS`) visible. Open these tabs:
+Leave Checkpoint **A** (`PASS`) visible.
 
-1. This file  
-2. `SUMMARY.md`  
-3. `nba_wp/data.py`  
-4. `nba_wp/features.py`  
-5. `nba_wp/model.py`  
-6. `nba_wp/selection.py`  
-7. `scripts/select_model.py`  
-8. `artifacts/data_audit.json`  
-9. `artifacts/selection_proof.json`  
-10. `artifacts/feature_group_ablation.csv`  
-11. `artifacts/final_metrics.json`  
-12. `outputs/april_predictions.csv`  
-13. `docs/LIMITATIONS_AND_ROADMAP.md`  
-14. `figures/march_calibration.png` and `figures/april_calibration.png`
+**Tabs to keep open:**
+
+1. This file
+2. `SUMMARY.md`
+3. `nba_wp/data.py`
+4. `nba_wp/features.py`
+5. `nba_wp/model.py`
+6. `nba_wp/selection.py`
+7. `scripts/select_model.py`
+8. `configs/architecture_candidates.json`
+9. `configs/selection_policy.json`
+10. `configs/benchmarks.json`
+11. `artifacts/data_audit.json`
+12. `artifacts/selection_proof.json`
+13. `artifacts/selected_spec.json`
+14. `artifacts/march_architecture_results.csv`
+15. `artifacts/march_tuning_top_candidates.csv`
+16. `artifacts/coefficient_table.csv`
+17. `artifacts/feature_group_ablation.csv`
+18. `artifacts/permutation_importance.csv`
+19. `artifacts/final_metrics.json`
+20. `outputs/april_predictions.csv`
+21. `docs/LIMITATIONS_AND_ROADMAP.md`
+22. `figures/march_calibration.png` / `april_calibration.png`
 
 **Correct blend formula (never get this wrong):**
 
@@ -43,6 +70,27 @@ p = sigmoid(z / 0.59 + 0.33)
 ```
 
 Temperature divides the **entire** blended logit.
+
+**Quick parameter cheat (champion values):**
+
+| Number | Class | Value |
+|---|---|---|
+| Elo start | Fixed | 1500 |
+| Elo scale | Fixed | 400 |
+| Elo \(K\) | Selected (arch) | 10 |
+| Elo HFA | Selected (arch) | 75 |
+| MOV mode | Fixed in search | log |
+| BT `C` | Selected (arch) | 0.15 |
+| Trend half-life | Selected (arch) | 45 days |
+| Short window | Selected (arch) | 10 games |
+| `elo_model_c` | Selected (arch) | 100 |
+| `rank_model_c` | Selected (arch) | 0.1 |
+| Blend weight \(w\) | Selected (grid) | 0.19 |
+| Temperature \(\tau\) | Selected (grid) | 0.59 |
+| Shift \(b\) | Selected (grid) | 0.33 |
+| Logistic coeffs | Fitted | see coefficient table |
+
+Full ledger: **Appendix D** at the end of this file.
 
 ---
 
@@ -65,22 +113,23 @@ Temperature divides the **entire** blended logit.
 > to defend is a calibrated probability, and the fair decimal odds that fall
 > out of it — not a 0/1 pick.
 >
-> Here’s the agenda for the next hour or so:
+> Here’s the agenda:
 >
-> 1. How I defined success  
-> 2. What the data actually contain, and what they do **not**  
-> 3. How I enforced a pregame information set — leakage control  
-> 4. Feature engineering: what I built, kept, and rejected  
-> 5. Why Elo and Bradley-Terry with a trend correction  
-> 6. How I blend and calibrate those components  
-> 7. How I selected the architecture without using April  
-> 8. Diagnostics: ablation, importance, calibration  
-> 9. April results — including the AUC miss  
-> 10. A live walkthrough of one priced game  
-> 11. What I would do next in production  
+> 1. How I defined success
+> 2. Data audit and pregame vs postgame
+> 3. Leakage-safe feature engine
+> 4. Feature candidates — what I built, kept, rejected
+> 5. Elo, Bradley-Terry, trend — formulas and fitted pieces
+> 6. Blend and calibration — and how \(w\), \(\tau\), \(b\) were selected
+> 7. Architecture search — how \(K\), HFA, BT \(C\), trend windows were chosen
+> 8. Diagnostics and April results, including the AUC miss
+> 9. Live price of one April game
+> 10. Production roadmap
 >
-> Please interrupt with questions as we go. I’d rather defend a step while
-> we’re on it than batch every challenge to the end.
+> When we hit a number, I will say whether it was **fitted**, **selected**, or
+> **fixed by design**, and I will open the file that shows the work.
+>
+> Please interrupt as we go.
 
 **Invite questions:** “Any preference on depth versus breadth before I start?”
 
@@ -88,7 +137,8 @@ Temperature divides the **entire** blended logit.
 
 ## Chapter 2 — Success metrics and the sportsbook lens (0:04–0:08)
 
-**Do:** Stay on `SUMMARY.md`, or open `docs/METHODOLOGY.md` section on metrics.
+**Do:** Stay on `SUMMARY.md`, or open `docs/METHODOLOGY.md` metrics section.
+Also open `configs/benchmarks.json`.
 
 **Say:**
 
@@ -99,685 +149,578 @@ Temperature divides the **entire** blended logit.
 >
 > The submitted object is \(P(Y_g = 1)\).
 >
-> I ordered the metrics the way a pricing desk should:
+> Metric order for a pricing desk:
 >
-> - **Log loss** is primary. It is a strictly proper scoring rule: you
->   minimize expected loss by reporting your true belief. It also punishes
->   confident wrong prices exponentially — which matches sportsbook liability.
->   A price of 0.99 that is wrong is catastrophic; a price of 0.51 that is
->   wrong is a small mistake. Accuracy treats both as the same “wrong side of
->   0.5.”
-> - **Brier** is secondary. It is also proper, but quadratic, so it underweights
->   the catastrophic tail relative to log loss.
-> - **AUC** is a ranking diagnostic. It asks whether I order matchups
->   correctly. Useful, but it does not care whether I said 55% or 85%.
-> - **Accuracy** at 0.5 is a coarse threshold summary. I report it; I do not
->   optimize for it.
+> - **Log loss** primary — strictly proper; punishes confident wrong prices
+> - **Brier** secondary — proper but quadratic
+> - **AUC** ranking diagnostic
+> - **Accuracy** at 0.5 — coarse; not optimized
 >
-> That choice matters later when April improves log loss and Brier but misses
-> AUC. Under a pricing objective, that is an incomplete win — not a reason to
-> quietly retune on the test month.
+> **Show the work — benchmarks are declared, not invented midstream.**
+> In `configs/benchmarks.json` the March and April numerical gates are stored
+> as version-controlled constants. Selection must beat all four March targets
+> before a candidate is eligible. Those thresholds are the assignment’s
+> numerical bar; my search policy is written against them.
 
-**Optional aside if they nod:**
+**Optional aside:**
 
-> The outputs also include zero-margin fair decimal odds: one over \(p\) for
-> home, one over \(1-p\) for away. Those are mathematical fair prices. They are
-> not a customer quote. No overround, no liability shaping, no trader override.
+> Outputs also include zero-margin fair decimal odds \(1/p\) and \(1/(1-p)\).
+> Mathematical fair prices — not customer quotes. No overround.
 
 ---
 
-# Act II — Data: what I was given and what I refused to invent (0:08–0:18)
+# Act II — Data (0:08–0:18)
 
 ## Chapter 3 — First contact with the file (0:08–0:13)
 
-**Do:** Open `nba_wp/data.py` at `EXPECTED_COLUMNS` and `load_games`. Then open
-`artifacts/data_audit.json`.
+**Do:** Open `nba_wp/data.py` at `EXPECTED_COLUMNS` and `load_games`.
+Then `artifacts/data_audit.json`. Then `artifacts/date_split_summary.csv`.
 
 **Say:**
 
-> Step one was to treat the CSV as a contract, not a dataframe to trust.
+> Step one: treat the CSV as a contract.
 >
-> The file has 1,230 games from the 2025–26 season, 30 teams, each team plays
-> 82 games. Dates run from October 21, 2025 through April 12, 2026. There are
-> no missing values, no duplicate game IDs, and no ties — which is what we
-> expect from NBA finals.
+> **Calculated from the file (audit, not model parameters):**
 >
-> One documentation note: the brief says fourteen columns; the listed schema
-> is sixteen — two game fields plus seven for away and seven for home. I
-> validate against the sixteen-column schema.
+> | Quantity | Value | Where shown |
+> |---|---|---|
+> | Rows | 1,230 | `data_audit.json` → `row_count` |
+> | Teams | 30 | `team_count` |
+> | Games/team | 82 | `team_game_counts` |
+> | Date range | 2025-10-21 → 2026-04-12 | `date_min` / `date_max` |
+> | Home-win rate | ~55.4% | `home_win_rate` |
+> | Ties / dupes / nulls | 0 | corresponding `*_count` fields |
 >
-> In `load_games` I do a few deliberate things:
+> Schema note: brief says 14 columns; listed schema is 16. I validate 16.
 >
-> - Read `game_id` as a string and zero-fill to ten characters. Leading zeros
->   are semantically part of the NBA game ID. Parsing as an integer would
->   corrupt joins later.
-> - Parse dates strictly, coerce numerics strictly, fail loud on nulls.
-> - Reject home equals away, and reject ties.
-> - Create the label `home_win` from the final score.
-> - Sort stably by date then game ID — never shuffle. This is a time-ordered
->   pricing problem.
+> In `load_games`:
 >
-> I also reconcile the supplied pregame win/loss columns. I replay the season
-> chronologically and check that `home_wins`, `home_losses`, and the away
-> counterparts match the true season-to-date record **before** each game.
-> They reconcile exactly. That tells me those fields are genuinely pregame,
-> not silently contaminated.
-
-**Do:** Scroll `data_audit.json` to `home_win_rate`, `date_min`, `date_max`,
-`tied_game_count`, record reconciliation fields.
-
-**Say:**
-
-> Full-sample home-win rate is about **55.4%**. I’ll come back to that when we
-> talk about Elo home-court advantage, because a 75-point Elo HFA implies about
-> **60.6%** only when two teams are equal-rated. Those are different quantities.
-> I will not conflate the structural HFA with the empirical base rate.
-
-**Do:** Briefly show `artifacts/date_split_summary.csv`.
-
-**Say:**
-
-> Month sizes matter for later design:
+> - `game_id` as string, zero-fill to 10 — **design choice** so leading zeros
+>   survive
+> - strict dates/numerics; fail on nulls
+> - reject home=away and ties
+> - label `home_win = 1{home_points > away_points}` — **calculated**
+> - stable sort by date, game_id — never shuffle
 >
-> - October through February are the bulk of the season — that becomes the
->   coefficient-fitting period for March selection.
-> - March has 239 games — large enough to select on, small enough that I must
->   not overclaim precision.
-> - April has 96 games — the final scoring month.
+> Pregame W–L columns are **reconciled** by replaying the season. That check
+> lives in `_record_reconciliation` in `data.py`; the audit JSON records that
+> they match. So those fields are genuinely pregame.
 >
-> February’s home-win rate dips below 50% in this sample. That is a reminder
-> that month-level rates move around; I should not hard-code a single home
-> prior as the model.
+> Month sizes from `date_split_summary.csv` drive the split design:
+> Oct–Feb fit coefficients for March selection; March = 239 selection games;
+> April = 96 final scoring games.
+>
+> Full-sample home rate ~55.4% is **not** the same as Elo HFA=75 implying
+> ~60.6% for equal-rated teams. I will not conflate them.
 
 ---
 
-## Chapter 4 — Postgame versus pregame: the first modeling decision (0:13–0:18)
+## Chapter 4 — Postgame versus pregame (0:13–0:18)
 
 **Do:** In `data.py`, highlight `POSTGAME_COLUMNS`.
 
 **Say:**
 
-> The most important data decision happens before any model is fit.
+> The first modeling decision is an information classification, not a
+> hyperparameter.
 >
-> Points, turnovers, fouls, and rebounds are **outcomes of the game being
-> priced**. Points determine the label directly. Turnovers, fouls, and rebounds
-> do not determine the winner with certainty, but they are still unavailable at
-> the moment a sportsbook must post a pregame price.
+> - **Pregame:** teams, date, season-to-date W–L
+> - **Postgame:** points, turnovers, fouls, rebounds
 >
-> So I classified fields into two families:
+> Postgame may update **future** state only. Never the current feature row.
 >
-> - **Known pregame:** teams, date, season-to-date wins and losses.
-> - **Known postgame:** points, turnovers, fouls, rebounds.
+> I refuse invented pace / Four Factors — missing FGA, FTA, OREB, makes.
+> Points/constant possessions make ORtg identically constant. No fake features.
 >
-> Postgame fields are allowed to update **future** team state. They are
-> forbidden from entering the feature row of their own game.
->
-> I also refused to invent features the schema cannot support. Pace and Dean
-> Oliver’s Four Factors need field-goal attempts, free-throw attempts,
-> offensive rebounds, and makes. Those are missing. Defining possessions as
-> points divided by a constant makes offensive rating identically constant —
-> a fake feature. So I do not ship pseudo-pace.
->
-> That is the discipline I want you to see throughout: if the information is
-> not available at pricing time, it does not enter the price.
+> **Show the work:** `POSTGAME_COLUMNS` in `data.py` is the explicit list the
+> feature engine is forbidden from reading for the current row.
 
 **Invite questions.**
 
 ---
 
-# Act III — Building a leakage-safe feature engine (0:18–0:32)
+# Act III — Leakage-safe feature engine (0:18–0:32)
 
-## Chapter 5 — Designing the information policy (0:18–0:24)
+## Chapter 5 — Information policy (0:18–0:24)
 
 **Do:** Open `nba_wp/features.py` at the `build_features` docstring and the
-date loop (the `for date, day in frame.groupby(...)` block).
+`for date, day in frame.groupby(...)` loop. Scroll to schedule update and
+`if freeze is not None and date >= freeze: continue`.
 
 **Say:**
 
-> Once I knew what was pregame and postgame, I designed the feature engine
-> around an explicit information policy.
+> Feature timing is the leakage control. For every date \(d\):
 >
-> For every game date \(d\), the engine does four things in this order:
+> 1. Refresh Bradley-Terry on **strictly earlier** games
+> 2. Read both teams’ states
+> 3. Write feature rows for **every** game that date
+> 4. Only then update performance state from that date’s results
 >
-> 1. Refresh the Bradley-Terry fit using **strictly earlier** games only.  
-> 2. Read both teams’ current states — Elo, trends, records, rest, and so on.  
-> 3. Write a feature row for **every** game on that date.  
-> 4. Only then observe that date’s results and update performance state.
+> Same-date batching: matinee cannot leak into night game.
+> Test: `tests/test_feature_timing.py::test_same_day_games_are_batched`.
 >
-> If I reversed steps 3 and 4, a night game could see a matinee result from
-> the same calendar date. In a sportsbook, that would be posting a price with
-> information the market did not have at open. That is a disqualifying error.
+> Two evaluation policies — not parameters, information sets:
 >
-> Same-date games are therefore batched: they all freeze the same pregame
-> snapshot. The unit test `test_same_day_games_are_batched` changes one game’s
-> score dramatically and asserts the other same-date game’s features are
-> unchanged.
+> - `sequential_daily` — later dates may use earlier completed results
+> - `frozen_snapshot` — performance frozen at month start; schedule/rest still
+>   moves
 >
-> There is a second information policy for evaluation sensitivity:
->
-> - **`sequential_daily`** — after a date completes, later dates may use those
->   results. This is what a live pregame system would do across a month.
-> - **`frozen_snapshot`** — performance state freezes at month start. Schedule
->   still updates, because rest is observable from the schedule without knowing
->   outcomes.
->
-> I export both. Mixing them silently would be dishonest about the information
-> set. The assignment’s April ask is closest in spirit to a month-start
-> discipline, while sequential is the operational sportsbook analogue. You
-> should see both numbers.
-
-**Do:** Scroll to the schedule update and the `if freeze is not None and date >= freeze: continue` block.
-
-**Say:**
-
-> Notice the code updates `schedule_dates` even when frozen, then skips
-> performance updates. That is intentional. Rest days move; Elo and
-> Bradley-Terry do not.
+> **Show the work:** the `freeze` branch updates `schedule_dates` then
+> `continue`s past performance updates. Rest moves; Elo/BT do not.
 
 ---
 
-## Chapter 6 — What a team state contains (0:24–0:32)
+## Chapter 6 — Team state: every feature parameter calculated (0:24–0:32)
 
-**Do:** Open `_team_state`, `_elo_multiplier`, and `_fit_bradley_terry`.
+**Do:** Open `_team_state`, `_ewma`, `_elo_multiplier`, `_fit_bradley_terry`.
+Keep `features.py` on screen.
 
 **Say:**
 
-> Inside the date loop, each team is summarized by a state object before the
-> matchup features are formed. I’ll narrate the story of how that state grew.
->
-> **Early season problem.** On opening night everyone is 0–0. A raw win rate
-> is undefined or extreme. So for record-based candidates I use a Beta(4,4)
-> smoother:
->
-> \((W + 4) / (N + 8)\).
->
-> After zero games that is 50%. After one win it is 5/9, not 100%. That feature
-> becomes `record_logit_diff`. It is a strong baseline later in the ablation,
-> but it is **not** in the final three-feature champion — I’ll show why.
->
-> **Margin history.** For each prior game I store the team’s point margin. From
-> that I build cumulative average margin and an exponentially weighted margin
-> with a 45-day half-life: a game 45 days ago gets half the weight of a game
-> today. The short window is the mean of the last 10 games. Trend is short
-> minus long. If a team is outrunning its longer form, trend is positive.
-> Matchup feature: home trend minus away trend.
->
-> **Rest and schedule density.** Rest days are capped at seven. I also build
-> back-to-back and games-in-4 / games-in-6 density differentials. These are
-> real NBA effects, but in this one-season sample they did not earn a place in
-> the champion. I still compute them so I can show the rejection in ablation
-> rather than claiming I never considered them.
->
-> **Box-score tendencies.** From completed games I accumulate turnover,
-> rebound, and foul advantages — always from history before the current date.
-> Same story: candidates, not champions.
->
-> **Elo state.** Every team starts at 1500. Before a game I form
->
-> \(p^{Elo} = 1 / (1 + 10^{-(R_h - R_a + H)/400})\),
->
-> and the feature `elo_diff = (R_h - R_a + H) / 400`. After the date completes,
-> ratings update with \(K\) times a margin-of-victory multiplier times the
-> residual \(S - E\). The multiplier is
->
-> `log(|margin| + 1) * (2.2 / max(0.25, rating_diff * 0.001 + 2.2))`.
->
-> The log stops a 40-point blowout from counting as four times a 10-point win.
-> The denominator down-weights beatdowns that were already expected from the
-> rating gap. That is the FiveThirtyEight-style intuition: unexpected margins
-> move ratings more than expected ones.
->
-> **Bradley-Terry state.** Each date, if enough history exists, I fit a
-> regularized logistic regression on a +1/−1 design matrix: home team +1, away
-> team −1, label = home win. The intercept is home advantage; the coefficients
-> are team strengths. The matchup feature `bt_logit` is the decision function
-> on that matchup. With only about a thousand games, refitting daily is cheap,
-> and the batch estimator gives a globally consistent ranking that Elo’s online
-> updates do not automatically guarantee.
->
-> At this point in the project I had a rich feature factory and a hard
-> guarantee that every row was priced with only earlier information. Next I had
-> to decide which signals actually improve probability scores.
+> Inside the date loop I build team state. I will name every constant and say
+> how it got there.
 
-**Invite questions.** Optional live proof:
+### 6a. Beta(4,4) record smoother — fixed by design
+
+> Formula: \(\tilde p = (W+4)/(N+8)\), then `record_logit = logit(\tilde p)`.
+> Matchup: `record_logit_diff = home − away`.
+>
+> **Why +4/+8?** Eight games of neutral Beta(4,4) prior so 0–0 is 50%, not
+> undefined, and 1–0 is 5/9 not 100%.
+>
+> **Class:** fixed by design (candidate feature).
+> **Show the work:** `_team_state` lines with `(wins + 4.0) / (games + 8.0)`.
+> **Fate:** strong in ablation B1; **not** in champion three features.
+
+### 6b. Trend half-life 45 and short window 10 — selected with architecture
+
+> Long form: EWMA of past margins with
+> \(w_k = 0.5^{\mathrm{age\_days}/45}\).
+> Short form: mean of last 10 margins.
+> `trend = short − long`; matchup `trend_diff = home − away`.
+>
+> **Why these numbers?** They are part of the architecture vector. Across the
+> five declared architectures I tried half-lives 30/45/60 and windows 8/10/12.
+> The winning architecture `hfa_75` uses 45 and 10.
+>
+> **Class:** selected (architecture search).
+> **Show the work now:** briefly flash `configs/architecture_candidates.json`
+> `trend_half_life_days` / `trend_short_games`. Full comparison comes in Act V
+> with `march_architecture_results.csv`.
+> **Calculation code:** `_ewma` and `_team_state` in `features.py`.
+
+### 6c. Rest cap 7 — fixed by design (candidate only)
+
+> `rest_days = min(days since last scheduled game, 7)`.
+> Also B2B and games-in-4 / games-in-6 differentials.
+>
+> **Class:** fixed design candidates.
+> **Show the work:** `_team_state` rest logic.
+> **Fate:** rejected — ablation B6 did not beat the blend.
+
+### 6d. Elo: start 1500, scale 400 — fixed; K and HFA — selected
+
+> Before the game:
+>
+> \(p^{Elo}_{raw} = 1/(1+10^{-(R_h-R_a+H)/400})\)
+>
+> Feature: `elo_diff = (R_h − R_a + H) / 400`.
+>
+> After the date:
+>
+> \(R \leftarrow R + K \cdot m \cdot (S - E)\)
+>
+> with
+>
+> \(m = \log(|margin|+1)\cdot(2.2 / \max(0.25,\ \Delta R\cdot 0.001 + 2.2))\).
+>
+> | Symbol | Value | Class | Why / work |
+> |---|---|---|---|
+> | Start \(R\) | 1500 | Fixed | Common Elo origin; only diffs matter. Code: `ratings = {team: 1500.0}` in `build_features` |
+> | Scale 400 | 400 | Fixed | Classic Elo: 400 pts ↔ 10:1 odds. In the \(10^{-x/400}\) formula |
+> | \(H\) HFA | **75** | **Selected** | Architectures tried 55, 65, 75; `hfa_75` won March eligibility race |
+> | \(K\) | **10** | **Selected** | Architectures tried 7.5, 10, 15; winner uses 10 |
+> | MOV 2.2, 0.001 | those constants | Fixed form | FiveThirtyEight-style MOV; mode `log` declared for all archs |
+> | `max(0.25,…)` | 0.25 floor | Fixed guard | Prevents pathological denominator |
+>
+> **Show the work:**
+> - Formula/update: `features.py` Elo block + `_elo_multiplier`
+> - Selected \(K\), \(H\): `configs/architecture_candidates.json` → later
+>   `artifacts/march_architecture_results.csv`
+
+### 6e. Bradley-Terry `C = 0.15` — selected; strengths — fitted daily
+
+> Design matrix: home +1, away −1, label home win.
+> Fit `LogisticRegression(C=bt_c, …)`.
+> Intercept = home advantage \(\alpha\); coeffs = team strengths \(\theta_i\).
+> Feature `bt_logit = decision_function(matchup)`.
+>
+> | Piece | Class | Work |
+> |---|---|---|
+> | \(\theta_i\), \(\alpha\) | **Fitted** each date on prior games | `_fit_bradley_terry` |
+> | `bt_c = 0.15` | **Selected** with architecture | `architecture_candidates.json`; rivals used 0.1, 0.25, 0.3 |
+>
+> **Why refit daily?** Batch MLE uses all prior games; cheap at N≈1200.
+> Cache invalidates when `len(prior_games)` changes — show that in
+> `build_features`.
+
+**Invite questions.** Optional:
 
 ```bash
-python -m pytest tests/test_feature_timing.py -q
+python3 -m pytest tests/test_feature_timing.py -q
 ```
 
 ---
 
-# Act IV — From features to a model architecture (0:32–0:52)
+# Act IV — Architecture, fitted coefficients, blend (0:32–0:55)
 
-## Chapter 7 — Why not one big logistic or a tree model? (0:32–0:38)
+## Chapter 7 — Ablation: why these features shipped (0:32–0:38)
 
 **Do:** Open `artifacts/feature_group_ablation.csv`.
 
 **Say:**
 
-> With 1,230 games, dumping every differential into a large model is a good way
-> to overfit March and embarrass yourself in April. I wanted structure that
-> matches how team strength actually evolves.
+> With 1,230 games I will not dump every differential into one model.
+> Ablation is the work behind **which features are parameters of the champion**.
 >
-> Look at the ablation — this is the empirical story of the build:
+> | Stage | Model | March LL |
+> |---|---|---:|
+> | B0 | Constant home prior | 0.681 |
+> | B1 | Record logit only | 0.549 |
+> | B2 | Record + cumulative margin | 0.552 |
+> | B3 | Elo component | 0.511 |
+> | B4 | BT alone | 0.537 |
+> | B5 | BT + trend | 0.529 |
+> | B6 | Rich linear (rest, TOV, REB, …) | 0.547 |
+> | **B7** | **Calibrated Elo + BT/trend blend** | **0.488** |
 >
-> - **B0** — constant training-period home prior. Log loss about 0.681. This is
->   “always price the historical home rate.” Inadequate.
-> - **B1** — record logit difference alone. Drops to about 0.549. Season-to-date
->   records already carry real strength information.
-> - **B2** — records plus cumulative margin. Roughly similar; margins are
->   correlated with records and do not buy much alone.
-> - **B3** — Elo component alone. About 0.511. Sequential margin-adjusted
->   strength is a clear lift.
-> - **B4** — Bradley-Terry alone. About 0.537. Strong ranking signal, a bit
->   behind Elo on March proper scores in isolation.
-> - **B5** — Bradley-Terry plus trend. About 0.529. Recent-form correction
->   helps BT.
-> - **B6** — rich linear challenger: records, margins, trend, rest, turnovers,
->   rebounds. About 0.547. **More features, worse than Elo alone.** This is the
->   key anti-complexity result. Rest and noisy box tendencies did not earn
->   promotion on March proper scores.
-> - **B7** — the selected calibrated Elo + BT/trend blend. About **0.488**.
->   Best probability quality among these stages.
+> **Show the work:** this CSV. B6 proves more features ≠ better. Champion
+> parameters are only `elo_diff`, `bt_logit`, `trend_diff` plus blend
+> calibration — because B7 won on log loss.
 >
-> So the architecture decision was not “I like Elo.” It was: structured
-> strength components beat a kitchen-sink linear model on the metric I care
-> about, and a calibrated blend beats either component alone.
->
-> Why not XGBoost as the headline? Small \(N\), highly collinear strength
-> features, and a production need for deterministic training, direct
-> probabilities, and coefficient-level interpretability. Traders should be able
-> to override or inspect a component. I would promote a nonlinear challenger
-> only after a forward proper-score win — not because it is fashionable.
+> Why not XGBoost headline? Small N, collinear strength signals, need
+> deterministic probs and trader-inspectable components.
 
 ---
 
-## Chapter 8 — Component A: margin-of-victory Elo in depth (0:38–0:44)
+## Chapter 8 — Elo component parameters in depth (0:38–0:44)
 
-**Do:** Open `docs/METHODOLOGY.md` Elo section and `model.py::fit_base_models`.
+**Do:** Open `docs/METHODOLOGY.md` Elo section, `features.py::_elo_multiplier`,
+`model.py::fit_base_models`, then `artifacts/coefficient_table.csv`.
 
 **Say:**
 
-> Let me slow down on Elo, because interviewers often ask for the derivation.
+> Elo update is online gradient ascent on a Bradley-Terry log-likelihood
+> (Kiraly & Qian): residual \(S-E\) is the gradient; \(K\) is the learning rate;
+> MOV multiplier reshapes the step.
 >
-> Elo is not a mysterious rating. Kiraly and Qian showed that the classic update
-> is online gradient ascent on a Bradley-Terry log-likelihood. The gradient with
-> respect to a team’s strength is exactly the residual \(S - E\): outcome minus
-> expected win probability. \(K\) is a learning rate. My multiplier reshapes
-> that gradient using margin information.
+> **Selected Elo structural params** (preview; full table in Act V):
+> \(K=10\), \(H=75\), MOV=`log`.
 >
-> In the selected architecture:
+> **Equal-team implication of H=75 (calculated, not fitted):**
 >
-> - \(K = 10\)
-> - Home-field adjustment \(H = 75\) rating points
-> - Margin mode = log
+> \(P(home)=1/(1+10^{-75/400})\approx 0.606\).
 >
-> Why 75? Across the five declared architectures I tried 55, 65, and 75. For
-> equal-rated teams, 75 points implies
+> That is structural HFA inside Elo — not the 55.4% sample base rate.
 >
-> \(P(home) = 1 / (1 + 10^{-75/400}) \approx 60.6\%\).
+> **Fitted Elo logistic (Class: fitted):**
+> After features exist, I map `elo_diff` → probability with
+> `LogisticRegression(C=elo_model_c)`.
 >
-> That is a structural home prior inside Elo, not the 55.4% full-sample rate.
-> March selection preferred the stronger HFA in this season’s data.
+> For the champion, `elo_model_c = 100` ≈ unregularized — **selected with
+> architecture** because one feature has no multicollinearity to fight.
 >
-> Elo alone still needs a probability map from `elo_diff` to \(P(home)\). I fit
-> a simple L2 logistic with `C = 100` — essentially unregularized — because
-> there is only one feature and no multicollinearity to fight. That produces
-> the Elo-component probability.
+> **Show the work — fitted coefficients** in `coefficient_table.csv`:
+>
+> | Component | Feature | Std. coef | Raw unit coef |
+> |---|---|---:|---:|
+> | elo | `elo_diff` | 0.927 | 2.713 |
+> | elo | intercept | 0.242 | — |
+>
+> Those numbers are **calculated by MLE on the training window**, then used to
+> produce `elo_component_probability`. I did not type 0.927 by hand.
 
 ---
 
-## Chapter 9 — Component B: Bradley-Terry + trend (0:44–0:49)
+## Chapter 9 — BT + trend parameters in depth (0:44–0:50)
 
-**Do:** Show `_fit_bradley_terry` and the rank model fit in `fit_base_models`.
-
-**Say:**
-
-> Bradley-Terry says
->
-> \(\mathrm{logit}\,P(i\ \mathrm{beats}\ j) = \theta_i - \theta_j\),
->
-> and with home advantage,
->
-> \(\mathrm{logit}\,P = \alpha + \theta_h - \theta_a\).
->
-> That is exactly a logistic regression on a +1/−1 team design. I use
-> `C = 0.15` on the 30 team coefficients so strengths shrink toward zero when
-> data are thin. Early season, that regularization matters.
->
-> Why keep BT if Elo is already a BT online learner? Because the estimators
-> process information differently:
->
-> - Elo updates locally and sequentially — fast to adapt, can trail or overreact.
-> - Batch BT re-estimates all strengths from the full history each day — more
->   globally consistent, slower to express a one-game swing unless the data
->   support it.
->
-> Trend then asks a different question: is a team’s **recent** point margin
-> ahead of or behind its longer EWMA form? That is not the same as “who is
-> better.” It is “who is improving relative to themselves.”
->
-> The rank component is a second logistic on `(bt_logit, trend_diff)` with
-> stronger regularization `C = 0.1`, because now there are two features and the
-> BT logit already compresses thirty team parameters.
-
-**Do:** Show `artifacts/coefficient_table.csv` and `permutation_importance.csv`.
+**Do:** Show `_fit_bradley_terry`, `fit_base_models` rank fit,
+`coefficient_table.csv`, `permutation_importance.csv`.
 
 **Say:**
 
-> After fitting through the training window, the standardized coefficients show
-> BT carrying most of the rank model, with trend a smaller positive coefficient.
-> Permutation importance on March agrees: shuffle `bt_logit` and log loss jumps
-> by about 0.23; shuffle `elo_diff` and it jumps about 0.02; shuffle
-> `trend_diff` and it jumps about 0.006. Trend is a correction, not the engine.
+> Bradley-Terry:
+> \(\mathrm{logit}P = \alpha + \theta_h - \theta_a\).
+> Implemented as +1/−1 logistic. Team strengths **fitted**; `bt_c` **selected**.
+>
+> Rank component logistic on `(bt_logit, trend_diff)` with
+> `rank_model_c = 0.1` (**selected** — stronger shrinkage because two features
+> sit on top of 30 BT coefficients).
+>
+> **Show the work — fitted rank coefficients** (`coefficient_table.csv`):
+>
+> | Feature | Std. coef | Role |
+> |---|---:|---|
+> | `bt_logit` | 0.804 | dominant |
+> | `trend_diff` | 0.144 | small correction |
+> | intercept | 0.234 | baseline |
+>
+> **Show the work — importance** (`permutation_importance.csv`):
+> shuffle BT → LL +0.232; Elo +0.020; trend +0.006.
+> That is calculated evidence that BT carries ranking, Elo secondary, trend
+> small — consistent with blend weight 0.19 later.
 
 ---
 
-## Chapter 10 — Log-odds blend and calibration (0:49–0:52)
+## Chapter 10 — Blend parameters \(w\), \(\tau\), \(b\): calculated via grid search (0:50–0:55)
 
-**Do:** Open `model.py::blend_probabilities`. Highlight the exact lines.
+**Do:** Open `model.py::blend_probabilities` and `search_calibration`.
+Then open `configs/selection_policy.json`.
 
 **Say:**
 
-> Now I have two probabilities for each game: \(p_{Elo}\) and \(p_{rank}\).
-> I do **not** average them on the probability scale. On \([0,1]\), averaging
-> 0.70 and 0.90 gives 0.80 regardless of how extreme the underlying evidence
-> was. On the log-odds scale, those values are 0.85 and 2.20 — the weighted
-> average preserves evidence magnitude.
->
-> So:
+> Two component probabilities enter the blend:
 >
 > \(z = w\,\mathrm{logit}(p_{Elo}) + (1-w)\,\mathrm{logit}(p_{rank})\)
 >
-> \(p = \sigma(z / \tau + b)\)
+> \(p = \sigma(z/\tau + b)\)
 >
-> Selected values: \(w = 0.19\), \(\tau = 0.59\), \(b = 0.33\).
+> **These three scalars are not fitted by gradient descent inside sklearn.**
+> They are **selected** by exhaustive March grid search.
+>
+> **Show the work — declared grid** (`selection_policy.json`):
+>
+> | Param | Range | Step | Count |
+> |---|---|---|---:|
+> | `elo_weight` \(w\) | 0.00–0.35 | 0.005 | 71 |
+> | `temperature` \(\tau\) | 0.55–0.85 | 0.01 | 31 |
+> | `shift` \(b\) | 0.10–0.40 | 0.01 | 31 |
+>
+> Per architecture: \(71\times31\times31 = 68{,}231\) calibrations.
+>
+> **Show the work — search code** (`model.py::search_calibration`):
+> for each weight, vectorize over temperature and shift; compute log loss,
+> Brier, accuracy; AUC once per weight (affine logit calibration does not
+> change ranking); keep points that beat all four March benchmarks; pick
+> lexicographic min LL, then Brier, then max AUC, then accuracy.
+>
+> **Champion values:** \(w=0.19\), \(\tau=0.59\), \(b=0.33\).
 >
 > Interpretation:
 >
-> - Weight 0.19 means Elo contributes real but secondary evidence; BT/trend
->   dominates. That matches permutation importance.
-> - Temperature 0.59 is less than one, so we **sharpen**. The March grid found
->   the raw components underconfident — probabilities not extreme enough versus
->   outcomes. Dividing the full \(z\) by 0.59 is equivalent to scaling evidence
->   up. I treat that cautiously because March is only 239 games and is also the
->   selection set.
-> - Shift 0.33 is a residual home baseline adjustment after the blend.
+> - \(w=0.19\) — Elo secondary; BT/trend dominates (matches importance)
+> - \(\tau=0.59<1\) — sharpen underconfident components on March
+> - \(b=0.33\) — residual home baseline on log-odds scale
 >
-> Temperature scaling is a standard calibration move: one scalar for sharpness,
-> without changing the architecture. It is not a license to invent features.
+> I treat \(\tau\) cautiously: March is 239 games and the selection set.
+>
+> **Proof the triple was generated, not typed into scoring code:** coming next
+> in Act V with `march_tuning_top_candidates.csv` and `selected_spec.json`.
 
 **Invite questions.**
 
 ---
 
-# Act V — Selection without looking at April (0:52–1:05)
+# Act V — Selection work: how structural params were chosen (0:55–1:10)
 
-## Chapter 11 — Declaring candidates before searching (0:52–0:57)
+## Chapter 11 — Declared architectures (0:55–1:00)
 
-**Do:** Open `configs/architecture_candidates.json` and
-`configs/selection_policy.json`.
+**Do:** Open `configs/architecture_candidates.json` side by side with
+`artifacts/march_architecture_results.csv`.
 
 **Say:**
 
-> If I tune casually until April looks good, I have not built a model — I have
-> performed target leakage with extra steps. So I declared the search space up
-> front.
+> If I nudge knobs until April looks good, that is leakage. So structural
+> hyperparameters were declared as five named architectures before the search
+> ran.
 >
-> Five architectures span responsiveness and regularization:
+> **Show the work — search space** (`architecture_candidates.json`):
+
+| Name | \(K\) | HFA | BT \(C\) | Half-life | Short | `elo_model_c` | `rank_model_c` |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| balanced | 10 | 65 | 0.15 | 45 | 10 | 100 | 0.1 |
+| conservative | 7.5 | 55 | 0.1 | 60 | 12 | 10 | 0.1 |
+| responsive | 15 | 65 | 0.25 | 30 | 8 | 10 | 0.1 |
+| **hfa_75** | **10** | **75** | **0.15** | **45** | **10** | **100** | **0.1** |
+| lower_bt_shrinkage | 10 | 65 | 0.3 | 45 | 10 | 100 | 0.3 |
+
+> **Show the work — who survived** (`march_architecture_results.csv`):
+
+| Architecture | Eligible count | Best eligible LL | Best \((w,\tau,b)\) |
+|---|---:|---:|---|
+| **hfa_75** | 30,686 | **0.487569** | 0.19, 0.59, 0.33 |
+| balanced | 30,663 | 0.487588 | 0.19, 0.59, 0.33 |
+| lower_bt_shrinkage | 30,586 | 0.487667 | 0.215, 0.58, 0.31 |
+| conservative | **0** | — | failed all-four-target gate |
+| responsive | **0** | — | failed all-four-target gate |
+
+> **Why \(K=10\)?** Among declared options {7.5, 10, 15}, only architectures
+> with \(K=10\) (plus the BT/HFA variants above) produced eligible calibrations.
+> Responsive (\(K=15\)) and conservative (\(K=7.5\)) produced **zero** eligible
+> points — their best March metrics missed the AUC/target gate.
 >
-> 1. **balanced** — moderate K and HFA  
-> 2. **conservative** — slower Elo, stronger shrinkage  
-> 3. **responsive** — higher K, faster adaptation  
-> 4. **hfa_75** — stronger home adjustment  
-> 5. **lower_bt_shrinkage** — freer team strengths  
+> **Why HFA=75?** Among eligible architectures, `hfa_75` had the lowest March
+> log loss under the lexicographic rule — beating `balanced` (HFA 65) by a
+> small but decisive amount under that rule.
 >
-> For each architecture, the calibration grid is:
->
-> - Elo weight from 0.00 to 0.35 step 0.005  
-> - Temperature from 0.55 to 0.85 step 0.01  
-> - Shift from 0.10 to 0.40 step 0.01  
->
-> That is 71 × 31 × 31 = 68,231 calibrations per architecture, about 341k total
-> combinations. AUC is computed once per weight because positive affine
-> transforms of the logit do not change ranking.
->
-> Eligibility rule: beat **all four** March numerical targets. Then
-> lexicographically minimize log loss, then Brier, then maximize AUC, then
-> accuracy. Architecture name breaks residual ties for determinism.
->
-> The selected point is written to `artifacts/selected_spec.json` by the search.
-> The scorer loads that file. I do not paste magic numbers into scoring code.
+> **Why BT \(C=0.15\), half-life 45, short 10?** They are the structural bundle
+> attached to `hfa_75`. I do not claim each was optimized on a 1-D scan in
+> isolation; I claim the **joint architecture** won the declared comparison.
+> `lower_bt_shrinkage` tried freer BT (\(C=0.3\)) and lost on March LL.
 
 ---
 
-## Chapter 12 — March protocol and April exclusion (0:57–1:05)
+## Chapter 12 — Calibration grid work and April exclusion (1:00–1:10)
 
-**Do:** Open `scripts/select_model.py`, then `nba_wp/selection.py::run_selection`,
-then `artifacts/selection_proof.json`.
-
-**Say:**
-
-> Here is the chronological protocol:
->
-> 1. Truncate the raw input to dates strictly before April 1 **before** feature
->    construction.  
-> 2. `run_selection` refuses to proceed if any April row is present.  
-> 3. For each architecture, build features on the truncated history.  
-> 4. Fit base component coefficients on October through February.  
-> 5. Score March one-step-ahead with date-batched updates.  
-> 6. Search the calibration grid; keep eligible champions.  
-> 7. Emit `selected_spec.json` and `selection_proof.json`.
->
-> Proof fields you should care about: selection max date March 31, April rows
-> loaded during selection equal to zero, selected architecture `hfa_75`,
-> calibration weight 0.19 / temperature 0.59 / shift 0.33.
->
-> **Honesty about March.** March is the selection set. Its champion metrics are
-> optimistic as estimates of future performance. I will call them selection
-> results, not an untouched test.
->
-> **Honesty about April.** The executable path cannot load April during
-> selection. The broader project had already viewed April during development,
-> so I describe April as a **retrospective** final scoring period. I will not
-> claim perfect human blindness. What I will claim is machine-enforced
-> pre-April selection and no post-hoc retuning after the AUC miss.
->
-> After selection freezes, I refit base coefficients through March and score
-> April under both sequential and frozen policies.
-
-**Do:** Show `artifacts/march_architecture_results.csv` briefly if time.
+**Do:** Open in order:
+1. `scripts/select_model.py` (April truncate)
+2. `nba_wp/selection.py::run_selection` (reject April; fit Oct–Feb; search March)
+3. `artifacts/march_tuning_top_candidates.csv` (top rows)
+4. `artifacts/selected_spec.json`
+5. `artifacts/selection_proof.json`
+6. `configs/benchmarks.json`
 
 **Say:**
 
-> You can see which architectures produced eligible calibrations and how
-> `hfa_75` won on the declared rule — not because I typed it into a notebook
-> after peeking at April.
+> Chronological selection protocol — this is how the champion scalars were
+> **calculated as the argmin of a declared objective**:
+>
+> 1. Truncate raw input to `game_date < 2026-04-01` **before** features
+>    — **Show:** `scripts/select_model.py`
+> 2. `run_selection` raises if any April row present
+>    — **Show:** `selection.py` guard
+> 3. For each architecture, `build_features` on truncated history
+> 4. Fit base logistic coefficients on October–February
+> 5. Score March one-step-ahead component probabilities
+> 6. Run `search_calibration` over 68,231 points
+> 7. Eligibility: beat all four March targets in `benchmarks.json`
+>    (LL < 0.509645, Brier < 0.167618, AUC > 0.831798, Acc > 0.7782)
+> 8. Among eligible, minimize LL, then Brier, then maximize AUC, accuracy
+> 9. Write `selected_spec.json`; scorer loads it — no magic constants in score code
+>
+> **Show the work — leaderboard** (`march_tuning_top_candidates.csv`):
+>
+> ```text
+> #1 hfa_75  w=0.19   τ=0.59  b=0.33  LL=0.487569  ← champion
+> #2 hfa_75  w=0.185  τ=0.59  b=0.33  LL=0.487572
+> #3 hfa_75  w=0.18   τ=0.59  b=0.33  LL=0.487577
+> ```
+>
+> Neighboring rows are extremely close. That is why I describe 0.59 as a
+> selected operating point on a noisy selection set — not a law of nature.
+>
+> **Show the work — frozen spec** (`selected_spec.json`): architecture block
+> plus calibration block plus March metrics plus notes that base coefficients
+> use games through February for March scoring.
+>
+> **Show the work — integrity** (`selection_proof.json`):
+> `selection_data_max_date = 2026-03-31`,
+> `april_rows_loaded_during_selection = 0`.
+>
+> Honesty: March metrics are optimistic (selection set). April is retrospective
+> for human history even though code excludes it. After freeze, refit
+> coefficients through March and score April.
 
 **Invite questions.**
 
 ---
 
-# Act VI — Results, diagnostics, and a live price (1:05–1:25)
+# Act VI — Results and live price (1:10–1:25)
 
-## Chapter 13 — March and April scoreboard (1:05–1:12)
+## Chapter 13 — Scoreboard (1:10–1:15)
 
-**Do:** Open `artifacts/final_metrics.json`.
-
-**Say:**
-
-> Operational one-step-ahead results:
->
-> **March — selection period**
->
-> | Metric | Model | Target |
-> |---|---:|---:|
-> | Log loss | 0.4876 | 0.5096 |
-> | Brier | 0.1568 | 0.1676 |
-> | AUC | 0.831798246 | 0.831798 |
-> | Accuracy | 77.82% | 77.82% |
->
-> March clears all four rounded targets. I want to be precise: the AUC and
-> accuracy margins are tiny. The AUC edge is on the order of \(10^{-7}\). I will
-> not sell that as decisive generalization. It means the selected point cleared
-> the eligibility gate under the declared rule.
->
-> **April — retrospective scoring**
->
-> | Metric | Model | Target | Outcome |
-> |---|---:|---:|---|
-> | Log loss | 0.4634 | 0.4686 | Beat |
-> | Brier | 0.1456 | 0.1506 | Beat |
-> | AUC | 0.8502 | 0.8682 | **Miss** |
-> | Accuracy | 83.33% | 81.25% | Beat |
->
-> I beat the proper scoring targets and accuracy. I missed AUC. I did **not**
-> retune. Retuning after seeing the miss would be the same sin as leaking April
-> into selection.
->
-> Why can proper scores improve while AUC misses? Because they measure
-> different things. Log loss and Brier care about probability magnitude —
-> calibration and sharpness. AUC cares only about pairwise ordering. You can
-> sharpen and recalibrate prices in a way that helps expected log loss without
-> fixing every ranking disagreement versus a benchmark ordering.
->
-> Frozen-snapshot sensitivity: April frozen log loss is 0.4589, AUC 0.8628 —
-> closer on ranking, still short of 0.8682, and accuracy drops versus
-> sequential. Within-April state updates are not free. Sometimes they help
-> operational pricing; sometimes a short sample overreacts. That is why both
-> policies are reported.
-
-**Do:** Open calibration figures.
+**Do:** `artifacts/final_metrics.json`, calibration figures.
 
 **Say:**
 
-> Calibration plots for March and April are monitoring artifacts. Temperature
-> 0.59 sharpened the blend; I would not freeze that scalar forever in
-> production without drift checks.
+> Operational results:
+>
+> **March (selection):** LL 0.4876, Brier 0.1568, AUC 0.831798246, Acc 77.82%
+> — clears rounded targets; AUC/Acc margins tiny.
+>
+> **April (retrospective):** LL 0.4634 ✓, Brier 0.1456 ✓, AUC 0.8502 ✗
+> (target 0.8682), Acc 83.33% ✓.
+>
+> I did not retune after the AUC miss. Proper scores can improve without
+> fixing ranking. Frozen April: LL 0.4589, AUC 0.8628 — still short of AUC
+> target.
+>
+> Calibration plots monitor sharpness from \(\tau=0.59\); I would not freeze
+> that scalar forever in production without drift checks.
 
 ---
 
-## Chapter 14 — Trace one April game end-to-end (1:12–1:20)
+## Chapter 14 — Trace one April game with parameter path (1:15–1:22)
 
-**Do:** Open `outputs/april_predictions.csv`. Filter or scroll to
-`2026-04-05`, away `UTA`, home `OKC`.
+**Do:** `outputs/april_predictions.csv` → 2026-04-05 UTA @ OKC.
+Optionally `outputs/engineered_features.csv` same `game_id`.
 
 **Say:**
 
-> Let’s price a concrete game the way I would on a desk.
+> Utah at OKC, April 5. Operational policy: earlier April results may inform
+> state; same-day/future may not.
 >
-> On April 5, Utah at Oklahoma City. Under the operational policy, the
-> performance cutoff for that row is whatever completed before that date —
-> earlier April results are allowed, same-day and future are not.
+> **Feature values on this row (calculated from prior games + selected arch):**
 >
-> The three champion features on this row are roughly:
+> | Feature | ≈ value | Produced by |
+> |---|---:|---|
+> | `elo_diff` | 1.43 | Elo state with \(K=10\), \(H=75\) |
+> | `bt_logit` | 1.89 | Daily BT fit with \(C=0.15\) |
+> | `trend_diff` | 9.22 | short10 − EWMA45 |
 >
-> - `elo_diff` ≈ 1.43 — large home strength edge on the Elo scale  
-> - `bt_logit` ≈ 1.89 — Bradley-Terry agrees, strongly  
-> - `trend_diff` ≈ 9.22 — OKC’s recent margin form also outpaces Utah’s  
+> **Component probs (calculated from fitted logistics):** Elo high; rank high.
 >
-> Component probabilities:
+> **Final price (selected calibration):**
+> \(w=0.19\), \(\tau=0.59\), \(b=0.33\) → \(p\approx 99.6\%\).
 >
-> - Elo component ≈ very high  
-> - Rank component ≈ very high  
+> Outcome: OKC won. Sharp price, all three signals aligned.
 >
-> Blend with \(w=0.19\), \(\tau=0.59\), \(b=0.33\) and you get a home price of
-> about **99.6%**. Fair decimal odds are essentially 1.00 home and a huge away
-> number. Outcome: OKC won. This is an example of a sharp price that was
-> justified by all three signals aligning.
+> Contrast miss: Apr 1 SAC @ TOR, model ~96.8%, SAC won, per-game LL ~3.44 —
+> why log loss matches liability.
 >
-> Now contrast a painful miss — April 1, Sacramento at Toronto. The model
-> priced Toronto around **96.8%**. Sacramento won. Log-loss contribution on that
-> single game is about 3.44. That is what confident wrong prices cost under log
-> loss — and why log loss matches bookmaker risk better than accuracy. Accuracy
-> just says “wrong.” Log loss says “wrong and expensive.”
->
-> If you ask me to recompute the blend live, I can do it from the component
-> probabilities in the CSV using the formula on the whiteboard — temperature on
-> the full \(z\).
-
-**Optional live command:**
+> Live proof:
 
 ```bash
-python validate_submission.py --root . --data "$NBA_DATA_PATH" --recompute
+python3 validate_submission.py --root . --data "$NBA_DATA_PATH"
+# optional:
+python3 validate_submission.py --root . --data "$NBA_DATA_PATH" --recompute
 ```
 
+---
+
+## Chapter 15 — Limitations (1:22–1:25)
+
+**Do:** `docs/LIMITATIONS_AND_ROADMAP.md`.
+
 **Say:**
 
-> The validator rebuilds metrics from the saved prices and, with `--recompute`,
-> rebuilds prices from the locked specification. That is the reproducibility
-> claim in executable form.
+> One-season team model. No injuries, minutes, market, travel, possessions.
+> March reused for selection. Fair odds have no overround.
+>
+> Production order: player availability → market residuals → multi-season
+> hierarchical strength → real possessions → monitoring/governance.
+>
+> In-play is a different model.
 
 ---
 
-## Chapter 15 — Limitations and production roadmap (1:20–1:25)
+# Act VII — Close (1:25–1:30)
 
-**Do:** Open `docs/LIMITATIONS_AND_ROADMAP.md`.
+## Chapter 16 — Closing position
 
-**Say:**
-
-> I want to end the prepared narrative by saying what this is **not**.
->
-> It is a one-season, team-level technical-task model. It does not know
-> injuries, expected starters, minutes, trades, travel distance, time zones,
-> altitude, or market prices. It cannot compute valid possessions. March was
-> reused for selection. April was historically viewed even though selection
-> code excludes it. Fair odds have no overround.
->
-> If I were productionizing toward a Bet365 pregame price, my order would be:
->
-> 1. **Player availability** — largest missing shock to a team-level price.  
-> 2. **Market-implied probabilities** — benchmark and residual blend; closing
->    line value as an external quality metric.  
-> 3. **Multi-season hierarchical dynamic strength** — offseason regression,
->    team-specific uncertainty, not a single-season Elo reset story.  
-> 4. **Valid possession / Four Factors inputs** — if the feed provides them.  
-> 5. **Monitoring and governance** — calibration drift, shadow challengers,
->    versioned quotes, trader-override logging, latency on injury feeds.
->
-> Collaboration with traders matters: the two-component design lets someone
-> challenge Elo or BT separately instead of arguing with a single opaque score.
->
-> In-play is a different model family. This system is pregame. Live pricing
-> needs score, clock, and possession state.
-
----
-
-# Act VII — Close and open floor (1:25–1:30)
-
-## Chapter 16 — Closing position (1:25–1:28)
-
-**Do:** Return to `SUMMARY.md`.
+**Do:** `SUMMARY.md`.
 
 **Say:**
 
-> Let me close with the claim I want you to evaluate me on.
->
-> The strongest statement is not “every target was beaten.” It is:
->
-> > I built a leakage-audited, reproducible pricing model; I selected it on a
-> > machine-enforced pre-April path; I got strong probability scores on the
-> > metrics that matter for a book; I missed April AUC and reported that without
-> > retuning; and I can show you every stage from raw CSV to a fair price.
->
-> That is the working style I would bring to quantitative analysis here:
-> probability first, information sets explicit, complexity earned, misses
-> visible.
+> Evaluate me on this: leakage-audited, reproducible pricing model; parameters
+> either fitted, selected on a machine-enforced pre-April path, or fixed by
+> declared design; strong proper scores; April AUC miss reported without
+> retuning; every number traceable to a file.
 
-## Chapter 17 — Structured Q&A (1:28–1:30+)
+## Chapter 17 — Q&A offers
 
-**Say:**
-
-> I’m happy to go deeper on any stage — leakage tests, the Elo derivation,
-> the grid search, a modify-on-demand feature experiment, or how I’d wire this
-> into an overround and risk layer.
-
-**If they go quiet, offer one of these proactively:**
-
-1. “Want me to walk `build_features` line by line?”  
-2. “Want me to derive why Elo is gradient ascent on Bradley-Terry?”  
-3. “Want me to add `rest_advantage` live and explain what would need re-selecting?”  
-4. “Want the overround arithmetic from a 60% fair price to offered odds?”
+> Happy to go deeper on any parameter — Elo derivation, BT +1/−1, the grid
+> loop, or overround arithmetic.
 
 ---
 
@@ -785,57 +728,111 @@ python validate_submission.py --root . --data "$NBA_DATA_PATH" --recompute
 
 | Clock | Chapter | Must land |
 |---|---|---|
-| 0:00–0:04 | Opening | Pricing objective + agenda |
-| 0:04–0:08 | Metrics | Log loss primary |
-| 0:08–0:13 | Data audit | 1230 / 16 cols / reconciliation |
-| 0:13–0:18 | Pregame vs postgame | No inventing pace |
-| 0:18–0:24 | Information policy | Four leakage layers |
-| 0:24–0:32 | Team state | Elo, BT, trend, rest candidates |
-| 0:32–0:38 | Ablation story | B6 loses; B7 wins |
-| 0:38–0:44 | Elo depth | MOV multiplier + HFA 75 |
-| 0:44–0:49 | BT + trend | +1/−1 design; importance |
-| 0:49–0:52 | Blend | Correct temperature formula |
-| 0:52–0:57 | Declared search | 5 arch × 68,231 |
-| 0:57–1:05 | Selection proof | April rows = 0 |
-| 1:05–1:12 | Results | AUC miss without retune |
-| 1:12–1:20 | Live game | OKC example + TOR miss |
-| 1:20–1:25 | Roadmap | Injuries #1 |
-| 1:25–1:30 | Close + Q&A | Reproducible honesty |
+| 0:00–0:08 | Framing | Pricing + three parameter classes |
+| 0:08–0:18 | Data | Audit numbers from `data_audit.json` |
+| 0:18–0:32 | Features | Every state constant + file pointer |
+| 0:32–0:55 | Model | Ablation; fitted coeffs; blend grid |
+| 0:55–1:10 | Selection | Arch CSV + tuning CSV + proof JSON |
+| 1:10–1:25 | Results | AUC miss; OKC trace |
+| 1:25–1:30 | Close | Honesty claim |
 
-If they interrupt heavily, **never skip**: leakage (Ch 5), blend formula
-(Ch 10), selection proof (Ch 12), AUC miss (Ch 13).
+Never skip: leakage, blend formula, selection CSVs, AUC miss.
 
 ---
 
-# Appendix B — If you are running long or short
+# Appendix B — If running long / short
 
-**Running long (cut in this order):**
+**Cut first:** coefficient decimals, February aside, second miss example,
+calibration narration.
 
-1. Coefficient table detail  
-2. February base-rate aside  
-3. Second missed-game example  
-4. Architecture name tour beyond `hfa_75`  
-5. Calibration plot narration  
-
-**Running short (expand in this order):**
-
-1. Line-by-line `build_features`  
-2. Hand-compute blend for the OKC row  
-3. Show `test_feature_timing.py` failing scenario verbally  
-4. Overround numerical example  
-5. Modify-on-demand: point at `MODEL_FEATURES`
+**Expand first:** line-by-line `build_features`; hand-compute OKC blend;
+scroll more rows of `march_tuning_top_candidates.csv`; overround example.
 
 ---
 
-# Appendix C — One-page story spine (memorize)
+# Appendix C — Story spine
 
-1. I need a **price**, so I optimize proper scoring rules.  
-2. I audit the CSV and separate pregame from postgame.  
-3. I build features **before** I update state; same-day batched.  
-4. I engineer many candidates; ablation kills the kitchen sink.  
-5. I keep Elo (online) + BT/trend (batch + form).  
-6. I blend in log-odds and calibrate with temperature/shift.  
-7. I select on March with April code-excluded.  
-8. April: strong log loss/Brier, miss AUC, no retune.  
-9. Production next: injuries, market, multi-season, monitoring.  
-10. Claim: reproducible honesty > metric theater.
+1. Price → proper scores  
+2. Audit → pregame/postgame  
+3. Feature-before-update  
+4. Ablation kills kitchen sink  
+5. Fitted Elo/BT coeffs; selected arch + calibration  
+6. April: strong LL/Brier; miss AUC; no retune  
+7. Every number has a file  
+
+---
+
+# Appendix D — Complete parameter ledger (open these files)
+
+Use this when they ask “how was X chosen?” Find the row, open the file, speak
+the class.
+
+## D1. Fitted from data (MLE / sequential updates)
+
+| Parameter | How calculated | Why | Open this |
+|---|---|---|---|
+| Elo ratings \(R_i\) | Start 1500; daily \(R+=K m (S-E)\) | Online strength | `nba_wp/features.py` Elo update |
+| `elo_diff` | \((R_h-R_a+H)/400\) | Scaled matchup edge | same, feature row write |
+| BT \(\theta_i\), \(\alpha\) | Daily L2 logistic +1/−1 | Batch paired strength | `features.py::_fit_bradley_terry` |
+| `bt_logit` | `decision_function` | Matchup log-odds | same |
+| Margins / EWMA / short | From prior game margins | Form inputs | `features.py::_team_state`, `_ewma` |
+| `trend_diff` | \((S-L)_h-(S-L)_a\) | Relative form | `_team_state` |
+| Elo logistic coef / intercept | `LogisticRegression` on `elo_diff` | Map rating edge → \(p\) | `model.py::fit_base_models`; `artifacts/coefficient_table.csv` |
+| Rank logistic coefs | LR on `bt_logit`, `trend_diff` | Map BT+trend → \(p\) | same |
+| Component probabilities | `predict_proba` | Inputs to blend | `model.py::component_probabilities` |
+| Final \(p\) given \(w,\tau,b\) | blend formula | Price | `model.py::blend_probabilities` |
+| Fair odds | \(1/p\), \(1/(1-p)\) | Zero-margin quote | `outputs/april_predictions.csv` columns |
+
+## D2. Selected on March (declared search)
+
+| Parameter | Search space | Winner | Why that winner | Open this |
+|---|---|---|---|---|
+| Architecture name | 5 named bundles | `hfa_75` | Best eligible March LL | `configs/architecture_candidates.json` + `artifacts/march_architecture_results.csv` |
+| Elo \(K\) | 7.5, 10, 15 | 10 | Only \(K=10\) arches were eligible | same |
+| Elo HFA | 55, 65, 75 | 75 | `hfa_75` beat `balanced` on LL | same |
+| BT `C` | 0.1, 0.15, 0.25, 0.3 | 0.15 | Bundle on winning arch; freer BT lost | same |
+| Trend half-life | 30, 45, 60 | 45 | Bundle on winning arch | same |
+| Short window | 8, 10, 12 | 10 | Bundle on winning arch | same |
+| `elo_model_c` | 10 or 100 | 100 | One-feature Elo; low regularization | same |
+| `rank_model_c` | 0.1 or 0.3 | 0.1 | Shrink 2-feature rank model | same |
+| `elo_weight` \(w\) | 0–0.35 step 0.005 | 0.19 | Min March LL among eligible | `configs/selection_policy.json` + `artifacts/march_tuning_top_candidates.csv` |
+| `temperature` \(\tau\) | 0.55–0.85 step 0.01 | 0.59 | same grid argmin | same + `model.py::search_calibration` |
+| `shift` \(b\) | 0.10–0.40 step 0.01 | 0.33 | same | same |
+| Frozen champion spec | output of search | JSON below | Scorer loads file | `artifacts/selected_spec.json` |
+| April exclusion | truncate + raise | 0 rows | Integrity | `scripts/select_model.py` + `artifacts/selection_proof.json` |
+
+## D3. Fixed by design (convention / guard — not March-optimized)
+
+| Parameter | Value | Why | Open this |
+|---|---|---|---|
+| Elo start | 1500 | Common origin | `features.py` `ratings = {team: 1500.0}` |
+| Elo scale | 400 | Classic Elo odds scale | Elo probability formula |
+| MOV constants | 2.2, 0.001 | FTE-style MOV form | `features.py::_elo_multiplier` |
+| MOV denom floor | 0.25 | Numerical guard | same |
+| MOV mode | `log` | Declared for all archs | `architecture_candidates.json` `elo_mov` |
+| Beta prior | (4,4) | Early-season record shrink | `_team_state` |
+| Rest cap | 7 days | Bounded schedule feature | `_team_state` |
+| March targets | see JSON | Assignment gates | `configs/benchmarks.json` |
+| Selection rule | lexico LL→Brier→AUC→Acc | Declared policy | `configs/selection_policy.json` |
+| Bootstrap seed / reps | 365 / 2000 | Repro diagnostics | `nba_wp/reporting.py` |
+| Permutation repeats | 100 | Importance stability | same |
+
+## D4. 90-second “parameter tour” if they ask only for hypertuning
+
+**Do this click path while speaking:**
+
+1. `configs/architecture_candidates.json` — structural knobs declared  
+2. `configs/selection_policy.json` — calibration grid declared  
+3. `nba_wp/model.py::search_calibration` — how each point is scored  
+4. `artifacts/march_architecture_results.csv` — `hfa_75` wins; 2 arches ineligible  
+5. `artifacts/march_tuning_top_candidates.csv` — row 1 = 0.19 / 0.59 / 0.33  
+6. `artifacts/coefficient_table.csv` — fitted logistic coefficients  
+7. `artifacts/selected_spec.json` + `selection_proof.json` — frozen + April=0  
+
+**Say:**
+
+> Structural parameters were chosen by comparing five declared architectures on
+> March. Calibration parameters were chosen by a 68,231-point grid per
+> architecture under an eligibility filter. Logistic coefficients were fitted
+> by maximum likelihood. Elo’s 1500/400 and MOV 2.2 are fixed conventions.
+> Nothing important was “eyeballed into April.”
