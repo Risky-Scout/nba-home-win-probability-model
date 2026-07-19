@@ -55,7 +55,7 @@ Open next:
 4. `docs/EVALUATION_MATRIX_PREP.md` — eight scoring dimensions + PDF corrections
 5. `docs/PRESENTATION_ONE_PAGER.md` — five-minute version
 6. `docs/INTERVIEW_QA_CHEATSHEET.md` — short hard-question drill
-6. `artifacts/selection_proof.json`
-7. `artifacts/feature_group_ablation.csv`
-8. `outputs/april_predictions.csv`
-9. `docs/INTERVIEW_WALKTHROUGH.md`
+7. `artifacts/selection_proof.json`
+8. `artifacts/feature_group_ablation.csv`
+9. `outputs/april_predictions.csv`
+10. `docs/INTERVIEW_WALKTHROUGH.md`
