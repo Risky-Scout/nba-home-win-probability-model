@@ -6,6 +6,11 @@ senior analyst asks for proof.
 
 Suggested total length: **12-15 minutes**, then Q&A.
 
+Interviewers are likely scoring the eight dimensions in
+`docs/EVALUATION_MATRIX_PREP.md` (leakage, pricing thinking, architecture,
+selection integrity, statistical depth, code fluency, honesty, sportsbook
+domain). Hit each one at least once.
+
 ---
 
 ## Stage 0 - Framing (60 seconds)
@@ -153,13 +158,15 @@ z = w\,\mathrm{logit}(p_{Elo}) + (1-w)\,\mathrm{logit}(p_{rank})
 \]
 
 \[
-p = \sigma(z/\tau + b)
+p = \sigma\!\left(\frac{z}{\tau} + b\right)
 \]
 
 Selected: \(w=0.19\), \(\tau=0.59\), \(b=0.33\).
 
 > Blend in log-odds because that is the additive scale of logistic evidence.
-> Temperature sharpens or flattens; shift absorbs residual home baseline.
+> Temperature divides the **entire** blended logit \(z\), then shift absorbs
+> residual home baseline. Do not describe temperature as applying only to the
+> rank component.
 
 **Why not a black-box tree model as the headline?**
 

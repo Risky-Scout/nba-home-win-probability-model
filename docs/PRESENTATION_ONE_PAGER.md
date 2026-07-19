@@ -5,6 +5,13 @@
 Calibrated log-odds blend of margin Elo and Bradley-Terry + recent trend.
 Primary objective: home-win **probability** quality (log loss / Brier).
 
+\[
+z=0.19\,\mathrm{logit}(p_E)+0.81\,\mathrm{logit}(p_R),\quad
+p=\sigma(z/0.59+0.33)
+\]
+
+(Temperature divides full \(z\).)
+
 ## Pipeline in one breath
 
 Audit data → build leakage-safe chronological features → fit Elo and

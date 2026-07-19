@@ -1,7 +1,8 @@
 # Interview walkthrough
 
-For the full stage-by-stage narrative (data → features → model → selection →
-results), use `docs/PRESENTATION_SCRIPT.md`. For compressed recall, use
+For the scoring rubric they are likely using, start with
+`docs/EVALUATION_MATRIX_PREP.md`. For the full stage-by-stage narrative, use
+`docs/PRESENTATION_SCRIPT.md`. For compressed recall, use
 `docs/PRESENTATION_ONE_PAGER.md`. For aggressive questions, use
 `docs/INTERVIEW_QA_CHEATSHEET.md`.
 

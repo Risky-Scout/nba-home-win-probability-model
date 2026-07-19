@@ -22,9 +22,10 @@ gitignored. Tell them the expected local path.
 ## Night before
 
 - [ ] Clone a clean copy and run `validate_submission.py` successfully
+- [ ] Green-check the self-scorecard in `docs/EVALUATION_MATRIX_PREP.md`
 - [ ] Memorize the one-pager: `docs/PRESENTATION_ONE_PAGER.md`
 - [ ] Rehearse `docs/PRESENTATION_SCRIPT.md` once out loud (12-15 min)
-- [ ] Drill the Q&A sheet, especially AUC miss and March selection bias
+- [ ] Drill Q&A: AUC miss, March selection bias, correct blend formula, April 5 info set
 - [ ] Open the tab checklist from the presentation script
 - [ ] Know your live demo command by heart
 - [ ] Sleep

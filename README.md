@@ -11,6 +11,7 @@ artifact, or an automated test.
 |---|---|
 | 2 minutes | Read `SUMMARY.md`, then open `artifacts/final_metrics.json`. |
 | 5 minutes | Memorize `docs/PRESENTATION_ONE_PAGER.md`. |
+| Scorecard | Drill `docs/EVALUATION_MATRIX_PREP.md` (8 interview dimensions). |
 | 12-15 minutes | Present with `docs/PRESENTATION_SCRIPT.md` (every modeling stage). |
 | Q&A prep | Drill `docs/INTERVIEW_QA_CHEATSHEET.md`. |
 | Submit | Follow `docs/SUBMIT_AND_PREP_CHECKLIST.md`. |

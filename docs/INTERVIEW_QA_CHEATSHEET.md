@@ -1,6 +1,17 @@
 # Interview Q&A cheatsheet
 
-Short answers first. Offer the artifact only if they ask for proof.
+Aligned to the eight-dimension evaluation matrix in
+`docs/EVALUATION_MATRIX_PREP.md`. Short answers first. Offer the artifact only
+if they ask for proof.
+
+**Formula to never get wrong:**
+
+```text
+z = 0.19 * logit(p_elo) + 0.81 * logit(p_rank)
+p = sigmoid(z / 0.59 + 0.33)
+```
+
+Temperature divides the **full** blended logit, not only the rank term.
 
 ## Modeling choices
 
@@ -18,13 +29,14 @@ form relative to longer form. The blend lets calibration decide the weight.
 ### Why blend in log-odds?
 
 Logits are the natural additive evidence scale for logistic models. Weighting
-probabilities on [0,1] would distort extremes.
+probabilities on [0,1] would distort extremes. Temperature then scales the
+entire blended logit uniformly.
 
 ### Why temperature 0.59 and shift 0.33?
 
-March grid search. Temperature < 1 sharpened underconfident components; shift
-absorbed residual home baseline. Treat cautiously: March is only 239 games and
-is also the selection set.
+March grid search. Temperature < 1 sharpened underconfident components by
+dividing the full blended logit; shift absorbed residual home baseline. Treat
+cautiously: March is only 239 games and is also the selection set.
 
 ### Why not XGBoost / neural nets?
 
