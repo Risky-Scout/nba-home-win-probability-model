@@ -1,0 +1,23 @@
+{
+  "selection_period": "2026-03-01 through 2026-03-31",
+  "training_period": "2025-10-21 through 2026-02-28",
+  "selection_rule": "Beat all four March targets, then lexicographically minimize log_loss, brier, negative auc, negative accuracy.",
+  "top_candidates_per_architecture": 100,
+  "calibration_grid": {
+    "elo_weight": {
+      "start": 0.0,
+      "stop": 0.35,
+      "step": 0.005
+    },
+    "temperature": {
+      "start": 0.55,
+      "stop": 0.85,
+      "step": 0.01
+    },
+    "shift": {
+      "start": 0.1,
+      "stop": 0.4,
+      "step": 0.01
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "model_family": "calibrated logit blend: Elo + Bradley-Terry/recent-trend",
+  "selected_using": "March 2026 operational one-step-ahead validation",
+  "selection_data_max_date": "2026-03-31",
+  "april_rows_loaded_during_selection": 0,
+  "selection_rule": "Filter to candidates beating all four March targets; minimize March log loss; tie-break by Brier, AUC, accuracy, architecture name.",
+  "primary_metric": "log_loss",
+  "secondary_metrics": [
+    "brier",
+    "auc",
+    "accuracy"
+  ],
+  "information_policy": "sequential_daily",
+  "architecture": {
+    "name": "hfa_75",
+    "elo_k": 10.0,
+    "elo_hfa": 75.0,
+    "elo_mov": "log",
+    "bt_c": 0.15,
+    "trend_half_life_days": 45.0,
+    "trend_short_games": 10,
+    "elo_model_c": 100.0,
+    "rank_model_c": 0.1
+  },
+  "calibration": {
+    "elo_weight": 0.19,
+    "temperature": 0.59,
+    "shift": 0.33
+  },
+  "march_validation_metrics": {
+    "log_loss": 0.48756877187854697,
+    "brier": 0.1568336751688191,
+    "auc": 0.8317982456140351,
+    "accuracy": 0.7782426778242678
+  },
+  "march_benchmarks": {
+    "log_loss": 0.509645,
+    "brier": 0.167618,
+    "auc": 0.831798,
+    "accuracy": 0.7782
+  },
+  "calibration_grid": {
+    "elo_weight": {
+      "start": 0.0,
+      "stop": 0.35,
+      "step": 0.005
+    },
+    "temperature": {
+      "start": 0.55,
+      "stop": 0.85,
+      "step": 0.01
+    },
+    "shift": {
+      "start": 0.1,
+      "stop": 0.4,
+      "step": 0.01
+    }
+  },
+  "architecture_count": 5,
+  "notes": [
+    "Base model coefficients use games through February.",
+    "March state features update only after each completed game date.",
+    "No April row is loaded by model selection.",
+    "The final April model refits base coefficients through March."
+  ]
+}

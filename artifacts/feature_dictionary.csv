@@ -1,0 +1,11 @@
+feature,formula,source,cutoff,role
+elo_diff,(home Elo - away Elo + home advantage) / 400,Prior game winners and margins,Strictly earlier dates; same-day batch update,Selected Elo component
+bt_logit,Bradley-Terry home coefficient - away coefficient + intercept,Prior game winners,Strictly earlier dates; same-day batch update,Selected rank component
+trend_diff,(short margin - EWMA margin)_home - same_away,Prior game point margins,Strictly earlier dates; same-day batch update,Selected rank component
+record_logit_diff,logit(Beta-smoothed home win pct) - away,Prior wins/losses,Strictly earlier dates,Baseline / ablation
+cumulative_margin_diff,Home average point margin - away average point margin,Prior game points,Strictly earlier dates,Candidate / ablation
+recent_margin_diff,Home EWMA point margin - away EWMA point margin,Prior game points,Strictly earlier dates,Candidate / redundancy audit
+turnover_advantage_diff,Home mean (opponent TOV - own TOV) - away,Prior game turnovers,Strictly earlier dates,Candidate; not selected
+rebound_advantage_diff,Home mean (own REB - opponent REB) - away,Prior game rebounds,Strictly earlier dates,Candidate; not selected
+foul_advantage_diff,Home mean (opponent fouls - own fouls) - away,Prior game fouls,Strictly earlier dates,Candidate; not selected
+rest_advantage,Capped home rest days - capped away rest days,Game dates and team schedule,Schedule dates known before game,Candidate; not selected

@@ -1,0 +1,59 @@
+{
+  "architectures": [
+    {
+      "name": "balanced",
+      "elo_k": 10.0,
+      "elo_hfa": 65.0,
+      "elo_mov": "log",
+      "bt_c": 0.15,
+      "trend_half_life_days": 45.0,
+      "trend_short_games": 10,
+      "elo_model_c": 100.0,
+      "rank_model_c": 0.1
+    },
+    {
+      "name": "conservative",
+      "elo_k": 7.5,
+      "elo_hfa": 55.0,
+      "elo_mov": "log",
+      "bt_c": 0.1,
+      "trend_half_life_days": 60.0,
+      "trend_short_games": 12,
+      "elo_model_c": 10.0,
+      "rank_model_c": 0.1
+    },
+    {
+      "name": "responsive",
+      "elo_k": 15.0,
+      "elo_hfa": 65.0,
+      "elo_mov": "log",
+      "bt_c": 0.25,
+      "trend_half_life_days": 30.0,
+      "trend_short_games": 8,
+      "elo_model_c": 10.0,
+      "rank_model_c": 0.1
+    },
+    {
+      "name": "hfa_75",
+      "elo_k": 10.0,
+      "elo_hfa": 75.0,
+      "elo_mov": "log",
+      "bt_c": 0.15,
+      "trend_half_life_days": 45.0,
+      "trend_short_games": 10,
+      "elo_model_c": 100.0,
+      "rank_model_c": 0.1
+    },
+    {
+      "name": "lower_bt_shrinkage",
+      "elo_k": 10.0,
+      "elo_hfa": 65.0,
+      "elo_mov": "log",
+      "bt_c": 0.3,
+      "trend_half_life_days": 45.0,
+      "trend_short_games": 10,
+      "elo_model_c": 100.0,
+      "rank_model_c": 0.3
+    }
+  ]
+}

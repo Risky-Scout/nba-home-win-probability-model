@@ -1,0 +1,113 @@
+
+from __future__ import annotations
+
+import argparse
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+def run(command: list[str]) -> None:
+    print("+", " ".join(command), flush=True)
+    subprocess.run(command, check=True)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Reproduce the complete NBA home-win probability submission."
+    )
+    parser.add_argument("--data", required=True)
+    parser.add_argument(
+        "--mode",
+        choices=["full", "score", "audit", "select", "verify"],
+        default="full",
+    )
+    parser.add_argument("--root", default=".")
+    args = parser.parse_args()
+
+    root = Path(args.root).resolve()
+    data = str(Path(args.data).resolve())
+    python = sys.executable
+    started = time.perf_counter()
+
+    if args.mode in {"full", "audit"}:
+        run(
+            [
+                python,
+                "-m",
+                "scripts.data_audit",
+                "--data",
+                data,
+                "--artifact-dir",
+                str(root / "artifacts"),
+            ]
+        )
+
+    if args.mode in {"full", "select"}:
+        run(
+            [
+                python,
+                "-m",
+                "scripts.select_model",
+                "--data",
+                data,
+                "--config-dir",
+                str(root / "configs"),
+                "--artifact-dir",
+                str(root / "artifacts"),
+            ]
+        )
+
+    if args.mode in {"full", "score"}:
+        run(
+            [
+                python,
+                "-m",
+                "scripts.score_final",
+                "--data",
+                data,
+                "--selected-spec",
+                str(root / "artifacts" / "selected_spec.json"),
+                "--output-dir",
+                str(root / "outputs"),
+                "--artifact-dir",
+                str(root / "artifacts"),
+                "--figure-dir",
+                str(root / "figures"),
+                "--benchmarks",
+                str(root / "configs" / "benchmarks.json"),
+            ]
+        )
+
+    if args.mode == "full":
+        run(
+            [
+                python,
+                "-m",
+                "scripts.generate_manifest",
+                "--root",
+                str(root),
+                "--output",
+                "artifacts/manifest.sha256",
+            ]
+        )
+
+    if args.mode in {"full", "verify"}:
+        run(
+            [
+                python,
+                str(root / "validate_submission.py"),
+                "--root",
+                str(root),
+                "--data",
+                data,
+            ]
+        )
+
+    elapsed = time.perf_counter() - started
+    print(f"Completed mode={args.mode} in {elapsed:.2f} seconds.")
+
+
+if __name__ == "__main__":
+    main()

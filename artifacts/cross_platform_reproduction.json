@@ -1,0 +1,23 @@
+{
+  "status": "PASS_NEGLIGIBLE_CROSS_PLATFORM_DRIFT",
+  "probability_tolerance": 5e-08,
+  "metric_tolerance": 1e-08,
+  "periods": {
+    "march": {
+      "games": 239,
+      "max_abs_probability_difference": 4.138283826726763e-09,
+      "mean_abs_probability_difference": 1.2297647051951095e-10,
+      "p99_abs_probability_difference": 2.9699640102798284e-09,
+      "classification_disagreements": 0,
+      "max_abs_metric_difference": 9.395434430459204e-11
+    },
+    "april": {
+      "games": 96,
+      "max_abs_probability_difference": 1.739278360224361e-08,
+      "mean_abs_probability_difference": 5.858861142910241e-10,
+      "p99_abs_probability_difference": 1.0482456061500203e-08,
+      "classification_disagreements": 0,
+      "max_abs_metric_difference": 5.926695245683788e-10
+    }
+  }
+}

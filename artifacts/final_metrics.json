@@ -1,0 +1,62 @@
+{
+  "model": "calibrated logit blend: Elo + Bradley-Terry/recent-trend",
+  "selected_spec": {
+    "architecture": {
+      "name": "hfa_75",
+      "elo_k": 10.0,
+      "elo_hfa": 75.0,
+      "elo_mov": "log",
+      "bt_c": 0.15,
+      "trend_half_life_days": 45.0,
+      "trend_short_games": 10,
+      "elo_model_c": 100.0,
+      "rank_model_c": 0.1
+    },
+    "calibration": {
+      "elo_weight": 0.19,
+      "temperature": 0.59,
+      "shift": 0.33
+    }
+  },
+  "sequential_daily": {
+    "march": {
+      "log_loss": 0.48756877187854697,
+      "brier": 0.1568336751688191,
+      "auc": 0.8317982456140351,
+      "accuracy": 0.7782426778242678,
+      "games": 239,
+      "home_win_rate": 0.602510460251046,
+      "mean_probability": 0.6009780510163327
+    },
+    "april": {
+      "log_loss": 0.46337533462904074,
+      "brier": 0.1456387630250029,
+      "auc": 0.8502024291497975,
+      "accuracy": 0.8333333333333334,
+      "games": 96,
+      "home_win_rate": 0.59375,
+      "mean_probability": 0.6045669125722993
+    }
+  },
+  "frozen_snapshot_sensitivity": {
+    "march": {
+      "log_loss": 0.49773554385344854,
+      "brier": 0.16248924032505538,
+      "auc": 0.8224415204678361,
+      "accuracy": 0.7615062761506276,
+      "games": 239,
+      "home_win_rate": 0.602510460251046,
+      "mean_probability": 0.5961957437820249
+    },
+    "april": {
+      "log_loss": 0.4589424882776642,
+      "brier": 0.14529890374409538,
+      "auc": 0.8627980206927575,
+      "accuracy": 0.8020833333333334,
+      "games": 96,
+      "home_win_rate": 0.59375,
+      "mean_probability": 0.6055179496136177
+    }
+  },
+  "information_policy_note": "sequential_daily updates team-performance state after each completed date. frozen_snapshot holds performance state fixed at month start."
+}

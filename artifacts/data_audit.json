@@ -1,0 +1,296 @@
+{
+  "source_sha256": "fc4d66b4a7d08cf975fe7b82f22e95cce37b84976536e627621d5238481638c3",
+  "row_count": 1230,
+  "column_count_raw": 16,
+  "expected_column_count_documentation_note": "The task text says fourteen columns, but the listed schema contains two game-level columns plus seven away and seven home columns: 16 total.",
+  "date_min": "2025-10-21",
+  "date_max": "2026-04-12",
+  "team_count": 30,
+  "teams": [
+    "ATL",
+    "BKN",
+    "BOS",
+    "CHA",
+    "CHI",
+    "CLE",
+    "DAL",
+    "DEN",
+    "DET",
+    "GSW",
+    "HOU",
+    "IND",
+    "LAC",
+    "LAL",
+    "MEM",
+    "MIA",
+    "MIL",
+    "MIN",
+    "NOP",
+    "NYK",
+    "OKC",
+    "ORL",
+    "PHI",
+    "PHX",
+    "POR",
+    "SAC",
+    "SAS",
+    "TOR",
+    "UTA",
+    "WAS"
+  ],
+  "missing_value_count": 0,
+  "duplicate_game_id_count": 0,
+  "tied_game_count": 0,
+  "same_team_multiple_games_same_date_count": 0,
+  "home_win_rate": 0.5544715447154471,
+  "team_game_counts": {
+    "ATL": 82,
+    "BKN": 82,
+    "BOS": 82,
+    "CHA": 82,
+    "CHI": 82,
+    "CLE": 82,
+    "DAL": 82,
+    "DEN": 82,
+    "DET": 82,
+    "GSW": 82,
+    "HOU": 82,
+    "IND": 82,
+    "LAC": 82,
+    "LAL": 82,
+    "MEM": 82,
+    "MIA": 82,
+    "MIL": 82,
+    "MIN": 82,
+    "NOP": 82,
+    "NYK": 82,
+    "OKC": 82,
+    "ORL": 82,
+    "PHI": 82,
+    "PHX": 82,
+    "POR": 82,
+    "SAC": 82,
+    "SAS": 82,
+    "TOR": 82,
+    "UTA": 82,
+    "WAS": 82
+  },
+  "all_teams_play_82_games": true,
+  "monthly_summary": [
+    {
+      "month": "2025-10",
+      "games": 80,
+      "home_wins": 47,
+      "home_win_rate": 0.5875,
+      "average_home_margin": 2.375
+    },
+    {
+      "month": "2025-11",
+      "games": 219,
+      "home_wins": 121,
+      "home_win_rate": 0.5525114155251142,
+      "average_home_margin": 1.7625570776255708
+    },
+    {
+      "month": "2025-12",
+      "games": 197,
+      "home_wins": 105,
+      "home_win_rate": 0.5329949238578681,
+      "average_home_margin": 1.4923857868020305
+    },
+    {
+      "month": "2026-01",
+      "games": 233,
+      "home_wins": 130,
+      "home_win_rate": 0.5579399141630901,
+      "average_home_margin": 1.4248927038626609
+    },
+    {
+      "month": "2026-02",
+      "games": 166,
+      "home_wins": 78,
+      "home_win_rate": 0.46987951807228917,
+      "average_home_margin": -0.9518072289156626
+    },
+    {
+      "month": "2026-03",
+      "games": 239,
+      "home_wins": 144,
+      "home_win_rate": 0.602510460251046,
+      "average_home_margin": 3.5313807531380754
+    },
+    {
+      "month": "2026-04",
+      "games": 96,
+      "home_wins": 57,
+      "home_win_rate": 0.59375,
+      "average_home_margin": 2.59375
+    }
+  ],
+  "pregame_record_reconciliation": {
+    "mismatch_count": 0,
+    "mismatch_examples": [],
+    "final_records": {
+      "ATL": {
+        "wins": 46,
+        "losses": 36,
+        "games": 82
+      },
+      "BKN": {
+        "wins": 20,
+        "losses": 62,
+        "games": 82
+      },
+      "BOS": {
+        "wins": 56,
+        "losses": 26,
+        "games": 82
+      },
+      "CHA": {
+        "wins": 44,
+        "losses": 38,
+        "games": 82
+      },
+      "CHI": {
+        "wins": 31,
+        "losses": 51,
+        "games": 82
+      },
+      "CLE": {
+        "wins": 52,
+        "losses": 30,
+        "games": 82
+      },
+      "DAL": {
+        "wins": 26,
+        "losses": 56,
+        "games": 82
+      },
+      "DEN": {
+        "wins": 54,
+        "losses": 28,
+        "games": 82
+      },
+      "DET": {
+        "wins": 60,
+        "losses": 22,
+        "games": 82
+      },
+      "GSW": {
+        "wins": 37,
+        "losses": 45,
+        "games": 82
+      },
+      "HOU": {
+        "wins": 52,
+        "losses": 30,
+        "games": 82
+      },
+      "IND": {
+        "wins": 19,
+        "losses": 63,
+        "games": 82
+      },
+      "LAC": {
+        "wins": 42,
+        "losses": 40,
+        "games": 82
+      },
+      "LAL": {
+        "wins": 53,
+        "losses": 29,
+        "games": 82
+      },
+      "MEM": {
+        "wins": 25,
+        "losses": 57,
+        "games": 82
+      },
+      "MIA": {
+        "wins": 43,
+        "losses": 39,
+        "games": 82
+      },
+      "MIL": {
+        "wins": 32,
+        "losses": 50,
+        "games": 82
+      },
+      "MIN": {
+        "wins": 49,
+        "losses": 33,
+        "games": 82
+      },
+      "NOP": {
+        "wins": 26,
+        "losses": 56,
+        "games": 82
+      },
+      "NYK": {
+        "wins": 53,
+        "losses": 29,
+        "games": 82
+      },
+      "OKC": {
+        "wins": 64,
+        "losses": 18,
+        "games": 82
+      },
+      "ORL": {
+        "wins": 45,
+        "losses": 37,
+        "games": 82
+      },
+      "PHI": {
+        "wins": 45,
+        "losses": 37,
+        "games": 82
+      },
+      "PHX": {
+        "wins": 45,
+        "losses": 37,
+        "games": 82
+      },
+      "POR": {
+        "wins": 42,
+        "losses": 40,
+        "games": 82
+      },
+      "SAC": {
+        "wins": 22,
+        "losses": 60,
+        "games": 82
+      },
+      "SAS": {
+        "wins": 62,
+        "losses": 20,
+        "games": 82
+      },
+      "TOR": {
+        "wins": 46,
+        "losses": 36,
+        "games": 82
+      },
+      "UTA": {
+        "wins": 22,
+        "losses": 60,
+        "games": 82
+      },
+      "WAS": {
+        "wins": 17,
+        "losses": 65,
+        "games": 82
+      }
+    }
+  },
+  "postgame_columns_excluded_from_same_game_model": [
+    "away_points",
+    "away_turnovers",
+    "away_fouls",
+    "away_rebounds",
+    "home_points",
+    "home_turnovers",
+    "home_fouls",
+    "home_rebounds"
+  ]
+}

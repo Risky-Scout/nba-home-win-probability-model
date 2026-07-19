@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "data_rows": 1230,
+  "selection_max_date": "2026-03-31",
+  "april_rows_used_in_selection": 0,
+  "march_predictions": 239,
+  "april_predictions": 96,
+  "recompute_checked": true
+}

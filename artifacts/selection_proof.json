@@ -1,0 +1,12 @@
+{
+  "selection_input_rows": 1134,
+  "selection_input_max_date": "2026-03-31",
+  "april_rows_loaded": 0,
+  "selected_architecture": "hfa_75",
+  "selected_calibration": {
+    "elo_weight": 0.19,
+    "temperature": 0.59,
+    "shift": 0.33
+  },
+  "selection_rule": "Filter to candidates beating all four March targets; minimize March log loss; tie-break by Brier, AUC, accuracy, architecture name."
+}
