@@ -13,9 +13,10 @@ artifact, or an automated test.
 | 5 minutes | Memorize `docs/PRESENTATION_ONE_PAGER.md`. |
 | Scorecard | Drill `docs/EVALUATION_MATRIX_PREP.md` (8 interview dimensions). |
 | **90 minutes** | **Present with `docs/PRESENTATION_SCRIPT_90MIN.md` (build story + every parameter’s file proof).** |
+| **Senior Q&A (Q1–Q110)** | **`docs/SENIOR_QUANT_QA.md` — interrupt answer key with Show files.** |
 | Cursor + Mac setup | `docs/CURSOR_PRESENTATION_SETUP.md` (open folder, venv, PASS checkpoint). |
 | Condensed | `docs/PRESENTATION_SCRIPT.md` (12–15 min backup). |
-| Q&A prep | Drill `docs/INTERVIEW_QA_CHEATSHEET.md`. |
+| Q&A prep | Drill `docs/INTERVIEW_QA_CHEATSHEET.md` + `SENIOR_QUANT_QA.md`. |
 | Submit | Follow `docs/SUBMIT_AND_PREP_CHECKLIST.md`. |
 | Setup | Follow `docs/INTERVIEW_WALKTHROUGH.md` for screen-share setup. |
 | Reproduce | Run `make reproduce DATA=/absolute/path/to/nba-win-probability-data.csv`. |

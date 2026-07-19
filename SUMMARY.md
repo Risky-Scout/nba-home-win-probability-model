@@ -51,9 +51,10 @@ Open next:
 
 1. `docs/CURSOR_PRESENTATION_SETUP.md` — open in Cursor, reach validator PASS
 2. `docs/PRESENTATION_SCRIPT_90MIN.md` — full 90-minute build story (primary)
-3. `docs/EVALUATION_MATRIX_PREP.md` — eight scoring dimensions + PDF corrections
-4. `docs/PRESENTATION_ONE_PAGER.md` — five-minute version
-5. `docs/INTERVIEW_QA_CHEATSHEET.md` — expected hard questions
+3. `docs/SENIOR_QUANT_QA.md` — Q1–Q110 senior-quant answers + files to show
+4. `docs/EVALUATION_MATRIX_PREP.md` — eight scoring dimensions + PDF corrections
+5. `docs/PRESENTATION_ONE_PAGER.md` — five-minute version
+6. `docs/INTERVIEW_QA_CHEATSHEET.md` — short hard-question drill
 6. `artifacts/selection_proof.json`
 7. `artifacts/feature_group_ablation.csv`
 8. `outputs/april_predictions.csv`

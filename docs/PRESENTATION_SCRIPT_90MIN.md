@@ -3,7 +3,13 @@
 **How to use this.** Read the lines under **Say** almost verbatim. Do the
 actions under **Do**. When you see **Show the work**, open that file and
 leave it on screen while you speak — that is the evidence for how a number
-was calculated or selected. Pause at **Invite questions** if they jump in.
+was calculated or selected. Pause at **Invite questions** / **If they
+interrupt** blocks — expected in a 90-minute senior-quant interview.
+
+**Full Q&A catalog (Q1–Q110):** keep `docs/SENIOR_QUANT_QA.md` open as a
+second speaker pane. Every mathematical / adversarial question maps there
+with a **Show:** file. This script tells the build story; that file is your
+interrupt answer key.
 
 Timing is a guide, not a clock to fight.
 
@@ -14,6 +20,13 @@ Timing is a guide, not a clock to fight.
 > 2. **Selected** on March by a declared search, or
 > 3. **Fixed by design** as a standard convention.
 > I will show the file that proves which class each number belongs to.
+
+**Fact traps (do not recite wrong prep numbers):**
+
+- Full-sample home rate ≈ **55.4%** (`data_audit.json`)
+- Elo HFA 75 ⇒ ≈ **60.6% only for equal-rated teams**
+- March home rate ≈ **60.3%**
+- Temperature divides **full** blended logit \(z\)
 
 **Setup before you join (2 minutes early):**
 
@@ -40,27 +53,28 @@ Leave Checkpoint **A** (`PASS`) visible.
 **Tabs to keep open:**
 
 1. This file
-2. `SUMMARY.md`
-3. `nba_wp/data.py`
-4. `nba_wp/features.py`
-5. `nba_wp/model.py`
-6. `nba_wp/selection.py`
-7. `scripts/select_model.py`
-8. `configs/architecture_candidates.json`
-9. `configs/selection_policy.json`
-10. `configs/benchmarks.json`
-11. `artifacts/data_audit.json`
-12. `artifacts/selection_proof.json`
-13. `artifacts/selected_spec.json`
-14. `artifacts/march_architecture_results.csv`
-15. `artifacts/march_tuning_top_candidates.csv`
-16. `artifacts/coefficient_table.csv`
-17. `artifacts/feature_group_ablation.csv`
-18. `artifacts/permutation_importance.csv`
-19. `artifacts/final_metrics.json`
-20. `outputs/april_predictions.csv`
-21. `docs/LIMITATIONS_AND_ROADMAP.md`
-22. `figures/march_calibration.png` / `april_calibration.png`
+2. `docs/SENIOR_QUANT_QA.md` (interrupt answer key — Q1–Q110)
+3. `SUMMARY.md`
+4. `nba_wp/data.py`
+5. `nba_wp/features.py`
+6. `nba_wp/model.py`
+7. `nba_wp/selection.py`
+8. `scripts/select_model.py`
+9. `configs/architecture_candidates.json`
+10. `configs/selection_policy.json`
+11. `configs/benchmarks.json`
+12. `artifacts/data_audit.json`
+13. `artifacts/selection_proof.json`
+14. `artifacts/selected_spec.json`
+15. `artifacts/march_architecture_results.csv`
+16. `artifacts/march_tuning_top_candidates.csv`
+17. `artifacts/coefficient_table.csv`
+18. `artifacts/feature_group_ablation.csv`
+19. `artifacts/permutation_importance.csv`
+20. `artifacts/final_metrics.json`
+21. `outputs/april_predictions.csv`
+22. `docs/LIMITATIONS_AND_ROADMAP.md`
+23. `figures/march_calibration.png` / `april_calibration.png`
 
 **Correct blend formula (never get this wrong):**
 
@@ -90,7 +104,7 @@ Temperature divides the **entire** blended logit.
 | Shift \(b\) | Selected (grid) | 0.33 |
 | Logistic coeffs | Fitted | see coefficient table |
 
-Full ledger: **Appendix D** at the end of this file.
+Full ledger: **Appendix D**. Q&A index: **Appendix E** + `SENIOR_QUANT_QA.md`.
 
 ---
 
@@ -132,6 +146,11 @@ Full ledger: **Appendix D** at the end of this file.
 > Please interrupt as we go.
 
 **Invite questions:** “Any preference on depth versus breadth before I start?”
+
+**If they interrupt — Phase 1 (Q1–Q4):** open `SENIOR_QUANT_QA.md`.
+Ready answers: 90-second summary; output is a price; why not binary winners;
+why log loss. **Show:** `SUMMARY.md`, `april_predictions.csv` fair-odds
+columns, `benchmarks.json`.
 
 ---
 
@@ -236,6 +255,11 @@ Then `artifacts/data_audit.json`. Then `artifacts/date_split_summary.csv`.
 > feature engine is forbidden from reading for the current row.
 
 **Invite questions.**
+
+**If they interrupt — data math (Q27–Q29, Q78, Q89):** records are pregame
+(reconcile mismatch 0); Beta(4,4) at 0–0; no same-team doubleheaders;
+audit raises on bad schema/ties/self-play. **Show:** `data_audit.json`,
+`data.py::load_games`. Remember home rate ≈ **55.4%** full sample.
 
 ---
 
@@ -369,6 +393,12 @@ Keep `features.py` on screen.
 ```bash
 python3 -m pytest tests/test_feature_timing.py -q
 ```
+
+**If they interrupt — Phase 3 leakage (Q21–Q26, Q70–Q71, Q74):** this is the
+cross-examination. Walk April 5 information set; postgame no self-leak;
+same-day batch; frozen rest still moves; rest is schedule-public.
+**Show:** `build_features` date loop + run the three timing tests.
+Answers verbatim in `SENIOR_QUANT_QA.md` Phase 3.
 
 ---
 
@@ -519,6 +549,15 @@ Then open `configs/selection_policy.json`.
 
 **Invite questions.**
 
+**If they interrupt — Phase 2 + Phase 7 math (Q5–Q20, Q61–Q69):**
+derive Elo as SGD on BT; BT +1/−1 design; MOV multiplier; why w=0.19;
+why log-odds blend; why τ=0.59 (divides **full** z); why shift=+0.33
+*after* `/τ`; why C=100 vs 0.1; why log loss strictly proper; why τ
+preserves AUC; Beta(4,4); permutation vs coefficients.
+**Show:** `_elo_multiplier`, `_fit_bradley_terry`, `blend_probabilities`,
+`coefficient_table.csv`, `permutation_importance.csv`.
+Full derivations: `SENIOR_QUANT_QA.md` Phases 2 and 7.
+
 ---
 
 # Act V — Selection work: how structural params were chosen (0:55–1:10)
@@ -623,6 +662,13 @@ Then open `configs/selection_policy.json`.
 
 **Invite questions.**
 
+**If they interrupt — Phase 4 integrity (Q30–Q41, Q72–Q73):** April exclusion
+code + proof; March optimistic; don’t retune AUC; candidate counts;
+lexicographic rule; sequential vs frozen and why frozen April LL can be
+better. **Show:** `select_model.py`, `selection_proof.json`,
+`march_tuning_top_candidates.csv`, run validator.
+Answers: `SENIOR_QUANT_QA.md` Phase 4.
+
 ---
 
 # Act VI — Results and live price (1:10–1:25)
@@ -702,6 +748,12 @@ python3 validate_submission.py --root . --data "$NBA_DATA_PATH" --recompute
 >
 > In-play is a different model.
 
+**If they interrupt — Phase 5–6 domain/production (Q42–Q60, Q91–Q96):**
+HCA numbers (55.4% vs 60.6% trap); injuries #1; no pace; rest/B2B candidates
+rejected; overround; market blend; CLV; monitoring; in-play is separate;
+versioned quotes. **Show:** `LIMITATIONS_AND_ROADMAP.md`, fair-odds columns.
+Answers: `SENIOR_QUANT_QA.md` Phases 5–6, 10.
+
 ---
 
 # Act VII — Close (1:25–1:30)
@@ -717,10 +769,25 @@ python3 validate_submission.py --root . --data "$NBA_DATA_PATH" --recompute
 > declared design; strong proper scores; April AUC miss reported without
 > retuning; every number traceable to a file.
 
-## Chapter 17 — Q&A offers
+## Chapter 17 — Open floor (use SENIOR_QUANT_QA.md)
 
-> Happy to go deeper on any parameter — Elo derivation, BT +1/−1, the grid
-> loop, or overround arithmetic.
+**Say:**
+
+> Happy to go deeper on any stage — leakage tests, Elo-as-gradient derivation,
+> the 68k calibration grid, a live feature add, overround arithmetic, or
+> adversarial “change K to 20” stress tests.
+
+**If they go quiet, offer:**
+
+1. Walk `build_features` line by line (Q70)
+2. Derive Elo from BT log-likelihood (Q61)
+3. Trace one April row through blend (Q19, Q76)
+4. Overround from a 60% fair price (Q51)
+5. Adversarial: set τ=1.0 — what changes? (Q103)
+
+**If they attack — Phase 11 (Q101–Q110):** keep `SENIOR_QUANT_QA.md` Phase 11
+open. Short pattern: state effect → point to artifact that already explored
+nearby setting → refuse silent April retune.
 
 ---
 
@@ -814,8 +881,8 @@ the class.
 | Rest cap | 7 days | Bounded schedule feature | `_team_state` |
 | March targets | see JSON | Assignment gates | `configs/benchmarks.json` |
 | Selection rule | lexico LL→Brier→AUC→Acc | Declared policy | `configs/selection_policy.json` |
-| Bootstrap seed / reps | 365 / 2000 | Repro diagnostics | `nba_wp/reporting.py` |
-| Permutation repeats | 100 | Importance stability | same |
+| Permutation seed / reps | 365 / 100 | Importance stability | `nba_wp/reporting.py` |
+| Bootstrap seed / reps | 2026 / 2000 | Paired LL diffs | same |
 
 ## D4. 90-second “parameter tour” if they ask only for hypertuning
 
@@ -836,3 +903,45 @@ the class.
 > architecture under an eligibility filter. Logistic coefficients were fitted
 > by maximum likelihood. Elo’s 1500/400 and MOV 2.2 are fixed conventions.
 > Nothing important was “eyeballed into April.”
+
+---
+
+# Appendix E — Senior Quant Q&A index (Q1–Q110)
+
+**Master answer file:** `docs/SENIOR_QUANT_QA.md`
+
+During the interview, when they ask a math / leakage / production /
+adversarial question, switch to that tab, find the Q number, read the
+answer, open the **Show:** file.
+
+| Phase | Qs | When in the talk | Theme |
+|---|---|---|---|
+| 1 Opening | Q1–Q4 | Act I | 90s summary, price vs pick, log loss |
+| 2 Architecture | Q5–Q20 | Act IV | Elo/BT/trend/blend math |
+| 3 Leakage | Q21–Q29 | Act III | Make-or-break cross-exam |
+| 4 Selection | Q30–Q41 | Act V | April exclusion, March bias, grid |
+| 5 Domain | Q42–Q50 | Act VI / anywhere | HCA, injuries, pace, rest |
+| 6 Production | Q51–Q60 | Act VI–VII | Overround, CLV, monitoring, in-play |
+| 7 Theory | Q61–Q69 | Act IV interrupts | Derivations, proper scores, AUC |
+| 8 Code | Q70–Q80 | Live demo | Walk code, tests, validator |
+| 9 Edge cases | Q81–Q90 | Anytime | Cold start, OT, multicollinearity |
+| 10 Roadmap | Q91–Q100 | Act VI–VII | Improvements, why Bet365 |
+| 11 Adversarial | Q101–Q110 | End stress test | Change K/τ; “are you lying?” |
+
+**Must-land adversarial answers (memorize):**
+
+| Attack | One-line |
+|---|---|
+| K→20 | Responsive K=15 already ineligible; noisier Elo |
+| Remove trend | Still runs; small LL hit (~0.006 importance) |
+| τ→1.0 | Less sharp; LL likely worse; **AUC unchanged** |
+| Peek April? | Truncate + raise + proof April=0 |
+| Retune AUC? | Test-set leakage; reported miss |
+| Home rate 60.6%? | That’s **equal-team Elo HFA**; sample ≈ **55.4%** |
+
+**Live commands (cloud: `python3`; Mac: `python` after venv):**
+
+```bash
+python3 validate_submission.py --root . --data "$NBA_DATA_PATH"
+python3 -m pytest tests/test_feature_timing.py -q
+```
