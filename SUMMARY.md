@@ -49,7 +49,10 @@ The strongest claim is not "every target was beaten." It is:
 
 Open next:
 
-1. `artifacts/selection_proof.json`
-2. `artifacts/feature_group_ablation.csv`
-3. `outputs/april_predictions.csv`
-4. `docs/INTERVIEW_WALKTHROUGH.md`
+1. `docs/PRESENTATION_SCRIPT.md` — stage-by-stage interview narrative
+2. `docs/PRESENTATION_ONE_PAGER.md` — five-minute version
+3. `docs/INTERVIEW_QA_CHEATSHEET.md` — expected hard questions
+4. `artifacts/selection_proof.json`
+5. `artifacts/feature_group_ablation.csv`
+6. `outputs/april_predictions.csv`
+7. `docs/INTERVIEW_WALKTHROUGH.md`

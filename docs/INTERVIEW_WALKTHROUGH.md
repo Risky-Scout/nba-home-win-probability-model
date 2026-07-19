@@ -1,5 +1,10 @@
 # Interview walkthrough
 
+For the full stage-by-stage narrative (data → features → model → selection →
+results), use `docs/PRESENTATION_SCRIPT.md`. For compressed recall, use
+`docs/PRESENTATION_ONE_PAGER.md`. For aggressive questions, use
+`docs/INTERVIEW_QA_CHEATSHEET.md`.
+
 ## Screen-share setup
 
 Before the call:
@@ -14,14 +19,16 @@ python validate_submission.py --root . --data "$NBA_DATA_PATH"
 
 Keep these files open in editor tabs:
 
-1. `SUMMARY.md`
-2. `nba_wp/features.py`
-3. `nba_wp/model.py`
-4. `nba_wp/selection.py`
-5. `artifacts/selection_proof.json`
-6. `artifacts/feature_group_ablation.csv`
-7. `outputs/april_predictions.csv`
-8. `docs/LIMITATIONS_AND_ROADMAP.md`
+1. `docs/PRESENTATION_SCRIPT.md` (speaker notes)
+2. `SUMMARY.md`
+3. `nba_wp/features.py`
+4. `nba_wp/model.py`
+5. `nba_wp/selection.py`
+6. `artifacts/selection_proof.json`
+7. `artifacts/feature_group_ablation.csv`
+8. `outputs/april_predictions.csv`
+9. `docs/LIMITATIONS_AND_ROADMAP.md`
+10. `docs/INTERVIEW_QA_CHEATSHEET.md`
 
 ## Ten-minute presentation
 
