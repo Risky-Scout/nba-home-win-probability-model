@@ -49,11 +49,12 @@ def main() -> None:
             [
                 python,
                 "-m",
-                "scripts.select_model",
+                "nba_wp.cli",
+                "select",
                 "--data",
                 data,
-                "--config-dir",
-                str(root / "configs"),
+                "--config",
+                str(root / "configs" / "model.yaml"),
                 "--artifact-dir",
                 str(root / "artifacts" / "current"),
             ]
@@ -75,8 +76,42 @@ def main() -> None:
                 str(root / "artifacts" / "current"),
                 "--figure-dir",
                 str(root / "figures"),
-                "--benchmarks",
-                str(root / "configs" / "benchmarks.json"),
+                "--config",
+                str(root / "configs" / "model.yaml"),
+            ]
+        )
+        run(
+            [
+                python,
+                "-m",
+                "nba_wp.cli",
+                "predict",
+                "--data",
+                data,
+                "--config",
+                str(root / "configs" / "model.yaml"),
+                "--spec",
+                str(root / "artifacts" / "current" / "selected_spec_pre_march.json"),
+                "--output",
+                str(root / "predictions" / "april_predictions.csv"),
+                "--rolling-output",
+                str(root / "predictions" / "april_predictions_rolling_scenario.csv"),
+            ]
+        )
+        run(
+            [
+                python,
+                "-m",
+                "nba_wp.cli",
+                "report",
+                "--data",
+                data,
+                "--config",
+                str(root / "configs" / "model.yaml"),
+                "--spec",
+                str(root / "artifacts" / "current" / "selected_spec_pre_march.json"),
+                "--reports-dir",
+                str(root / "reports"),
             ]
         )
 

@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.29"
+      - name: Install from lockfile
+        run: uv sync --frozen
+      - name: Lint (ruff)
+        run: uv run ruff check src scripts tests --select E9,F63,F7,F82,F401,F821
+      - name: Tests
+        run: uv run pytest -q --cov=nba_wp --cov-report=term-missing --cov-fail-under=65
+      - name: CLI smoke on synthetic fixture (select -> predict)
+        run: >
+          uv run python -m nba_wp.cli select
+          --data tests/fixtures/synthetic_nba_season.csv
+          --config tests/fixtures/ci_model.yaml
+          --artifact-dir ci_artifacts
+      - name: CLI smoke predict
+        run: >
+          uv run python -m nba_wp.cli predict
+          --data tests/fixtures/synthetic_nba_season.csv
+          --config tests/fixtures/ci_model.yaml
+          --spec ci_artifacts/selected_spec_pre_march.json
+          --output ci_artifacts/april_predictions.csv
+      - name: Verify committed prediction schema and bounds
+        run: uv run python scripts/verify_predictions.py --file predictions/april_predictions.csv

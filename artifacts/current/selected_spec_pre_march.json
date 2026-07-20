@@ -1,14 +1,14 @@
 {
   "model_family": "direct L2 logistic on elo_diff + bt_logit + trend_diff",
   "model_type": "direct_logistic",
-  "selected_using": "Expanding-window pre-March validation (train through Dec -> Jan; train through Jan -> Feb)",
+  "selected_using": "Expanding-window pre-March validation: train < 2026-01-01 -> validate jan; train < 2026-02-01 -> validate feb",
   "selection_data_end": "2026-02-28",
   "selection_data_max_date": "2026-02-28",
   "march_rows_used_in_selection": 0,
   "april_rows_used_in_selection": 0,
   "april_rows_loaded_during_selection": 0,
   "selection_metric": "mean_validation_log_loss",
-  "selection_rule": "Minimize mean January/February validation log loss; tie-break by mean Brier, then AUC, accuracy, model type, architecture name. External benchmark values do not gate selection.",
+  "selection_rule": "Minimize mean validation log loss across the expanding pre-March folds; tie-break by mean Brier, then AUC, accuracy, model type, architecture name. External benchmark values do not gate selection.",
   "primary_metric": "mean_validation_log_loss",
   "secondary_metrics": [
     "mean_validation_brier"
@@ -63,17 +63,11 @@
       3.0,
       10.0
     ],
-    "direct_logistic_candidates": 63,
-    "feature_architectures": 9,
-    "blend_challengers": 9,
-    "total_candidates": 72,
-    "blend_challenger_per_feature_arch": 1,
     "rationale": {
-      "elo_k": "Covers slow, moderate, and fast sequential rating adaptation.",
-      "trend_half_life_days": "Covers short, medium, and long form memory.",
+      "elo_k": "Slow / moderate / fast sequential rating adaptation.",
+      "trend_half_life_days": "Short / medium / long form memory.",
       "logistic_c": "Log-spaced L2 strength for the direct three-feature logistic.",
-      "calibration": "Platt logistic calibration fitted on training predictions replaces dense temperature/shift search.",
-      "search_size": "3 Elo K \u00d7 3 half-lives \u00d7 7 C = 63 direct logistics; plus one Platt-calibrated blend challenger per feature architecture (9) = 72 candidates total."
+      "search_size": "3 x 3 x 7 = 63 direct logistics + 9 architecture-matched blend challengers = 72 candidates."
     }
   },
   "fold_definitions": [

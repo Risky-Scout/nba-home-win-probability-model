@@ -13,7 +13,7 @@ Selected on **January/February** expanding folds by **mean log loss**:
 
 ## Primary deliverable
 
-`outputs/april_predictions_frozen_snapshot.csv` — April scored from the
+`predictions/april_predictions.csv` — April scored from the
 **March 31** state (literal assignment). Sequential April is sensitivity only.
 
 ## Numbers to have memorized
@@ -22,7 +22,7 @@ Selected on **January/February** expanding folds by **mean log loss**:
 |---|---|---|
 | Full-sample home rate | ≈ 55.4% | `artifacts/current/data_audit.json` |
 | Pre-March selection end | 2026-02-28 | `pre_march_selection_proof.json` |
-| Candidates searched | 72 (63+9) | `architecture_candidates.json` |
+| Candidates searched | 72 (63+9) | `configs/model.yaml` |
 | Locked March correct | 182/239 | `final_metrics.json` |
 | Frozen April | LL≈0.469, 74/96 | same / frozen CSV |
 | Largest standardized coef | elo_diff ≈ 0.73 | `model_coefficients.json` |

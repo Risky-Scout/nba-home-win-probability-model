@@ -48,7 +48,7 @@ blend challengers (72 total)**.
 1. `docs/AUDIT_RESPONSE.md`
 2. `artifacts/current/pre_march_selection_proof.json`
 3. `artifacts/current/selected_spec_pre_march.json`
-4. `outputs/april_predictions_frozen_snapshot.csv`
+4. `predictions/april_predictions.csv`
 5. `artifacts/current/date_block_bootstrap_summary.json`
 6. `docs/BENCHMARK_PROVENANCE.md`
 7. `docs/MARKET_PRICING_LIMITATIONS.md`

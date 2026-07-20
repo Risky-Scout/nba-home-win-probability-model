@@ -11,22 +11,22 @@ Champion: direct logistic, architecture `k10_hl20`, `logistic_c = 0.1`.
 
 | Symbol / name | Value | Why | Code |
 |---|---|---|---|
-| Elo initial rating | 1500 | Standard Elo centre | `nba_wp/features.py` (`EloState`) |
+| Elo initial rating | 1500 | Standard Elo centre | `src/nba_wp/features.py` (`EloState`) |
 | Elo logistic scale | 400 | Classic Elo denominator | `expected_score` / `elo_diff` |
 | Margin-of-victory transform | \(\log(\lvert m\rvert+1)\) scaled | Smooth MOV; selected mode `log` | `features.py` MOV helper |
-| Bradley-Terry ridge-ish \(C\) default | 0.15 | Stabilizes BT MLE | `configs/architecture_candidates.json` → `bt_c` |
+| Bradley-Terry ridge-ish \(C\) default | 0.15 | Stabilizes BT MLE | `configs/model.yaml` → `bt_c` |
 | Trend short window | 10 games | Short form contrast | same → `trend_short_games` |
 | Elo HFA (search default) | 65 | ≈ equal-team home edge under Elo scale | same → `elo_hfa` |
 | Component logistic \(C\) (blend path) | elo 1.0 / rank 0.1 | Only used if blend challenger wins | same |
-| Selection metric | mean validation log loss | Pricing proper score | `configs/selection_policy.json` |
-| Selection cutoff | `< 2026-03-01` | March locked test | `nba_wp/selection.py` `SELECTION_CUTOFF` |
+| Selection metric | mean validation log loss | Pricing proper score | `configs/model.yaml` |
+| Selection cutoff | `< 2026-03-01` | March locked test | `src/nba_wp/selection.py` `SELECTION_CUTOFF` |
 | Primary April policy | frozen at 2026-03-31 | Literal assignment | `score_final` / `reporting.py` |
 
 ---
 
 ## 2. Selected on pre-March folds (Jan / Feb)
 
-Search grid (`configs/architecture_candidates.json`):
+Search grid (`configs/model.yaml`):
 
 - \(K \in \{10,20,30\}\)
 - half-life \(\in \{20,45,90\}\) days
@@ -99,7 +99,7 @@ These numbers are **fitted**, not hand-tuned. Re-fit with `make score` after `ma
 - Ratings update **after** features are written for that game (feature-before-update).
 - Same calendar date: batch games, then update all.
 
-**Code:** `nba_wp/features.py` Elo block.
+**Code:** `src/nba_wp/features.py` Elo block.
 
 ### Bradley-Terry logit
 

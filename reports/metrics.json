@@ -1,0 +1,420 @@
+{
+  "generated_by": "nba_wp.evaluation.evaluate_baselines_and_write",
+  "selected_spec_summary": {
+    "model_type": "direct_logistic",
+    "architecture": "k10_hl20",
+    "logistic_c": 0.1,
+    "pre_march_validation_metrics": {
+      "mean_validation_log_loss": 0.631875924626764,
+      "mean_validation_brier": 0.2199693138814982,
+      "mean_validation_auc": 0.7138503688867767,
+      "mean_validation_accuracy": 0.6695925332230208
+    },
+    "folds": [
+      "fold1_jan",
+      "fold2_feb"
+    ]
+  },
+  "locked_march_test": {
+    "n_games": 239,
+    "models": {
+      "constant_home_rate": {
+        "metrics": {
+          "log_loss": 0.6805803943893557,
+          "brier": 0.24372705003095535,
+          "auc": 0.5,
+          "accuracy": 0.602510460251046,
+          "games": 239,
+          "home_win_rate": 0.602510460251046,
+          "mean_probability": 0.5374301675977653,
+          "correct_games": 144
+        },
+        "paired_delta_log_loss_selected_minus_this": {
+          "mean_delta": -0.17029382836360143,
+          "ci_low_2p5": -0.21461777425887826,
+          "ci_high_97p5": -0.12440021734533976,
+          "repeats": 5000,
+          "seed": 2026
+        }
+      },
+      "record_difference_logistic": {
+        "metrics": {
+          "log_loss": 0.5447019050694818,
+          "brier": 0.17996330865931598,
+          "auc": 0.8232456140350877,
+          "accuracy": 0.7740585774058577,
+          "games": 239,
+          "home_win_rate": 0.602510460251046,
+          "mean_probability": 0.5456634541616311,
+          "correct_games": 185
+        },
+        "paired_delta_log_loss_selected_minus_this": {
+          "mean_delta": -0.03441533904372772,
+          "ci_low_2p5": -0.050387905906871686,
+          "ci_high_97p5": -0.018558786736398228,
+          "repeats": 5000,
+          "seed": 2026
+        }
+      },
+      "elo_only_logistic": {
+        "metrics": {
+          "log_loss": 0.5078906429690427,
+          "brier": 0.1664002788119334,
+          "auc": 0.823172514619883,
+          "accuracy": 0.7740585774058577,
+          "games": 239,
+          "home_win_rate": 0.602510460251046,
+          "mean_probability": 0.5504418232231726,
+          "correct_games": 185
+        },
+        "paired_delta_log_loss_selected_minus_this": {
+          "mean_delta": 0.0023959230567113113,
+          "ci_low_2p5": -0.0019335662352822133,
+          "ci_high_97p5": 0.006311973648684404,
+          "repeats": 5000,
+          "seed": 2026
+        }
+      },
+      "selected_model": {
+        "metrics": {
+          "log_loss": 0.510286566025754,
+          "brier": 0.16716310240580326,
+          "auc": 0.8259502923976608,
+          "accuracy": 0.7615062761506276,
+          "games": 239,
+          "home_win_rate": 0.602510460251046,
+          "mean_probability": 0.5465915109025038,
+          "correct_games": 182
+        }
+      }
+    },
+    "reliability_selected_model": [
+      {
+        "bin_low": 0.0,
+        "bin_high": 0.1,
+        "n": 4,
+        "mean_prediction": 0.08820340333102371,
+        "observed_rate": 0.0
+      },
+      {
+        "bin_low": 0.1,
+        "bin_high": 0.2,
+        "n": 19,
+        "mean_prediction": 0.1510496522580351,
+        "observed_rate": 0.05263157894736842
+      },
+      {
+        "bin_low": 0.2,
+        "bin_high": 0.30000000000000004,
+        "n": 23,
+        "mean_prediction": 0.25938478628845096,
+        "observed_rate": 0.08695652173913043
+      },
+      {
+        "bin_low": 0.30000000000000004,
+        "bin_high": 0.4,
+        "n": 23,
+        "mean_prediction": 0.3577387121845824,
+        "observed_rate": 0.4782608695652174
+      },
+      {
+        "bin_low": 0.4,
+        "bin_high": 0.5,
+        "n": 29,
+        "mean_prediction": 0.44878033074284945,
+        "observed_rate": 0.5517241379310345
+      },
+      {
+        "bin_low": 0.5,
+        "bin_high": 0.6000000000000001,
+        "n": 30,
+        "mean_prediction": 0.5500329726930763,
+        "observed_rate": 0.7666666666666667
+      },
+      {
+        "bin_low": 0.6000000000000001,
+        "bin_high": 0.7000000000000001,
+        "n": 36,
+        "mean_prediction": 0.656601900308729,
+        "observed_rate": 0.6666666666666666
+      },
+      {
+        "bin_low": 0.7000000000000001,
+        "bin_high": 0.8,
+        "n": 40,
+        "mean_prediction": 0.7528604442863214,
+        "observed_rate": 0.9
+      },
+      {
+        "bin_low": 0.8,
+        "bin_high": 0.9,
+        "n": 27,
+        "mean_prediction": 0.8371191520894363,
+        "observed_rate": 0.8888888888888888
+      },
+      {
+        "bin_low": 0.9,
+        "bin_high": 1.0,
+        "n": 8,
+        "mean_prediction": 0.918606446659383,
+        "observed_rate": 0.875
+      }
+    ],
+    "probability_bands_selected_model": [
+      {
+        "band": "0.00-0.25",
+        "n": 29,
+        "mean_prediction": 0.15777793880450763,
+        "observed_rate": 0.06896551724137931,
+        "mean_log_loss": 0.26627525221175613
+      },
+      {
+        "band": "0.25-0.40",
+        "n": 40,
+        "mean_prediction": 0.32102593114439526,
+        "observed_rate": 0.3,
+        "mean_log_loss": 0.5640154862483969
+      },
+      {
+        "band": "0.40-0.60",
+        "n": 59,
+        "mean_prediction": 0.5002647249548292,
+        "observed_rate": 0.6610169491525424,
+        "mean_log_loss": 0.6672896994155794
+      },
+      {
+        "band": "0.60-0.75",
+        "n": 54,
+        "mean_prediction": 0.6797832247439861,
+        "observed_rate": 0.7592592592592593,
+        "mean_log_loss": 0.5560097882518962
+      },
+      {
+        "band": "0.75-1.00",
+        "n": 57,
+        "mean_prediction": 0.8244712408084507,
+        "observed_rate": 0.8771929824561403,
+        "mean_log_loss": 0.39089941552555824
+      }
+    ],
+    "prob_summary_selected_model": {
+      "min": 0.06706118184287925,
+      "max": 0.9556811105549184,
+      "mean": 0.5465915109025038
+    }
+  },
+  "frozen_april_forecast": {
+    "n_games": 96,
+    "models": {
+      "constant_home_rate": {
+        "metrics": {
+          "log_loss": 0.6791594355330591,
+          "brier": 0.24302600555540002,
+          "auc": 0.5,
+          "accuracy": 0.59375,
+          "games": 96,
+          "home_win_rate": 0.59375,
+          "mean_probability": 0.5511463844797178,
+          "correct_games": 57
+        },
+        "paired_delta_log_loss_selected_minus_this": {
+          "mean_delta": -0.20970613656271309,
+          "ci_low_2p5": -0.260927440758227,
+          "ci_high_97p5": -0.1676373908860893,
+          "repeats": 5000,
+          "seed": 2026
+        }
+      },
+      "record_difference_logistic": {
+        "metrics": {
+          "log_loss": 0.5114076045851083,
+          "brier": 0.16606804572630332,
+          "auc": 0.846378767431399,
+          "accuracy": 0.78125,
+          "games": 96,
+          "home_win_rate": 0.59375,
+          "mean_probability": 0.5558822699885804,
+          "correct_games": 75
+        },
+        "paired_delta_log_loss_selected_minus_this": {
+          "mean_delta": -0.0419543056147623,
+          "ci_low_2p5": -0.06500217697569205,
+          "ci_high_97p5": -0.022201240388591656,
+          "repeats": 5000,
+          "seed": 2026
+        }
+      },
+      "elo_only_logistic": {
+        "metrics": {
+          "log_loss": 0.46717945964257507,
+          "brier": 0.1507356064763735,
+          "auc": 0.8690958164642375,
+          "accuracy": 0.78125,
+          "games": 96,
+          "home_win_rate": 0.59375,
+          "mean_probability": 0.5490487408986552,
+          "correct_games": 75
+        },
+        "paired_delta_log_loss_selected_minus_this": {
+          "mean_delta": 0.002273839327770985,
+          "ci_low_2p5": -0.0021544117766534813,
+          "ci_high_97p5": 0.0065542062463387766,
+          "repeats": 5000,
+          "seed": 2026
+        }
+      },
+      "selected_model": {
+        "metrics": {
+          "log_loss": 0.46945329897034593,
+          "brier": 0.1510597206887083,
+          "auc": 0.8623481781376517,
+          "accuracy": 0.7708333333333334,
+          "games": 96,
+          "home_win_rate": 0.59375,
+          "mean_probability": 0.549499731270403,
+          "correct_games": 74
+        }
+      }
+    },
+    "reliability_selected_model": [
+      {
+        "bin_low": 0.0,
+        "bin_high": 0.1,
+        "n": 1,
+        "mean_prediction": 0.08251204702842162,
+        "observed_rate": 0.0
+      },
+      {
+        "bin_low": 0.1,
+        "bin_high": 0.2,
+        "n": 10,
+        "mean_prediction": 0.15591755757276254,
+        "observed_rate": 0.1
+      },
+      {
+        "bin_low": 0.2,
+        "bin_high": 0.30000000000000004,
+        "n": 8,
+        "mean_prediction": 0.24092415405602993,
+        "observed_rate": 0.125
+      },
+      {
+        "bin_low": 0.30000000000000004,
+        "bin_high": 0.4,
+        "n": 13,
+        "mean_prediction": 0.3374962081836598,
+        "observed_rate": 0.3076923076923077
+      },
+      {
+        "bin_low": 0.4,
+        "bin_high": 0.5,
+        "n": 11,
+        "mean_prediction": 0.44925506327520814,
+        "observed_rate": 0.6363636363636364
+      },
+      {
+        "bin_low": 0.5,
+        "bin_high": 0.6000000000000001,
+        "n": 8,
+        "mean_prediction": 0.5449064867393336,
+        "observed_rate": 0.375
+      },
+      {
+        "bin_low": 0.6000000000000001,
+        "bin_high": 0.7000000000000001,
+        "n": 13,
+        "mean_prediction": 0.6551992533971188,
+        "observed_rate": 0.9230769230769231
+      },
+      {
+        "bin_low": 0.7000000000000001,
+        "bin_high": 0.8,
+        "n": 10,
+        "mean_prediction": 0.7561010708621474,
+        "observed_rate": 0.9
+      },
+      {
+        "bin_low": 0.8,
+        "bin_high": 0.9,
+        "n": 14,
+        "mean_prediction": 0.8569663461671163,
+        "observed_rate": 0.8571428571428571
+      },
+      {
+        "bin_low": 0.9,
+        "bin_high": 1.0,
+        "n": 8,
+        "mean_prediction": 0.9272819001626531,
+        "observed_rate": 1.0
+      }
+    ],
+    "probability_bands_selected_model": [
+      {
+        "band": "0.00-0.25",
+        "n": 16,
+        "mean_prediction": 0.1709893042284872,
+        "observed_rate": 0.0625,
+        "mean_log_loss": 0.29777190066436365
+      },
+      {
+        "band": "0.25-0.40",
+        "n": 16,
+        "mean_prediction": 0.3262939183710043,
+        "observed_rate": 0.3125,
+        "mean_log_loss": 0.6368224059289069
+      },
+      {
+        "band": "0.40-0.60",
+        "n": 19,
+        "mean_prediction": 0.48952934683905036,
+        "observed_rate": 0.5263157894736842,
+        "mean_log_loss": 0.714227369914382
+      },
+      {
+        "band": "0.60-0.75",
+        "n": 17,
+        "mean_prediction": 0.6712488064530272,
+        "observed_rate": 0.9411764705882353,
+        "mean_log_loss": 0.4480948052521816
+      },
+      {
+        "band": "0.75-1.00",
+        "n": 28,
+        "mean_prediction": 0.8601126907401218,
+        "observed_rate": 0.8928571428571429,
+        "mean_log_loss": 0.3187884313571621
+      }
+    ],
+    "prob_summary_selected_model": {
+      "min": 0.08251204702842162,
+      "max": 0.9652282899028878,
+      "mean": 0.549499731270403
+    }
+  },
+  "challenger_blend_on_locked_march": {
+    "available": true,
+    "prediction_correlation": 0.9893430776597426,
+    "blend_metrics_march": {
+      "log_loss": 0.520722635899502,
+      "brier": 0.17111636852953258,
+      "auc": 0.8308479532163743,
+      "accuracy": 0.7698744769874477,
+      "games": 239,
+      "home_win_rate": 0.602510460251046,
+      "mean_probability": 0.5322432178944515,
+      "correct_games": 184
+    },
+    "paired_delta_log_loss_selected_minus_blend": {
+      "mean_delta": -0.010436069873747929,
+      "ci_low_2p5": -0.019114678440711637,
+      "ci_high_97p5": -0.001424768496766588,
+      "repeats": 5000,
+      "seed": 2026
+    }
+  },
+  "notes": [
+    "Baselines are context only; they never gate selection.",
+    "Paired deltas resample game-date blocks (5000 reps).",
+    "April was previously viewed in the wider project; it is retrospective, not pristine."
+  ]
+}

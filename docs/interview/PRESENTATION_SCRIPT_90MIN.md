@@ -17,7 +17,7 @@ interrupts.
 \]
 
 Selected: \(K=10\), HFA \(=65\), half-life \(=20\) days, logistic \(C=0.1\).  
-Primary April: **frozen March 31** (`outputs/april_predictions_frozen_snapshot.csv`).
+Primary April: **frozen March 31** (`predictions/april_predictions.csv`).
 
 **Fact traps:**
 
@@ -62,15 +62,15 @@ Primary April: **frozen March 31** (`outputs/april_predictions_frozen_snapshot.c
 
 ## 2. Objective and metrics (0:04–0:10)
 
-**Do:** `docs/METHODOLOGY.md`, `configs/selection_policy.json`,
-`configs/benchmarks.json`.
+**Do:** `docs/METHODOLOGY.md`, `configs/model.yaml`,
+`configs/model.yaml (benchmarks section)`.
 
 **Say:**
 
 > Target \(Y=1\) if home points exceed away points. Primary proper score is
 > **log loss**. Brier is secondary. AUC and accuracy are descriptive.
 >
-> External floats in `benchmarks.json` are **retrospective references only**.
+> External floats in `configs/model.yaml` are **retrospective references only**.
 > They do **not** gate selection — that mistake was removed in remediation.
 > Provenance: `docs/BENCHMARK_PROVENANCE.md`.
 
@@ -82,7 +82,7 @@ Primary April: **frozen March 31** (`outputs/april_predictions_frozen_snapshot.c
 
 ## 3. Data audit (0:10–0:14)
 
-**Do:** `nba_wp/data.py`, `artifacts/current/data_audit.json`.
+**Do:** `src/nba_wp/data.py`, `artifacts/current/data_audit.json`.
 
 **Say:**
 
@@ -95,7 +95,7 @@ Primary April: **frozen March 31** (`outputs/april_predictions_frozen_snapshot.c
 
 ## 4. Feature-before-update (0:14–0:22)
 
-**Do:** `nba_wp/features.py`, `docs/FEATURE_ENGINEERING.md`,
+**Do:** `src/nba_wp/features.py`, `docs/FEATURE_ENGINEERING.md`,
 `artifacts/current/feature_governance.csv`.
 
 **Say:**
@@ -118,7 +118,7 @@ Primary April: **frozen March 31** (`outputs/april_predictions_frozen_snapshot.c
 
 ## 5. Why direct logistic (0:22–0:30)
 
-**Do:** `nba_wp/model.py` (`fit_direct_logistic`),
+**Do:** `src/nba_wp/model.py` (`fit_direct_logistic`),
 `docs/AUDIT_RESPONSE.md`.
 
 **Say:**
@@ -159,8 +159,8 @@ Primary April: **frozen March 31** (`outputs/april_predictions_frozen_snapshot.c
 
 ## 7. Pre-March folds and search budget (0:40–0:50)
 
-**Do:** `configs/architecture_candidates.json`,
-`scripts/select_model.py`,
+**Do:** `configs/model.yaml`,
+`python -m nba_wp.cli select`,
 `artifacts/current/pre_march_selection_proof.json`,
 `artifacts/current/pre_march_selection_results.csv`.
 
@@ -185,7 +185,7 @@ Primary April: **frozen March 31** (`outputs/april_predictions_frozen_snapshot.c
 ## 8. Locked March and frozen April (0:50–0:58)
 
 **Do:** `artifacts/current/final_metrics.json`,
-`outputs/april_predictions_frozen_snapshot.csv`,
+`predictions/april_predictions.csv`,
 `outputs/april_predictions.csv`.
 
 **Say:**
@@ -244,7 +244,7 @@ Primary April: **frozen March 31** (`outputs/april_predictions_frozen_snapshot.c
 
 ## 11. Price one April game live (1:15–1:22)
 
-**Do:** `outputs/april_predictions_frozen_snapshot.csv` — pick one row.
+**Do:** `predictions/april_predictions.csv` — pick one row.
 
 **Say:**
 
@@ -282,7 +282,7 @@ python3 validate_submission.py --root . --data data/nba-win-probability-data.csv
 |---|---|---|---|
 | Elo start / scale | Fixed | 1500 / 400 | `features.py` |
 | Elo \(K\) | Selected | 10 | `selected_spec_pre_march.json` |
-| HFA | Fixed in search | 65 | `architecture_candidates.json` |
+| HFA | Fixed in search | 65 | `configs/model.yaml` |
 | Half-life | Selected | 20d | same |
 | Logistic \(C\) | Selected | 0.1 | same |
 | \(\hat\beta\)s | Fitted | see ledger | `model_coefficients.json` |

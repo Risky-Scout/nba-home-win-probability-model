@@ -11,7 +11,7 @@
 
 ## Selection input contract
 
-`scripts/select_model.py` truncates to `game_date < 2026-03-01`.
+`python -m nba_wp.cli select` truncates to `game_date < 2026-03-01`.
 `run_selection` / `assert_pre_march_selection_frame` raise if any March-or-later
 row is present.
 
@@ -22,7 +22,7 @@ not claimed as historical preregistration before April was viewed.
 
 ## Search budget
 
-Declared in `configs/architecture_candidates.json`.
+Declared in `configs/model.yaml`.
 
 | Hyperparameter | Candidate values | Why it exists | Why these values |
 |---|---|---|---|
@@ -57,7 +57,7 @@ Platt during fold scoring.
 
 ## Benchmarks
 
-`configs/benchmarks.json` values are retrospective references only.
+`configs/model.yaml (benchmarks section)` values are retrospective references only.
 Provenance: `docs/BENCHMARK_PROVENANCE.md`.
 
 ## April exposure

@@ -15,12 +15,12 @@ python validate_submission.py --root . --data "$NBA_DATA_PATH"
 Keep these files open in editor tabs:
 
 1. `SUMMARY.md`
-2. `nba_wp/features.py`
-3. `nba_wp/model.py`
-4. `nba_wp/selection.py`
+2. `src/nba_wp/features.py`
+3. `src/nba_wp/model.py`
+4. `src/nba_wp/selection.py`
 5. `artifacts/current/pre_march_selection_proof.json`
 6. `artifacts/current/feature_group_ablation.csv`
-7. `outputs/april_predictions_frozen_snapshot.csv`
+7. `predictions/april_predictions.csv`
 8. `docs/LIMITATIONS_AND_ROADMAP.md`
 
 ## Ten-minute presentation
@@ -43,7 +43,7 @@ Show `artifacts/current/data_audit.json`.
 
 ### 2:00-4:00 - Leakage control
 
-Open `nba_wp/features.py` at `build_features`.
+Open `src/nba_wp/features.py` at `build_features`.
 
 > The key design decision is feature-before-update. For each date, I read team
 > state, write every matchup feature, and only then update from that date's
@@ -63,11 +63,11 @@ python -m pytest tests/test_feature_timing.py -q
 > their probabilities in log-odds space and apply a temperature and intercept
 > calibration.
 
-Show `docs/METHODOLOGY.md` and `nba_wp/model.py::blend_probabilities`.
+Show `docs/METHODOLOGY.md` and `src/nba_wp/model.py::blend_probabilities`.
 
 ### 6:00-7:30 - Selection proof
 
-Open `scripts/select_model.py` and `artifacts/current/pre_march_selection_proof.json`.
+Open `python -m nba_wp.cli select` and `artifacts/current/pre_march_selection_proof.json`.
 
 > The selection script truncates the raw input before April and the selection
 > function rejects any frame containing April. Five declared architectures and

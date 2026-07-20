@@ -27,7 +27,7 @@ def main() -> None:
     parser.add_argument("--output-dir", default="outputs")
     parser.add_argument("--artifact-dir", default="artifacts/current")
     parser.add_argument("--figure-dir", default="figures")
-    parser.add_argument("--benchmarks", default="configs/benchmarks.json")
+    parser.add_argument("--config", default="configs/model.yaml")
     args = parser.parse_args()
 
     selected_path = Path(args.selected_spec)
@@ -46,7 +46,9 @@ def main() -> None:
     )
     elapsed = time.perf_counter() - started
 
-    benchmarks = json.loads(Path(args.benchmarks).read_text())
+    from nba_wp.config import benchmarks as _benchmarks, load_config
+
+    benchmarks = _benchmarks(load_config(args.config))
     rows = []
     comparisons = [
         ("locked_march_test", "march", metrics["locked_march_test"]["metrics"]),

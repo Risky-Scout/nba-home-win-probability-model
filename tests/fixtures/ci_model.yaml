@@ -1,0 +1,31 @@
+# Reduced-budget config used only by the CI smoke step and the CLI smoke test.
+selection:
+  cutoff: "2026-03-01"
+  metric: mean_validation_log_loss
+  secondary_metrics: [mean_validation_brier]
+  descriptive_metrics: [mean_validation_auc]
+  folds:
+    - {name: fold1_jan, train_end: "2026-01-01", validation_start: "2026-01-01", validation_end: "2026-02-01"}
+    - {name: fold2_feb, train_end: "2026-02-01", validation_start: "2026-02-01", validation_end: "2026-03-01"}
+search_budget:
+  elo_k: [10.0]
+  trend_half_life_days: [45.0]
+  logistic_c: [0.3, 1.0]
+feature_defaults:
+  elo_hfa: 65.0
+  elo_mov: log
+  bt_c: 0.15
+  trend_short_games: 5
+  elo_model_c: 1.0
+  rank_model_c: 0.1
+challenger:
+  enabled: false
+evaluation:
+  locked_test: {period_start: "2026-03-01", period_end: "2026-04-01", scored_once: true}
+  forecast: {information_cutoff: "2026-03-31", period_start: "2026-04-01"}
+  bootstrap: {repeats: 50, seed: 1, block: game_date}
+output:
+  model_version: "ci-smoke"
+  predictions_dir: predictions
+  primary_file: april_predictions.csv
+  rolling_scenario_file: april_predictions_rolling_scenario.csv

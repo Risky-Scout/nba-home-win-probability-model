@@ -1,16 +1,12 @@
-# Local data
+# Data
 
-Place the recruiter-provided file here as:
+Place the assignment file here (gitignored):
 
 ```text
 data/nba-win-probability-data.csv
 ```
 
-The raw assignment dataset is intentionally excluded from version control by
-`.gitignore`. The expected SHA-256 hash is recorded in
-`artifacts/data_audit.json`. A reviewer who already has the supplied file can
-reproduce the project with:
-
-```bash
-make reproduce DATA=/absolute/path/to/nba-win-probability-data.csv
-```
+1,230 rows, 16 columns: `game_id`, `game_date`, and seven columns per side
+(`away*`, `home*`). The wins/losses columns are **pregame** season records
+(verified by replay reconciliation); points/turnovers/fouls/rebounds are
+**postgame** box-score totals and are never used as same-game features.

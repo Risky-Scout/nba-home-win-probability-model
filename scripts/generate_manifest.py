@@ -6,7 +6,16 @@ import hashlib
 from pathlib import Path
 
 
-EXCLUDED_PARTS = {".git", ".venv", "__pycache__", ".pytest_cache"}
+EXCLUDED_PARTS = {
+    ".git",
+    ".venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".ruff_cache",
+    "wnba-props",
+    ".ipynb_checkpoints",
+    ".coverage",
+}
 
 
 def sha256(path: Path) -> str:

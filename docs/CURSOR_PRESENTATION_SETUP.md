@@ -31,7 +31,7 @@ Leave `"status": "PASS"` visible.
 **Pinned tabs:** `START_HERE.md`, `docs/interview/PARAMETER_LEDGER.md`,
 `artifacts/current/selected_spec_pre_march.json`,
 `artifacts/current/model_coefficients.json`,
-`outputs/april_predictions_frozen_snapshot.csv`
+`predictions/april_predictions.csv`
 
 Full tab list: `docs/interview/FILE_INDEX.md`.
 

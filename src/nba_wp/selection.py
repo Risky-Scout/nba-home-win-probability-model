@@ -274,8 +274,11 @@ def run_selection(
         ),
         "model_type": winner["model_type"],
         "selected_using": (
-            "Expanding-window pre-March validation "
-            "(train through Dec -> Jan; train through Jan -> Feb)"
+            "Expanding-window pre-March validation: "
+            + "; ".join(
+                f"train < {f['train_end']} -> validate {f['name'].split('_')[-1]}"
+                for f in folds
+            )
         ),
         "selection_data_end": games["game_date"].max().strftime("%Y-%m-%d"),
         "selection_data_max_date": games["game_date"].max().strftime("%Y-%m-%d"),
@@ -284,7 +287,7 @@ def run_selection(
         "april_rows_loaded_during_selection": 0,
         "selection_metric": "mean_validation_log_loss",
         "selection_rule": (
-            "Minimize mean January/February validation log loss; "
+            "Minimize mean validation log loss across the expanding pre-March folds; "
             "tie-break by mean Brier, then AUC, accuracy, model type, architecture name. "
             "External benchmark values do not gate selection."
         ),

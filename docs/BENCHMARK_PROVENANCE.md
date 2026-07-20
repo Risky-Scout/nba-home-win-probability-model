@@ -2,7 +2,7 @@
 
 ## Status
 
-The numerical values stored in `configs/benchmarks.json` are **retrospective
+The numerical values stored in `configs/model.yaml (benchmarks section)` are **retrospective
 reference values**, not official assignment acceptance criteria.
 
 The written assignment asks for April home-win probabilities using

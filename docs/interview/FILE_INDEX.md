@@ -26,22 +26,22 @@ Paths are relative to the repo root. Authoritative metrics live under **`artifac
 
 | Step | File |
 |---|---|
-| Load + audit | `nba_wp/data.py` |
-| Elo / BT / trend features | `nba_wp/features.py` |
-| Direct logistic + metrics + bootstrap | `nba_wp/model.py` |
-| Pre-March selection | `nba_wp/selection.py` |
-| Select CLI | `scripts/select_model.py` |
+| Load + audit | `src/nba_wp/data.py` |
+| Elo / BT / trend features | `src/nba_wp/features.py` |
+| Direct logistic + metrics + bootstrap | `src/nba_wp/model.py` |
+| Pre-March selection | `src/nba_wp/selection.py` |
+| Select CLI | `python -m nba_wp.cli select` |
 | Score CLI | `scripts/score_final.py` |
-| Reporting / frozen April | `nba_wp/reporting.py` |
+| Reporting / frozen April | `src/nba_wp/reporting.py` |
 | Validator | `validate_submission.py` |
 
 ## Configs (declared search)
 
 | File | Contents |
 |---|---|
-| `configs/selection_policy.json` | Jan/Feb folds; log-loss primary |
-| `configs/architecture_candidates.json` | 72-candidate budget |
-| `configs/benchmarks.json` | Retrospective reference only |
+| `configs/model.yaml` | Jan/Feb folds; log-loss primary |
+| `configs/model.yaml` | 72-candidate budget |
+| `configs/model.yaml (benchmarks section)` | Retrospective reference only |
 
 ## Artifacts to show on screen
 
@@ -64,7 +64,7 @@ Paths are relative to the repo root. Authoritative metrics live under **`artifac
 
 | Role | File |
 |---|---|
-| **Primary April** | `outputs/april_predictions_frozen_snapshot.csv` |
+| **Primary April** | `predictions/april_predictions.csv` |
 | Sequential April (sensitivity) | `outputs/april_predictions.csv` |
 | Locked March | `outputs/march_predictions.csv` |
 | Engineered features | `outputs/engineered_features.csv` |

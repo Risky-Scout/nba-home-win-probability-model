@@ -1,0 +1,76 @@
+# Single project configuration. Everything the pipeline needs is declared here
+# and frozen before the locked March test is scored.
+
+selection:
+  cutoff: "2026-03-01"           # selection may never see rows on/after this date
+  metric: mean_validation_log_loss
+  secondary_metrics: [mean_validation_brier]
+  descriptive_metrics: [mean_validation_auc, mean_validation_accuracy]
+  # Expanding-window development folds (Oct–Feb only). March is locked; April is forecast.
+  # These two folds are the protocol declared on the remediation branch BEFORE any
+  # locked-test viewing in this rework. A third December fold (train Oct–Nov) was
+  # evaluated as a protocol sensitivity: its thin training window pushes selection
+  # toward heavier shrinkage (C=0.01) that scores worse out-of-sample; results are
+  # reported in reports/model_report.md, and the declared two-fold protocol stands.
+  folds:
+    - name: fold1_jan
+      train_end: "2026-01-01"
+      validation_start: "2026-01-01"
+      validation_end: "2026-02-01"
+    - name: fold2_feb
+      train_end: "2026-02-01"
+      validation_start: "2026-02-01"
+      validation_end: "2026-03-01"
+  tie_break: [mean_validation_brier, mean_validation_auc, mean_validation_accuracy, model_type, architecture]
+
+search_budget:
+  elo_k: [10.0, 20.0, 30.0]
+  trend_half_life_days: [20.0, 45.0, 90.0]
+  logistic_c: [0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0]
+  rationale:
+    elo_k: "Slow / moderate / fast sequential rating adaptation."
+    trend_half_life_days: "Short / medium / long form memory."
+    logistic_c: "Log-spaced L2 strength for the direct three-feature logistic."
+    search_size: "3 x 3 x 7 = 63 direct logistics + 9 architecture-matched blend challengers = 72 candidates."
+
+feature_defaults:
+  elo_hfa: 65.0
+  elo_mov: log
+  bt_c: 0.15
+  trend_short_games: 10
+  elo_model_c: 1.0
+  rank_model_c: 0.1
+
+challenger:                       # kept for comparison; promoted only if it wins selection
+  enabled: true
+  elo_weight: 0.2
+
+evaluation:
+  locked_test:
+    period_start: "2026-03-01"
+    period_end: "2026-04-01"
+    scored_once: true
+  forecast:
+    information_cutoff: "2026-03-31"   # frozen state for the primary April output
+    period_start: "2026-04-01"
+  bootstrap:
+    repeats: 5000
+    seed: 2026
+    block: game_date
+
+baselines:                        # evaluated for context; never gate selection
+  - constant_home_rate
+  - record_difference_logistic
+  - elo_only_logistic
+  - selected_model
+
+benchmarks:                       # retrospective reference only — provenance in docs/BENCHMARK_PROVENANCE.md
+  status: retrospective_reference_only
+  march:  {log_loss: 0.509645, brier: 0.167618, auc: 0.831798, accuracy: 0.7782}
+  april:  {log_loss: 0.468596, brier: 0.150628, auc: 0.868196, accuracy: 0.8125}
+
+output:
+  model_version: "2.1.0"
+  predictions_dir: predictions
+  primary_file: april_predictions.csv
+  rolling_scenario_file: april_predictions_rolling_scenario.csv

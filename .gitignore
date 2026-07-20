@@ -14,3 +14,7 @@ htmlcov/
 # nested clone from other work
 wnba-props/
 
+
+# build metadata
+*.egg-info/
+.coverage

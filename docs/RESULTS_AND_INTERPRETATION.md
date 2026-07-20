@@ -4,7 +4,7 @@ After running `make reproduce`, interpret artifacts under `artifacts/current/`.
 
 ## Primary April result (assignment)
 
-`outputs/april_predictions_frozen_snapshot.csv` and
+`predictions/april_predictions.csv` and
 `final_metrics.json → primary_april_result`.
 
 | Metric | Frozen April (primary) |

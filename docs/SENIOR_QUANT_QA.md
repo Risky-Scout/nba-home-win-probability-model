@@ -51,7 +51,7 @@ p = sigmoid(z / 0.59 + 0.33)
 > Calibrated home-win probability plus fair zero-margin decimal odds
 > `1/p` and `1/(1-p)`. A **price**, not a binary classifier label.
 
-**Show:** `outputs/april_predictions_frozen_snapshot.csv` columns
+**Show:** `predictions/april_predictions.csv` columns
 `home_win_probability`, `fair_home_decimal_odds`, `fair_away_decimal_odds`
 
 ### Q3. Why not just predict who wins?
@@ -66,7 +66,7 @@ p = sigmoid(z / 0.59 + 0.33)
 > Log loss — strictly proper local scoring rule. Brier proper but quadratic.
 > AUC/accuracy are not proper scoring rules for calibration.
 
-**Show:** `configs/benchmarks.json`
+**Show:** `configs/model.yaml (benchmarks section)`
 
 ---
 
@@ -78,7 +78,7 @@ p = sigmoid(z / 0.59 + 0.33)
 > BT = batch MLE (globally consistent). Different information processing;
 > blend is safer at N=1,230.
 
-**Show:** `docs/METHODOLOGY.md`; `nba_wp/model.py::fit_base_models`
+**Show:** `docs/METHODOLOGY.md`; `src/nba_wp/model.py::fit_base_models`
 
 ### Q6. Why not XGBoost / NN?
 
@@ -94,7 +94,7 @@ p = sigmoid(z / 0.59 + 0.33)
 > `LogisticRegression(C=0.15)`; coeffs = θ, intercept = HFA;
 > `bt_logit = decision_function(matchup)`.
 
-**Show:** `nba_wp/features.py::_fit_bradley_terry`
+**Show:** `src/nba_wp/features.py::_fit_bradley_terry`
 
 ### Q8. BT vs Elo mathematically.
 
@@ -115,7 +115,7 @@ p = sigmoid(z / 0.59 + 0.33)
 > `log(|margin|+1) * (2.2 / max(0.25, rating_diff*0.001 + 2.2))`.
 > Log dampens blowouts; denominator down-weights expected beatdowns.
 
-**Show:** `nba_wp/features.py::_elo_multiplier`
+**Show:** `src/nba_wp/features.py::_elo_multiplier`
 
 ### Q11. Why K=10?
 
@@ -131,7 +131,7 @@ p = sigmoid(z / 0.59 + 0.33)
 > **structural**. Full-sample rate is ~55.4%; March ~60.3%. `hfa_75` best
 > eligible March LL.
 
-**Show:** `architecture_candidates.json` + `march_architecture_results.csv`
+**Show:** `configs/model.yaml` + `march_architecture_results.csv`
 
 ### Q13. What is trend_diff?
 
@@ -173,7 +173,7 @@ p = sigmoid(z / 0.59 + 0.33)
 > Elo submodel: one feature → near-unregularized OK.
 > Rank: two features on top of 30 BT params → need shrinkage.
 
-**Show:** `selected_spec.json` / `architecture_candidates.json`
+**Show:** `selected_spec.json` / `configs/model.yaml`
 
 ### Q19. Full probability for one game.
 
@@ -221,7 +221,7 @@ p = sigmoid(z / 0.59 + 0.33)
 > Date loop: refresh BT → write all rows → update schedule → maybe skip
 > performance if frozen → else Elo/history/prior_games updates.
 
-**Show:** `nba_wp/features.py::build_features` (scroll the whole date loop)
+**Show:** `src/nba_wp/features.py::build_features` (scroll the whole date loop)
 
 ### Q25. Frozen: do rest days update?
 
@@ -262,7 +262,7 @@ p = sigmoid(z / 0.59 + 0.33)
 > Truncate `< 2026-04-01` before features; `run_selection` raises on April;
 > proof `april_rows_loaded_during_selection: 0`; validator checks.
 
-**Show:** `scripts/select_model.py`; `selection.py`; `selection_proof.json`
+**Show:** `python -m nba_wp.cli select`; `selection.py`; `selection_proof.json`
 
 ### Q31. But you saw April in development.
 
@@ -276,7 +276,7 @@ p = sigmoid(z / 0.59 + 0.33)
 > Executable selection identical. Exploration history might differ; final
 > declared-policy selection is mechanical.
 
-**Show:** `selection_policy.json`
+**Show:** `configs/model.yaml`
 
 ### Q33. Is March unbiased?
 
@@ -302,7 +302,7 @@ p = sigmoid(z / 0.59 + 0.33)
 
 > 5 × 71 × 31 × 31 ≈ 341k; ~68,231 per architecture.
 
-**Show:** `selection_policy.json`; `march_architecture_results.csv` `candidate_count`
+**Show:** `configs/model.yaml`; `march_architecture_results.csv` `candidate_count`
 
 ### Q37–Q38. March / April targets.
 
@@ -310,7 +310,7 @@ p = sigmoid(z / 0.59 + 0.33)
 > April: LL<0.468596, Brier<0.150628, AUC>0.868196, Acc>0.8125  
 > April: beat LL/Brier/Acc; miss AUC.
 
-**Show:** `configs/benchmarks.json`; `final_metrics.json`
+**Show:** `configs/model.yaml (benchmarks section)`; `final_metrics.json`
 
 ### Q39. sequential vs frozen.
 
@@ -331,7 +331,7 @@ p = sigmoid(z / 0.59 + 0.33)
 > Eligible first; then min LL, min Brier, max AUC, max Acc, arch name.
 > No April metric in the key.
 
-**Show:** `selection_policy.json`; sort in `selection.py` / `search_calibration`
+**Show:** `configs/model.yaml`; sort in `selection.py` / `search_calibration`
 
 ---
 

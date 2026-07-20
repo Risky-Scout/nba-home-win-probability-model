@@ -119,14 +119,22 @@ def fit_base_models(train: pd.DataFrame, architecture: Architecture) -> BaseMode
     return BaseModels(elo_model=elo_model, rank_model=rank_model)
 
 
-def fit_direct_logistic(train: pd.DataFrame, c_value: float) -> Pipeline:
+def fit_direct_logistic(
+    train: pd.DataFrame,
+    c_value: float,
+    features: list[str] | None = None,
+) -> Pipeline:
+    cols = list(features) if features else list(DIRECT_FEATURES)
     model = _logistic(c_value)
-    model.fit(train[DIRECT_FEATURES], train["home_win"].astype(int))
+    model.fit(train[cols], train["home_win"].astype(int))
+    # Record fitted schema so prediction always uses the same columns.
+    model.feature_names = cols
     return model
 
 
 def predict_direct_logistic(model: Pipeline, frame: pd.DataFrame) -> np.ndarray:
-    return model.predict_proba(frame[DIRECT_FEATURES])[:, 1]
+    cols = list(getattr(model, "feature_names", DIRECT_FEATURES))
+    return model.predict_proba(frame[cols])[:, 1]
 
 
 def component_probabilities(
@@ -209,7 +217,11 @@ def predict_from_spec(
     model_type = selected_spec.get("model_type", "blend")
 
     if model_type == "direct_logistic":
-        model = fit_direct_logistic(train, float(selected_spec["logistic_c"]))
+        model = fit_direct_logistic(
+            train,
+            float(selected_spec["logistic_c"]),
+            features=selected_spec.get("features"),
+        )
         probability = predict_direct_logistic(model, score)
         platt_values = selected_spec.get("platt_calibration")
         if platt_values:
@@ -437,9 +449,10 @@ def standardized_coefficient_rows(models: BaseModels) -> list[dict[str, Any]]:
 def direct_coefficient_rows(model: Pipeline) -> list[dict[str, Any]]:
     scaler: StandardScaler = model.named_steps["scale"]
     logistic: LogisticRegression = model.named_steps["model"]
+    feature_names = list(getattr(model, "feature_names", DIRECT_FEATURES))
     rows: list[dict[str, Any]] = []
     for feature, coef, mean, scale in zip(
-        DIRECT_FEATURES,
+        feature_names,
         logistic.coef_[0],
         scaler.mean_,
         scaler.scale_,

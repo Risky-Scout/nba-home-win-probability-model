@@ -1,30 +1,32 @@
-PYTHON ?= python
+PYTHON ?= python3
 DATA ?= data/nba-win-probability-data.csv
 
-.PHONY: setup audit select score evidence test verify reproduce clean
+.PHONY: setup select predict report test verify reproduce clean
 
 setup:
-	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install -r requirements-dev.txt
-
-audit:
-	$(PYTHON) -m scripts.data_audit --data "$(DATA)" --artifact-dir artifacts/current
+	uv sync --frozen
 
 select:
-	$(PYTHON) -m scripts.select_model --data "$(DATA)" --config-dir configs --artifact-dir artifacts/current
+	$(PYTHON) -m nba_wp.cli select --data "$(DATA)" --config configs/model.yaml --artifact-dir artifacts/current
 
-score:
-	$(PYTHON) -m scripts.score_final --data "$(DATA)" --selected-spec artifacts/current/selected_spec_pre_march.json --output-dir outputs --artifact-dir artifacts/current --figure-dir figures
+predict:
+	$(PYTHON) -m nba_wp.cli predict --data "$(DATA)" --config configs/model.yaml \
+	  --output predictions/april_predictions.csv \
+	  --rolling-output predictions/april_predictions_rolling_scenario.csv
+
+report:
+	$(PYTHON) -m nba_wp.cli report --data "$(DATA)" --config configs/model.yaml
 
 test:
 	NBA_DATA_PATH="$(DATA)" $(PYTHON) -m pytest
 
 verify:
 	$(PYTHON) validate_submission.py --root . --data "$(DATA)" --recompute
-	$(PYTHON) -m ruff check nba_wp scripts tests --select E9,F63,F7,F82,F401,F821
+	$(PYTHON) scripts/verify_predictions.py
+	$(PYTHON) -m ruff check src scripts tests --select E9,F63,F7,F82,F401,F821
 
 reproduce:
 	$(PYTHON) run_submission.py --root . --data "$(DATA)" --mode full
 
 clean:
-	rm -rf .pytest_cache nba_wp/__pycache__ scripts/__pycache__ tests/__pycache__
+	rm -rf .pytest_cache src/nba_wp/__pycache__ scripts/__pycache__ tests/__pycache__
