@@ -40,8 +40,9 @@ Primary metric: mean validation log loss. Brier is secondary. AUC/accuracy are
 descriptive. External benchmark JSON values do not gate selection.
 
 Search budget: Elo \(K\in\{10,20,30\}\), trend half-life \(\in\{20,45,90\}\),
-logistic \(C\) on a 7-point log grid (63 direct candidates). Optional blend
-challenger evaluated with Platt calibration.
+logistic \(C\) on a 7-point log grid → **63 direct-logistic candidates**, plus
+**nine architecture-matched Platt-calibrated blend challengers**, for
+**72 candidates total**.
 
 ## April scoring
 

@@ -37,6 +37,14 @@ selection pipeline uses zero April rows, but April had previously been viewed
 during the broader project, so I do not claim that it is a pristine untouched
 holdout.
 
+Pre-March selection on this branch is a reconstructed governance path, not
+historical preregistration.
+
+## Comparison caveat
+
+Won pre-March validation; April incremental value versus Elo remains
+statistically unresolved under date-block intervals.
+
 ## Ethical / commercial note
 
 Not a betting tip sheet. Not evidence of profitable wagering.

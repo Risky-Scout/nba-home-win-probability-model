@@ -9,10 +9,11 @@ This branch (`cursor/audit-remediation-7b85`) remediates statistical governance.
 
 | Review time | Route |
 |---|---|
-| 2 minutes | `SUMMARY.md` + `artifacts/final_metrics.json` |
+| 2 minutes | `SUMMARY.md` + `artifacts/current/final_metrics.json` |
 | Audit response | `docs/AUDIT_RESPONSE.md` |
-| Selection proof | `artifacts/pre_march_selection_proof.json` |
+| Selection proof | `artifacts/current/pre_march_selection_proof.json` |
 | Primary April result | `outputs/april_predictions_frozen_snapshot.csv` |
+| Artifact layout | `artifacts/README.md` |
 | Reproduce | `make reproduce DATA=/absolute/path/to/nba-win-probability-data.csv` |
 
 ## Objective
@@ -25,12 +26,12 @@ March 31 snapshot**.
 
 Pre-March expanding-window selection chooses among:
 
-- **Direct L2 logistic** on `elo_diff`, `bt_logit`, `trend_diff` (63-candidate
-  compact grid over Elo \(K\), trend half-life, and logistic \(C\));
-- optional **Platt-calibrated blend challenger** (not promoted unless it wins
-  pre-March mean log loss).
+- **63 direct L2 logistic** candidates on `elo_diff`, `bt_logit`, `trend_diff`
+  (Elo \(K\) × trend half-life × logistic \(C\));
+- **nine architecture-matched Platt-calibrated blend challengers**;
+- **72 candidates total**.
 
-Dense 341k temperature/shift search and four-target March gates are removed.
+Dense ~341k temperature/shift search and four-target March gates are removed.
 
 ## Evaluation policy
 
@@ -57,6 +58,16 @@ April is the assignment’s retrospective scoring period. The executable
 selection pipeline uses zero April rows, but April had previously been viewed
 during the broader project, so I do not claim that it is a pristine untouched
 holdout.
+
+Pre-March selection on this branch is a **reconstructed governance path**, not
+historical preregistration before April was viewed.
+
+## Model comparison claim (important)
+
+The direct logistic won the declared pre-March validation process, but its
+incremental April value over a simpler Elo model remains **statistically
+unresolved**: date-block proper-score differences versus Elo are small and
+include zero (point estimate for log-loss difference can favor Elo).
 
 ## Market / production claims
 

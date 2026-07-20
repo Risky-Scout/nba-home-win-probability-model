@@ -40,7 +40,7 @@ def main() -> None:
                 "--data",
                 data,
                 "--artifact-dir",
-                str(root / "artifacts"),
+                str(root / "artifacts" / "current"),
             ]
         )
 
@@ -55,7 +55,7 @@ def main() -> None:
                 "--config-dir",
                 str(root / "configs"),
                 "--artifact-dir",
-                str(root / "artifacts"),
+                str(root / "artifacts" / "current"),
             ]
         )
 
@@ -68,11 +68,11 @@ def main() -> None:
                 "--data",
                 data,
                 "--selected-spec",
-                str(root / "artifacts" / "selected_spec_pre_march.json"),
+                str(root / "artifacts" / "current" / "selected_spec_pre_march.json"),
                 "--output-dir",
                 str(root / "outputs"),
                 "--artifact-dir",
-                str(root / "artifacts"),
+                str(root / "artifacts" / "current"),
                 "--figure-dir",
                 str(root / "figures"),
                 "--benchmarks",
@@ -89,7 +89,7 @@ def main() -> None:
                 "--root",
                 str(root),
                 "--output",
-                "artifacts/manifest.sha256",
+                "artifacts/current/manifest.sha256",
             ]
         )
 
@@ -102,6 +102,7 @@ def main() -> None:
                 str(root),
                 "--data",
                 data,
+                "--recompute",
             ]
         )
 

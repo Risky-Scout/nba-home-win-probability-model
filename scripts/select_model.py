@@ -19,7 +19,7 @@ def main() -> None:
     )
     parser.add_argument("--data", required=True)
     parser.add_argument("--config-dir", default="configs")
-    parser.add_argument("--artifact-dir", default="artifacts")
+    parser.add_argument("--artifact-dir", default="artifacts/current")
     args = parser.parse_args()
 
     config_dir = Path(args.config_dir)
@@ -51,6 +51,8 @@ def main() -> None:
         artifact_dir / "pre_march_selection_results.csv",
         index=False,
     )
+    n_direct = int((selection_table["model_type"] == "direct_logistic").sum())
+    n_blend = int((selection_table["model_type"] == "blend_platt_challenger").sum())
     proof = {
         "selection_input_rows": int(len(selection_games)),
         "selection_data_end": selection_games["game_date"].max().strftime("%Y-%m-%d"),
@@ -71,6 +73,17 @@ def main() -> None:
         "selected_architecture": selected_spec["architecture"]["name"],
         "selected_logistic_c": selected_spec.get("logistic_c"),
         "selection_rule": selected_spec["selection_rule"],
+        "direct_logistic_candidates": n_direct,
+        "blend_challengers": n_blend,
+        "total_candidates": int(len(selection_table)),
+        "search_budget_statement": (
+            "63 direct-logistic candidates plus nine architecture-matched "
+            "blend challengers, for 72 candidates total."
+        ),
+        "governance_note": (
+            "Reconstructed pre-March governance path on the remediation branch; "
+            "not claimed as historical preregistration before April was viewed."
+        ),
         "original_submission_tag": "v1-original-submission",
     }
     (artifact_dir / "pre_march_selection_proof.json").write_text(

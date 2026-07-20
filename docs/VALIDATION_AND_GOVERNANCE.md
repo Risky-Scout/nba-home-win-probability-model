@@ -15,7 +15,10 @@
 `run_selection` / `assert_pre_march_selection_frame` raise if any March-or-later
 row is present.
 
-Proof: `artifacts/pre_march_selection_proof.json`.
+Proof: `artifacts/current/pre_march_selection_proof.json`.
+
+This is a **reconstructed governance path** on the remediation branch. It is
+not claimed as historical preregistration before April was viewed.
 
 ## Search budget
 
@@ -23,39 +26,27 @@ Declared in `configs/architecture_candidates.json`.
 
 | Hyperparameter | Candidate values | Why it exists | Why these values |
 |---|---|---|---|
-| Elo \(K\) | 10, 20, 30 | Controls how quickly sequential Elo adapts after each game | Slow / moderate / fast adaptation; enough to detect over- or under-updating without a dense grid |
-| Trend half-life (days) | 20, 45, 90 | Exponential memory of recent margin/form | Short / medium / long form windows aligned to roughly monthly and quarterly basketball form |
-| Logistic \(C\) | 0.01, 0.03, 0.1, 0.3, 1, 3, 10 | L2 inverse-regularization for the direct three-feature logistic | Log-spaced strengths covering strong shrinkage through near-MLE |
+| Elo \(K\) | 10, 20, 30 | Sequential Elo adaptation speed | Slow / moderate / fast |
+| Trend half-life (days) | 20, 45, 90 | Form memory | Short / medium / long |
+| Logistic \(C\) | 0.01, 0.03, 0.1, 0.3, 1, 3, 10 | L2 inverse-regularization | Log-spaced shrinkage |
 
-That is \(3 \times 3 \times 7 = 63\) direct-logistic specifications.
+Direct logistics: \(3 \times 3 \times 7 = 63\).
 
-An optional **Platt-calibrated blend challenger** may be evaluated per feature
-architecture. It is retained for comparison with the original submission and
-is promoted only when it wins pre-March mean validation log loss.
+Plus **one Platt-calibrated blend challenger per feature architecture**
+(\(3 \times 3 = 9\)).
+
+**Total: 63 direct-logistic candidates plus nine architecture-matched blend
+challengers, for 72 candidates total.**
 
 ### Why the dense temperature/shift grid was removed
 
-For \(T > 0\),
+For \(T > 0\), \(p=\sigma(z/T+b)\) is strictly monotonic in \(z\). Changing
+temperature or shift cannot change AUC/ranking and does not justify treating
+hundreds of thousands of \((T,b)\) pairs as distinct ranking models.
 
-\[
-p=\sigma(z/T+b)
-\]
-
-is strictly monotonic in the latent score \(z\). Changing temperature or shift
-therefore:
-
-- cannot change AUC / ranking;
-- only moves calibration and the 0.50 accuracy threshold;
-- does not justify treating hundreds of thousands of \((T,b)\) pairs as distinct
-  ranking models against a few hundred games.
-
-Calibration is estimated with logistic (Platt) calibration,
-
-\[
-\operatorname{logit}(p_{\mathrm{cal}})=\alpha+\gamma\operatorname{logit}(p_{\mathrm{raw}}),
-\]
-
-rather than a brute-force temperature-shift search.
+Blend-challenger Platt calibration is fit on **training** predictions and
+labels only, then applied to validation. Validation labels are not used to fit
+Platt during fold scoring.
 
 ## Selection objective
 
@@ -67,7 +58,7 @@ rather than a brute-force temperature-shift search.
 ## Benchmarks
 
 `configs/benchmarks.json` values are retrospective references only.
-Provenance: `docs/BENCHMARK_PROVENANCE.md`. They do not determine selection.
+Provenance: `docs/BENCHMARK_PROVENANCE.md`.
 
 ## April exposure
 
@@ -76,28 +67,30 @@ selection pipeline uses zero April rows, but April had previously been viewed
 during the broader project, so I do not claim that it is a pristine untouched
 holdout.
 
-For future evidence, freeze the model under a Git tag and score genuinely
-unseen future games without modification.
-
 ## Uncertainty
 
-Primary uncertainty artifact: paired **date-block** bootstrap on the frozen
-April predictions (`artifacts/date_block_bootstrap_*.`).
+Primary uncertainty artifact: paired **date-block** bootstrap on frozen April
+predictions (`artifacts/current/date_block_bootstrap_*.`).
 
-- Games are grouped by date; dates are sampled with replacement.
-- Metrics and calibration intercept/slope are recomputed on each replicate.
-- Paired differences versus Elo and rank-component probabilities are reported.
-- Intervals **condition on the locked selected specification**; model selection
-  is not re-run inside each bootstrap sample (stated explicitly when time
-  precludes nested selection).
+**Caveat:** intervals condition on the locked selected specification. Model
+selection is **not** re-run inside each bootstrap sample. These are evaluation
+intervals for the locked model, not fully selection-adjusted confidence
+intervals.
+
+Paired differences versus Elo and rank-component baselines are reported. The
+correct claim is:
+
+> The direct model won the declared pre-March validation process, but its
+> incremental April value over Elo remains statistically unresolved.
 
 ## Calibration diagnostics
 
-`artifacts/calibration_diagnostics.json` reports intercept \(\alpha\), slope
-\(\gamma\), ECE, and probability range. Extreme-bin audit:
-`artifacts/extreme_probability_audit.csv`.
+`artifacts/current/calibration_diagnostics.json` reports intercept \(\alpha\),
+slope \(\gamma\), ECE, and probability range. Extreme-bin audit:
+`artifacts/current/extreme_probability_audit.csv`.
 
-April is not used to recalibrate.
+Present these as diagnostics. Frozen-April ECE ≈ 0.113 and slope ≈ 1.44 do
+**not** mean calibration has been solved. April is not used to recalibrate.
 
 ## Production claim
 

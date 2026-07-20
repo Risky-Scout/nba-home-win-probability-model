@@ -22,17 +22,17 @@ def main() -> None:
     parser.add_argument("--data", required=True)
     parser.add_argument(
         "--selected-spec",
-        default="artifacts/selected_spec_pre_march.json",
+        default="artifacts/current/selected_spec_pre_march.json",
     )
     parser.add_argument("--output-dir", default="outputs")
-    parser.add_argument("--artifact-dir", default="artifacts")
+    parser.add_argument("--artifact-dir", default="artifacts/current")
     parser.add_argument("--figure-dir", default="figures")
     parser.add_argument("--benchmarks", default="configs/benchmarks.json")
     args = parser.parse_args()
 
     selected_path = Path(args.selected_spec)
     if not selected_path.exists():
-        selected_path = Path("artifacts/selected_spec.json")
+        selected_path = Path("artifacts/current/selected_spec.json")
     selected_spec = json.loads(selected_path.read_text())
     games = load_games(args.data)
 

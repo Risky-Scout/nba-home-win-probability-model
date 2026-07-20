@@ -10,5 +10,10 @@
   "selected_architecture": "k10_hl20",
   "selected_logistic_c": 0.1,
   "selection_rule": "Minimize mean January/February validation log loss; tie-break by mean Brier, then AUC, accuracy, model type, architecture name. External benchmark values do not gate selection.",
+  "direct_logistic_candidates": 63,
+  "blend_challengers": 9,
+  "total_candidates": 72,
+  "search_budget_statement": "63 direct-logistic candidates plus nine architecture-matched blend challengers, for 72 candidates total.",
+  "governance_note": "Reconstructed pre-March governance path on the remediation branch; not claimed as historical preregistration before April was viewed.",
   "original_submission_tag": "v1-original-submission"
 }

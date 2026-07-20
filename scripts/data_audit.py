@@ -13,7 +13,7 @@ from nba_wp.data import audit_games, load_games
 def main() -> None:
     parser = argparse.ArgumentParser(description="Audit the NBA assignment dataset.")
     parser.add_argument("--data", required=True)
-    parser.add_argument("--artifact-dir", default="artifacts")
+    parser.add_argument("--artifact-dir", default="artifacts/current")
     args = parser.parse_args()
 
     artifact_dir = Path(args.artifact_dir)

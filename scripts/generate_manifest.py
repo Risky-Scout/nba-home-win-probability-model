@@ -20,7 +20,7 @@ def sha256(path: Path) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", default=".")
-    parser.add_argument("--output", default="artifacts/manifest.sha256")
+    parser.add_argument("--output", default="artifacts/current/manifest.sha256")
     args = parser.parse_args()
 
     root = Path(args.root).resolve()

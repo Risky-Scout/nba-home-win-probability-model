@@ -4,12 +4,16 @@
     "trend_half_life_days": [20.0, 45.0, 90.0],
     "logistic_c": [0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0],
     "direct_logistic_candidates": 63,
+    "feature_architectures": 9,
+    "blend_challengers": 9,
+    "total_candidates": 72,
     "blend_challenger_per_feature_arch": 1,
     "rationale": {
       "elo_k": "Covers slow, moderate, and fast sequential rating adaptation.",
       "trend_half_life_days": "Covers short, medium, and long form memory.",
       "logistic_c": "Log-spaced L2 strength for the direct three-feature logistic.",
-      "calibration": "Platt logistic calibration fitted on validation folds replaces dense temperature/shift search."
+      "calibration": "Platt logistic calibration fitted on training predictions replaces dense temperature/shift search.",
+      "search_size": "3 Elo K × 3 half-lives × 7 C = 63 direct logistics; plus one Platt-calibrated blend challenger per feature architecture (9) = 72 candidates total."
     }
   },
   "feature_defaults": {

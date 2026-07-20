@@ -35,6 +35,9 @@ Model selection on the audit-remediation branch:
 
 ## March accuracy / AUC reporting
 
-Even as reference comparisons, March accuracy at the displayed precision can
-be an effective tie (186/239 ≈ 77.8243% vs a rounded 77.82%). Tiny AUC
-differences at the 1e-7 scale are not treated as meaningful wins.
+Even as reference comparisons, March accuracy at displayed precision can be an
+effective tie (for example a rounded 77.82% vs the same integer correct-game
+count). Tiny AUC differences are not treated as meaningful wins.
+
+On the remediated path, report the locked March exact count from
+`artifacts/current/final_metrics.json` (182/239 after pre-March selection).

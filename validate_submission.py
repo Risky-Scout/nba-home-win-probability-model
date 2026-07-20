@@ -1,8 +1,8 @@
-
 from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -26,6 +26,17 @@ def compare_metrics(
             )
 
 
+def _git_commit(root: Path) -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            text=True,
+        ).strip()
+    except Exception:
+        return "unknown"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Validate source data, metrics, predictions, and selection provenance."
@@ -40,6 +51,7 @@ def main() -> None:
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
+    artifact_dir = root / "artifacts" / "current"
     games = load_games(args.data)
     audit = audit_games(games, args.data)
     if audit["row_count"] != 1230:
@@ -47,14 +59,14 @@ def main() -> None:
     if audit["pregame_record_reconciliation"]["mismatch_count"] != 0:
         raise AssertionError("Pregame record reconciliation failed.")
 
-    selected_path = root / "artifacts" / "selected_spec_pre_march.json"
+    selected_path = artifact_dir / "selected_spec_pre_march.json"
     if not selected_path.exists():
-        selected_path = root / "artifacts" / "selected_spec.json"
+        selected_path = artifact_dir / "selected_spec.json"
     selected = json.loads(selected_path.read_text())
 
-    proof_path = root / "artifacts" / "pre_march_selection_proof.json"
+    proof_path = artifact_dir / "pre_march_selection_proof.json"
     if not proof_path.exists():
-        proof_path = root / "artifacts" / "selection_proof.json"
+        proof_path = artifact_dir / "selection_proof.json"
     proof = json.loads(proof_path.read_text())
 
     if proof.get("april_rows_used_in_selection", proof.get("april_rows_loaded", 1)) != 0:
@@ -64,7 +76,7 @@ def main() -> None:
     if selected.get("selection_data_end", selected.get("selection_data_max_date")) > "2026-02-28":
         raise AssertionError("Selection cutoff must end on or before 2026-02-28.")
 
-    final_metrics = json.loads((root / "artifacts" / "final_metrics.json").read_text())
+    final_metrics = json.loads((artifact_dir / "final_metrics.json").read_text())
 
     # Primary April assignment result is the frozen snapshot.
     frozen_april = pd.read_csv(
@@ -95,6 +107,7 @@ def main() -> None:
     )
     compare_metrics(final_metrics["locked_march_test"]["metrics"], observed_march)
 
+    recompute_max_abs_diff = None
     if args.recompute:
         with tempfile.TemporaryDirectory() as temp:
             temp_root = Path(temp)
@@ -112,6 +125,11 @@ def main() -> None:
             ).sort_values("game_id")
             if saved["game_id"].tolist() != fresh["game_id"].tolist():
                 raise AssertionError("Recomputed frozen April game_id mismatch.")
+            diffs = (
+                saved["home_win_probability"].to_numpy(dtype=float)
+                - fresh["home_win_probability"].to_numpy(dtype=float)
+            )
+            recompute_max_abs_diff = float(np.max(np.abs(diffs)))
             if not np.allclose(
                 saved["home_win_probability"],
                 fresh["home_win_probability"],
@@ -124,8 +142,10 @@ def main() -> None:
                 observed_frozen,
             )
 
+    git_commit = _git_commit(root)
     report = {
         "status": "PASS",
+        "git_commit": git_commit,
         "data_rows": audit["row_count"],
         "selection_data_end": selected.get(
             "selection_data_end", selected.get("selection_data_max_date")
@@ -138,12 +158,17 @@ def main() -> None:
         "april_predictions_frozen_primary": len(frozen_april),
         "primary_april_policy": "frozen_snapshot",
         "recompute_checked": bool(args.recompute),
+        "recompute_max_abs_probability_diff": recompute_max_abs_diff,
+        "artifact_dir": "artifacts/current",
         "original_submission_tag": "v1-original-submission",
+        "governance_note": (
+            "Pre-March selection is a reconstructed governance path on the "
+            "remediation branch; it is not claimed as historical preregistration."
+        ),
     }
     print(json.dumps(report, indent=2))
-    (root / "artifacts" / "validation_report.json").write_text(
-        json.dumps(report, indent=2)
-    )
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    (artifact_dir / "validation_report.json").write_text(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":

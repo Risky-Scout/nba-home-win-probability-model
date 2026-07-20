@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "git_commit": "3ef1941174a87ce9356f8c946e3ebd951c2bcff2",
+  "data_rows": 1230,
+  "selection_data_end": "2026-02-28",
+  "march_rows_used_in_selection": 0,
+  "april_rows_used_in_selection": 0,
+  "march_predictions": 239,
+  "april_predictions_frozen_primary": 96,
+  "primary_april_policy": "frozen_snapshot",
+  "recompute_checked": true,
+  "recompute_max_abs_probability_diff": 0.0,
+  "artifact_dir": "artifacts/current",
+  "original_submission_tag": "v1-original-submission",
+  "governance_note": "Pre-March selection is a reconstructed governance path on the remediation branch; it is not claimed as historical preregistration."
+}

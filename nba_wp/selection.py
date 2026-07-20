@@ -173,11 +173,8 @@ def run_selection(
                     models = fit_base_models(train, architecture)
                     elo_p, rank_p = component_probabilities(models, validation)
                     raw = raw_blend_probability(elo_p, rank_p, elo_weight)
-                    platt = fit_platt_calibration(
-                        raw,
-                        validation["home_win"].to_numpy(dtype=int),
-                    )
-                    # Fit Platt on train predictions to avoid using val labels twice.
+                    # Platt is fit only on training predictions/labels, then
+                    # applied to validation. Do not fit on validation labels.
                     elo_tr, rank_tr = component_probabilities(models, train)
                     raw_tr = raw_blend_probability(elo_tr, rank_tr, elo_weight)
                     platt = fit_platt_calibration(

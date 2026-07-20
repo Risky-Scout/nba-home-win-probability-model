@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -12,9 +11,9 @@ from nba_wp.model import evaluate
 
 
 def test_selection_proof_excludes_march_and_april() -> None:
-    path = Path("artifacts/pre_march_selection_proof.json")
+    path = Path("artifacts/current/pre_march_selection_proof.json")
     if not path.exists():
-        path = Path("artifacts/selection_proof.json")
+        path = Path("artifacts/current/selection_proof.json")
     if not path.exists():
         pytest.skip("Selection artifacts not generated yet.")
     proof = json.loads(path.read_text())
@@ -24,7 +23,7 @@ def test_selection_proof_excludes_march_and_april() -> None:
 
 
 def test_saved_metrics_recompute_from_predictions() -> None:
-    metrics_path = Path("artifacts/final_metrics.json")
+    metrics_path = Path("artifacts/current/final_metrics.json")
     frozen_path = Path("outputs/april_predictions_frozen_snapshot.csv")
     march_path = Path("outputs/march_predictions.csv")
     if not (metrics_path.exists() and frozen_path.exists() and march_path.exists()):
