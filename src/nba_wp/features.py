@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from collections import defaultdict
@@ -128,6 +127,17 @@ def _team_state(
     }
 
 
+def _winner_rating_difference(
+    home_rating: float,
+    away_rating: float,
+    home_win: int,
+) -> float:
+    """Return winner rating minus loser rating."""
+    if home_win == 1:
+        return home_rating - away_rating
+    return away_rating - home_rating
+
+
 def _elo_multiplier(
     margin: float,
     rating_difference_without_hfa: float,
@@ -182,19 +192,11 @@ def build_features(
         for row in day.itertuples(index=False):
             home = str(row.home)
             away = str(row.away)
-            home_state = _team_state(
-                home, date, histories, schedule_dates, architecture
-            )
-            away_state = _team_state(
-                away, date, histories, schedule_dates, architecture
-            )
+            home_state = _team_state(home, date, histories, schedule_dates, architecture)
+            away_state = _team_state(away, date, histories, schedule_dates, architecture)
 
-            raw_elo_difference = (
-                ratings[home] - ratings[away] + architecture.elo_hfa
-            )
-            elo_probability = 1.0 / (
-                1.0 + 10.0 ** (-raw_elo_difference / 400.0)
-            )
+            raw_elo_difference = ratings[home] - ratings[away] + architecture.elo_hfa
+            elo_probability = 1.0 / (1.0 + 10.0 ** (-raw_elo_difference / 400.0))
 
             if cached_bt is None:
                 bt_logit = 0.0
@@ -221,44 +223,33 @@ def build_features(
                     "elo_probability_raw": elo_probability,
                     "bt_logit": bt_logit,
                     "trend_diff": home_state["trend"] - away_state["trend"],
-                    "record_logit_diff": (
-                        home_state["record_logit"] - away_state["record_logit"]
-                    ),
+                    "record_logit_diff": (home_state["record_logit"] - away_state["record_logit"]),
                     "cumulative_margin_diff": (
-                        home_state["cumulative_margin"]
-                        - away_state["cumulative_margin"]
+                        home_state["cumulative_margin"] - away_state["cumulative_margin"]
                     ),
                     "recent_margin_diff": (
-                        home_state["recent_margin"]
-                        - away_state["recent_margin"]
+                        home_state["recent_margin"] - away_state["recent_margin"]
                     ),
                     "turnover_advantage_diff": (
-                        home_state["turnover_advantage"]
-                        - away_state["turnover_advantage"]
+                        home_state["turnover_advantage"] - away_state["turnover_advantage"]
                     ),
                     "rebound_advantage_diff": (
-                        home_state["rebound_advantage"]
-                        - away_state["rebound_advantage"]
+                        home_state["rebound_advantage"] - away_state["rebound_advantage"]
                     ),
                     "foul_advantage_diff": (
-                        home_state["foul_advantage"]
-                        - away_state["foul_advantage"]
+                        home_state["foul_advantage"] - away_state["foul_advantage"]
                     ),
-                    "rest_advantage": (
-                        home_state["rest_days"] - away_state["rest_days"]
-                    ),
+                    "rest_advantage": (home_state["rest_days"] - away_state["rest_days"]),
                     "home_rest_days": home_state["rest_days"],
                     "away_rest_days": away_state["rest_days"],
                     "back_to_back_advantage": (
                         away_state["back_to_back"] - home_state["back_to_back"]
                     ),
                     "games_in_4_days_advantage": (
-                        away_state["games_in_4_days"]
-                        - home_state["games_in_4_days"]
+                        away_state["games_in_4_days"] - home_state["games_in_4_days"]
                     ),
                     "games_in_6_days_advantage": (
-                        away_state["games_in_6_days"]
-                        - home_state["games_in_6_days"]
+                        away_state["games_in_6_days"] - home_state["games_in_6_days"]
                     ),
                     "home_games_before": home_state["games"],
                     "away_games_before": away_state["games"],
@@ -280,27 +271,18 @@ def build_features(
             away = str(row.away)
             margin = float(row.home_points - row.away_points)
             expected_home = 1.0 / (
-                1.0
-                + 10.0
-                ** (
-                    -(
-                        ratings[home]
-                        - ratings[away]
-                        + architecture.elo_hfa
-                    )
-                    / 400.0
-                )
+                1.0 + 10.0 ** (-(ratings[home] - ratings[away] + architecture.elo_hfa) / 400.0)
             )
             multiplier = _elo_multiplier(
                 margin,
-                ratings[home] - ratings[away],
+                _winner_rating_difference(
+                    ratings[home],
+                    ratings[away],
+                    int(row.home_win),
+                ),
                 architecture.elo_mov,
             )
-            delta = (
-                architecture.elo_k
-                * multiplier
-                * (int(row.home_win) - expected_home)
-            )
+            delta = architecture.elo_k * multiplier * (int(row.home_win) - expected_home)
             ratings[home] += delta
             ratings[away] -= delta
 
@@ -309,15 +291,9 @@ def build_features(
                     "date": date,
                     "win": int(row.home_win),
                     "margin": margin,
-                    "turnover_advantage": float(
-                        row.away_turnovers - row.home_turnovers
-                    ),
-                    "rebound_advantage": float(
-                        row.home_rebounds - row.away_rebounds
-                    ),
-                    "foul_advantage": float(
-                        row.away_fouls - row.home_fouls
-                    ),
+                    "turnover_advantage": float(row.away_turnovers - row.home_turnovers),
+                    "rebound_advantage": float(row.home_rebounds - row.away_rebounds),
+                    "foul_advantage": float(row.away_fouls - row.home_fouls),
                 }
             )
             histories[away].append(
@@ -325,15 +301,9 @@ def build_features(
                     "date": date,
                     "win": 1 - int(row.home_win),
                     "margin": -margin,
-                    "turnover_advantage": float(
-                        row.home_turnovers - row.away_turnovers
-                    ),
-                    "rebound_advantage": float(
-                        row.away_rebounds - row.home_rebounds
-                    ),
-                    "foul_advantage": float(
-                        row.home_fouls - row.away_fouls
-                    ),
+                    "turnover_advantage": float(row.home_turnovers - row.away_turnovers),
+                    "rebound_advantage": float(row.away_rebounds - row.home_rebounds),
+                    "foul_advantage": float(row.home_fouls - row.away_fouls),
                 }
             )
             prior_games.append(

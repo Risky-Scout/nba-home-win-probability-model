@@ -11,7 +11,7 @@
   "selected_features": [
     "elo_diff"
   ],
-  "selected_logistic_c": 0.03,
+  "selected_logistic_c": 0.1,
   "direct_logistic_candidates": 672,
   "blend_challengers": 0,
   "total_candidates": 672,

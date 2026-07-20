@@ -1,3 +1,3 @@
 component,feature,standardized_coefficient,training_mean,training_scale,raw_unit_coefficient
-direct_logistic,elo_diff,0.7831132953658099,0.20373044428518872,0.22515461614965201,3.4781134349264384
-direct_logistic,(intercept),0.2319445115543841,,,
+direct_logistic,elo_diff,0.8809848452542451,0.2035149280399285,0.2130263163718006,4.13556813195154
+direct_logistic,(intercept),0.2381048952415767,,,

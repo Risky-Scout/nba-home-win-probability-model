@@ -13,7 +13,7 @@
       "elo_model_c": 1.0,
       "rank_model_c": 0.1
     },
-    "logistic_c": 0.03,
+    "logistic_c": 0.1,
     "calibration": {
       "elo_weight": 0.0,
       "temperature": 1.0,
@@ -26,13 +26,13 @@
     "information_policy": "frozen_snapshot",
     "cutoff": "2026-03-31",
     "metrics": {
-      "log_loss": 0.4745967416925961,
-      "brier": 0.15304918700479656,
-      "auc": 0.8654970760233919,
+      "log_loss": 0.466330930922714,
+      "brier": 0.15042958729683248,
+      "auc": 0.8650472334682862,
       "accuracy": 0.78125,
       "games": 96,
       "home_win_rate": 0.59375,
-      "mean_probability": 0.5496575266585649,
+      "mean_probability": 0.5487205100626437,
       "correct_games": 75
     },
     "note": "Primary assignment result: April games scored from the March 31 performance-state snapshot."
@@ -40,59 +40,59 @@
   "locked_march_test": {
     "information_policy": "sequential_daily",
     "metrics": {
-      "log_loss": 0.5134605553573361,
-      "brier": 0.16837279109507486,
-      "auc": 0.8241228070175439,
-      "accuracy": 0.7698744769874477,
+      "log_loss": 0.5069760756340586,
+      "brier": 0.16621279706455927,
+      "auc": 0.8241959064327484,
+      "accuracy": 0.7740585774058577,
       "games": 239,
       "home_win_rate": 0.602510460251046,
-      "mean_probability": 0.5479631263712662,
-      "correct_games": 184
+      "mean_probability": 0.5494650944397667,
+      "correct_games": 185
     },
-    "correct_games": 184,
+    "correct_games": 185,
     "note": "March is a locked pre-final test after pre-March selection. It is not used for architecture or hyperparameter selection."
   },
   "sequential_daily": {
     "march": {
-      "log_loss": 0.5134605553573361,
-      "brier": 0.16837279109507486,
-      "auc": 0.8241228070175439,
-      "accuracy": 0.7698744769874477,
+      "log_loss": 0.5069760756340586,
+      "brier": 0.16621279706455927,
+      "auc": 0.8241959064327484,
+      "accuracy": 0.7740585774058577,
       "games": 239,
       "home_win_rate": 0.602510460251046,
-      "mean_probability": 0.5479631263712662,
-      "correct_games": 184
+      "mean_probability": 0.5494650944397667,
+      "correct_games": 185
     },
     "april": {
-      "log_loss": 0.47280870372465156,
-      "brier": 0.15252191971645337,
-      "auc": 0.8614484930274403,
+      "log_loss": 0.46548518389315224,
+      "brier": 0.15021997648346908,
+      "auc": 0.8636977058029689,
       "accuracy": 0.7916666666666666,
       "games": 96,
       "home_win_rate": 0.59375,
-      "mean_probability": 0.5528618352020515,
+      "mean_probability": 0.5519836566929953,
       "correct_games": 76
     }
   },
   "frozen_snapshot": {
     "march": {
-      "log_loss": 0.5248550110102377,
-      "brier": 0.17277659818417102,
-      "auc": 0.8209795321637426,
-      "accuracy": 0.7531380753138075,
+      "log_loss": 0.5173392581644687,
+      "brier": 0.17024293556381667,
+      "auc": 0.8217836257309941,
+      "accuracy": 0.7573221757322176,
       "games": 239,
       "home_win_rate": 0.602510460251046,
-      "mean_probability": 0.5456861640190198,
-      "correct_games": 180
+      "mean_probability": 0.5470706797673431,
+      "correct_games": 181
     },
     "april": {
-      "log_loss": 0.4745967416925961,
-      "brier": 0.15304918700479656,
-      "auc": 0.8654970760233919,
+      "log_loss": 0.466330930922714,
+      "brier": 0.15042958729683248,
+      "auc": 0.8650472334682862,
       "accuracy": 0.78125,
       "games": 96,
       "home_win_rate": 0.59375,
-      "mean_probability": 0.5496575266585649,
+      "mean_probability": 0.5487205100626437,
       "correct_games": 75
     }
   },

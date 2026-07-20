@@ -34,7 +34,7 @@
   "features": [
     "elo_diff"
   ],
-  "logistic_c": 0.03,
+  "logistic_c": 0.1,
   "calibration": {
     "elo_weight": 0.0,
     "temperature": 1.0,
@@ -43,10 +43,10 @@
   },
   "platt_calibration": null,
   "pre_march_validation_metrics": {
-    "prequential_log_loss": 0.6308892477853701,
-    "prequential_brier": 0.21962128964622138,
-    "prequential_auc": 0.7073348771647201,
-    "prequential_accuracy": 0.6666666666666666,
+    "prequential_log_loss": 0.6312413674483677,
+    "prequential_brier": 0.21946195640204522,
+    "prequential_auc": 0.70569875151027,
+    "prequential_accuracy": 0.6716791979949874,
     "prequential_games": 399
   },
   "search_budget": {

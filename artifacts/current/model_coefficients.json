@@ -3,15 +3,15 @@
     {
       "component": "direct_logistic",
       "feature": "elo_diff",
-      "standardized_coefficient": 0.7831132953658099,
-      "training_mean": 0.20373044428518872,
-      "training_scale": 0.22515461614965201,
-      "raw_unit_coefficient": 3.4781134349264384
+      "standardized_coefficient": 0.8809848452542451,
+      "training_mean": 0.2035149280399285,
+      "training_scale": 0.2130263163718006,
+      "raw_unit_coefficient": 4.13556813195154
     },
     {
       "component": "direct_logistic",
       "feature": "(intercept)",
-      "standardized_coefficient": 0.2319445115543841,
+      "standardized_coefficient": 0.2381048952415767,
       "training_mean": null,
       "training_scale": null,
       "raw_unit_coefficient": null
