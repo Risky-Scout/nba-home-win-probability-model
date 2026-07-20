@@ -1,55 +1,41 @@
-# Two-minute summary
+# Two-minute summary (audit remediation)
+
+## Preservation
+
+Original submission tag: `v1-original-submission`.  
+This branch remediates statistical governance without hiding that history.
 
 ## Decision
 
-Use a calibrated log-odds blend of:
+Select a **direct L2 logistic** (or blend challenger only if it wins) on
+`elo_diff`, `bt_logit`, and `trend_diff` using **pre-March expanding-window
+validation** (January and February folds). Primary metric: mean validation
+log loss. External benchmark floats do **not** gate selection.
 
-- a margin-of-victory Elo component;
-- a Bradley-Terry team-strength component;
-- a recent point-margin trend correction.
+## Leakage and cutoffs
 
-The model remains fast, probabilistic, and coefficient-level interpretable.
+- Feature-before-update; same-day batching retained.
+- Selection input ends **2026-02-28**. March and April rows are forbidden.
+- March is a **locked test** after the specification is frozen.
+- **Primary April result** is the **frozen March 31** snapshot.
+- Sequential April scoring is operational sensitivity only.
 
-## Leakage control
+## Claims discipline
 
-A game row is processed in this order:
+- April is the assignment’s retrospective scoring period. The executable
+  selection pipeline uses zero April rows, but April had previously been
+  viewed during the broader project, so I do not claim that it is a pristine
+  untouched holdout.
+- Outputs are model-estimated fair probabilities / zero-margin fair odds.
+- No sportsbook alpha or profitability claim.
+- Readiness claim: **prototype / research**, not deployable production pricing.
 
-1. read both teams' states;
-2. calculate and store the pregame feature row;
-3. finish all games on that date;
-4. observe outcomes and update state.
+## Where to look
 
-Current-game points, turnovers, fouls, and rebounds cannot enter their own
-prediction. Model selection receives only rows dated no later than March 31.
-
-## Selection
-
-Five declared architectures are evaluated. For each architecture, a
-three-parameter calibration grid is searched on March. Candidates must exceed
-all four March numerical targets. The selected specification is generated in
-`artifacts/selected_spec.json`.
-
-## Operational results
-
-| Period | Log loss | Brier | AUC | Accuracy |
-|---|---:|---:|---:|---:|
-| March | 0.487569 | 0.156834 | 0.831798246 | 77.8243% |
-| April | 0.463375 | 0.145639 | 0.850202 | 83.3333% |
-
-March exceeds all four rounded targets. April exceeds log loss, Brier, and
-accuracy but misses the AUC target.
-
-## Interview position
-
-The strongest claim is not "every target was beaten." It is:
-
-> The complete evidence chain is reproducible, April is excluded from
-> selection code, probability quality is strong, and the AUC miss is reported
-> without post-hoc retuning.
-
-Open next:
-
-1. `artifacts/selection_proof.json`
-2. `artifacts/feature_group_ablation.csv`
-3. `outputs/april_predictions.csv`
-4. `docs/INTERVIEW_WALKTHROUGH.md`
+1. `docs/AUDIT_RESPONSE.md`
+2. `artifacts/pre_march_selection_proof.json`
+3. `artifacts/selected_spec_pre_march.json`
+4. `outputs/april_predictions_frozen_snapshot.csv`
+5. `artifacts/date_block_bootstrap_summary.json`
+6. `docs/BENCHMARK_PROVENANCE.md`
+7. `docs/MARKET_PRICING_LIMITATIONS.md`

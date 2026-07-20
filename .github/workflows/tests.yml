@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -17,5 +17,14 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -r requirements-dev.txt
-      - run: python -m pytest
+      - name: Unit and synthetic end-to-end tests
+        run: python -m pytest -q --cov=nba_wp --cov-report=term-missing --cov-fail-under=70
       - run: python -m compileall nba_wp scripts run_submission.py validate_submission.py
+      - name: Ruff
+        run: |
+          python -m pip install ruff==0.11.2
+          ruff check nba_wp scripts tests --select E9,F63,F7,F82,F401,F821
+      - name: Pyright (advisory type check)
+        run: |
+          python -m pip install pyright==1.1.398
+          pyright nba_wp --level error || true

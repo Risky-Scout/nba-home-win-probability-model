@@ -6,3 +6,7 @@ __pycache__/
 data/*.csv
 !data/README.md
 artifacts/*.tmp
+
+.coverage
+.pytest_cache/
+htmlcov/

@@ -1,0 +1,9 @@
+{
+  "features": [
+    "elo_diff",
+    "bt_logit",
+    "trend_diff"
+  ],
+  "target": "home_win",
+  "model_type": "direct_logistic"
+}

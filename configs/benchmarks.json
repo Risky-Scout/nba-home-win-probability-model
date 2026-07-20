@@ -1,4 +1,7 @@
 {
+  "status": "retrospective_reference_only",
+  "role": "Context comparison values. They are NOT official assignment acceptance criteria and do NOT gate model selection.",
+  "provenance": "See docs/BENCHMARK_PROVENANCE.md",
   "march": {
     "log_loss": 0.509645,
     "brier": 0.167618,

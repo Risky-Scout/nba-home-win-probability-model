@@ -47,36 +47,53 @@ def main() -> None:
     if audit["pregame_record_reconciliation"]["mismatch_count"] != 0:
         raise AssertionError("Pregame record reconciliation failed.")
 
-    selected = json.loads((root / "artifacts" / "selected_spec.json").read_text())
-    proof = json.loads((root / "artifacts" / "selection_proof.json").read_text())
-    if proof["april_rows_loaded"] != 0:
-        raise AssertionError("Model selection loaded April rows.")
-    if selected["selection_data_max_date"] != "2026-03-31":
-        raise AssertionError("Unexpected selection cutoff.")
+    selected_path = root / "artifacts" / "selected_spec_pre_march.json"
+    if not selected_path.exists():
+        selected_path = root / "artifacts" / "selected_spec.json"
+    selected = json.loads(selected_path.read_text())
 
-    final_metrics = json.loads(
-        (root / "artifacts" / "final_metrics.json").read_text()
+    proof_path = root / "artifacts" / "pre_march_selection_proof.json"
+    if not proof_path.exists():
+        proof_path = root / "artifacts" / "selection_proof.json"
+    proof = json.loads(proof_path.read_text())
+
+    if proof.get("april_rows_used_in_selection", proof.get("april_rows_loaded", 1)) != 0:
+        raise AssertionError("Model selection loaded April rows.")
+    if proof.get("march_rows_used_in_selection", 1) != 0:
+        raise AssertionError("Model selection loaded March rows.")
+    if selected.get("selection_data_end", selected.get("selection_data_max_date")) > "2026-02-28":
+        raise AssertionError("Selection cutoff must end on or before 2026-02-28.")
+
+    final_metrics = json.loads((root / "artifacts" / "final_metrics.json").read_text())
+
+    # Primary April assignment result is the frozen snapshot.
+    frozen_april = pd.read_csv(
+        root / "outputs" / "april_predictions_frozen_snapshot.csv",
+        dtype={"game_id": "string"},
     )
-    for period in ["march", "april"]:
-        predictions = pd.read_csv(
-            root / "outputs" / f"{period}_predictions.csv",
-            dtype={"game_id": "string"},
+    if len(frozen_april) != 96:
+        raise AssertionError(
+            f"Frozen April: expected 96 predictions, found {len(frozen_april)}"
         )
-        expected_count = 239 if period == "march" else 96
-        if len(predictions) != expected_count:
-            raise AssertionError(
-                f"{period}: expected {expected_count} predictions, found {len(predictions)}"
-            )
-        if not predictions["home_win_probability"].between(0, 1).all():
-            raise AssertionError(f"{period}: invalid probability.")
-        observed = evaluate(
-            predictions["home_win"],
-            predictions["home_win_probability"].to_numpy(),
-        )
-        compare_metrics(
-            final_metrics["sequential_daily"][period],
-            observed,
-        )
+    if not frozen_april["home_win_probability"].between(0, 1).all():
+        raise AssertionError("Frozen April: invalid probability.")
+    observed_frozen = evaluate(
+        frozen_april["home_win"],
+        frozen_april["home_win_probability"].to_numpy(),
+    )
+    compare_metrics(final_metrics["primary_april_result"]["metrics"], observed_frozen)
+
+    march = pd.read_csv(
+        root / "outputs" / "march_predictions.csv",
+        dtype={"game_id": "string"},
+    )
+    if len(march) != 239:
+        raise AssertionError(f"March: expected 239 predictions, found {len(march)}")
+    observed_march = evaluate(
+        march["home_win"],
+        march["home_win_probability"].to_numpy(),
+    )
+    compare_metrics(final_metrics["locked_march_test"]["metrics"], observed_march)
 
     if args.recompute:
         with tempfile.TemporaryDirectory() as temp:
@@ -88,46 +105,44 @@ def main() -> None:
                 temp_root / "artifacts",
                 temp_root / "figures",
             )
-            for period in ["march", "april"]:
-                saved = pd.read_csv(
-                    root / "outputs" / f"{period}_predictions.csv",
-                    dtype={"game_id": "string"},
-                ).sort_values("game_id")
-                fresh = pd.read_csv(
-                    temp_root / "outputs" / f"{period}_predictions.csv",
-                    dtype={"game_id": "string"},
-                ).sort_values("game_id")
-                if saved["game_id"].tolist() != fresh["game_id"].tolist():
-                    raise AssertionError(f"{period}: game IDs differ.")
-                if not np.allclose(
-                    saved["home_win_probability"],
-                    fresh["home_win_probability"],
-                    atol=5e-8,
-                    rtol=0,
-                ):
-                    raise AssertionError(f"{period}: probabilities do not reproduce.")
+            saved = frozen_april.sort_values("game_id")
+            fresh = pd.read_csv(
+                temp_root / "outputs" / "april_predictions_frozen_snapshot.csv",
+                dtype={"game_id": "string"},
+            ).sort_values("game_id")
+            if saved["game_id"].tolist() != fresh["game_id"].tolist():
+                raise AssertionError("Recomputed frozen April game_id mismatch.")
+            if not np.allclose(
+                saved["home_win_probability"],
+                fresh["home_win_probability"],
+                atol=1e-10,
+                rtol=0,
+            ):
+                raise AssertionError("Recomputed frozen April probabilities differ.")
             compare_metrics(
-                final_metrics["sequential_daily"]["march"],
-                rebuilt["sequential_daily"]["march"],
-            )
-            compare_metrics(
-                final_metrics["sequential_daily"]["april"],
-                rebuilt["sequential_daily"]["april"],
+                rebuilt["primary_april_result"]["metrics"],
+                observed_frozen,
             )
 
-    print(
-        json.dumps(
-            {
-                "status": "PASS",
-                "data_rows": audit["row_count"],
-                "selection_max_date": selected["selection_data_max_date"],
-                "april_rows_used_in_selection": proof["april_rows_loaded"],
-                "march_predictions": 239,
-                "april_predictions": 96,
-                "recompute_checked": bool(args.recompute),
-            },
-            indent=2,
-        )
+    report = {
+        "status": "PASS",
+        "data_rows": audit["row_count"],
+        "selection_data_end": selected.get(
+            "selection_data_end", selected.get("selection_data_max_date")
+        ),
+        "march_rows_used_in_selection": proof.get("march_rows_used_in_selection", 0),
+        "april_rows_used_in_selection": proof.get(
+            "april_rows_used_in_selection", proof.get("april_rows_loaded", 0)
+        ),
+        "march_predictions": len(march),
+        "april_predictions_frozen_primary": len(frozen_april),
+        "primary_april_policy": "frozen_snapshot",
+        "recompute_checked": bool(args.recompute),
+        "original_submission_tag": "v1-original-submission",
+    }
+    print(json.dumps(report, indent=2))
+    (root / "artifacts" / "validation_report.json").write_text(
+        json.dumps(report, indent=2)
     )
 
 

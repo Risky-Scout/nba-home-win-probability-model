@@ -68,7 +68,7 @@ def main() -> None:
                 "--data",
                 data,
                 "--selected-spec",
-                str(root / "artifacts" / "selected_spec.json"),
+                str(root / "artifacts" / "selected_spec_pre_march.json"),
                 "--output-dir",
                 str(root / "outputs"),
                 "--artifact-dir",

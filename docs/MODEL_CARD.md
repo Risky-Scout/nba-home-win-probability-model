@@ -1,68 +1,42 @@
 # Model card
 
+## Model
+
+Pre-March-selected probability model for NBA home-win outcomes using team-level
+Elo, Bradley-Terry, and trend features.
+
 ## Intended use
 
-Retrospective NBA home-win probability estimation for the supplied 2025-26
-team-level technical-task dataset.
+Research / interview prototype for pregame probability estimation.
 
-## Not intended for
+## Out of scope
 
-- autonomous wagering;
-- player medical or availability decisions;
-- production sportsbook pricing without risk controls;
-- seasons or leagues with unvalidated distributions.
+- Live in-play pricing
+- Customer-facing odds with overround
+- Claims of market edge or closing-line value
+- Production deployment without monitoring and market integration
 
-## Target
+## Training data
 
-Binary home win derived from final points.
+One NBA season file provided for the assignment (2025–26 in-file dates).
 
-## Inputs
+## Selection data
 
-Only leakage-safe team states derived from earlier dates:
+Games strictly before 2026-03-01.
 
-- Elo strength;
-- Bradley-Terry paired strength;
-- recent point-margin trend.
+## Evaluation
 
-Candidate record, margin, rest, turnover, rebound, and foul features are
-generated for audit and ablation but are not in the champion.
+- March: locked test
+- April frozen March 31: primary assignment result
+- April sequential: sensitivity
 
-## Training and selection
+## April status
 
-- March component fit: October-February.
-- March architecture/calibration selection: rolling one-step-ahead March.
-- April component refit: October-March.
-- April state policies: operational sequential and frozen month-start.
+April is the assignment’s retrospective scoring period. The executable
+selection pipeline uses zero April rows, but April had previously been viewed
+during the broader project, so I do not claim that it is a pristine untouched
+holdout.
 
-## Primary metrics
+## Ethical / commercial note
 
-1. log loss;
-2. Brier score.
-
-Secondary diagnostics:
-
-3. ROC AUC;
-4. accuracy at 0.5.
-
-## Performance
-
-See `artifacts/final_metrics.json`. The operational April result beats the
-stated log-loss, Brier, and accuracy targets but misses the AUC target.
-
-## Interpretability
-
-- full mathematical formulas in `docs/METHODOLOGY.md`;
-- standardized and raw-unit coefficients in
-  `artifacts/coefficient_table.csv`;
-- permutation importance in `artifacts/permutation_importance.csv`;
-- game-level component probabilities in both output files.
-
-## Monitoring plan for production
-
-- calibration slope/intercept by week;
-- log loss and Brier versus closing market;
-- probability distribution drift;
-- team-state freshness;
-- missing-player-data alerts;
-- model and data version on every price;
-- rollback to simple Elo baseline.
+Not a betting tip sheet. Not evidence of profitable wagering.

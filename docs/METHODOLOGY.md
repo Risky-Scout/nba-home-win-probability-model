@@ -1,209 +1,54 @@
-# Methodology
+# Methodology (audit remediation)
 
-## 1. Target
-
-For game \(g\),
+## Target
 
 \[
-Y_g =
-\begin{cases}
-1, & \text{home points} > \text{away points},\\
-0, & \text{otherwise}.
-\end{cases}
+Y_g = 1\{\text{home points} > \text{away points}\},\quad
+\text{deliverable } = P(Y_g=1).
 \]
 
-The submitted quantity is \(P(Y_g=1)\), not merely a binary winner.
+## Feature timing
 
-## 2. Feature timing
+For each date \(d\), features use only history strictly before \(d\). Same-date
+games are batched. Postgame box scores update future state only.
 
-For every game date \(d\), the feature engine performs a read-before-update
-operation:
+## Strength features
+
+- **Elo difference** with margin-of-victory updates.
+- **Bradley-Terry logit** from regularized +1/−1 logistic on prior games.
+- **Trend difference**: short window minus EWMA half-life form.
+
+## Champion probability model
+
+When selected by pre-March folds, the direct model is:
 
 \[
-X_g = f(\mathcal{H}_{<d}),
+P(Y=1)=\sigma(\beta_0+\beta_1\Delta\mathrm{Elo}+\beta_2\Delta\mathrm{BT}+\beta_3\Delta\mathrm{Trend}).
 \]
 
-where \(\mathcal{H}_{<d}\) contains outcomes and box scores only from dates
-strictly before \(d\). Every game on date \(d\) is assigned a feature row before
-any result on \(d\) updates state.
+This matches the algebraic span of a calibrated Elo/BT/trend blend while
+avoiding a dense temperature/shift search.
 
-This is why same-game points and other box-score outcomes can be used to update
-future team state without leaking into their own game.
+## Selection
 
-## 3. Elo component
+Expanding-window folds ending before March:
 
-Each team begins at 1,500. For home team \(h\) and away team \(a\),
+1. Train through December, validate January.
+2. Train through January, validate February.
 
-\[
-p^{Elo}_g =
-\frac{1}{
-1 + 10^{-(R_h-R_a+H)/400}
-}.
-\]
+Primary metric: mean validation log loss. Brier is secondary. AUC/accuracy are
+descriptive. External benchmark JSON values do not gate selection.
 
-The selected architecture uses \(H=75\) Elo points. After the date is complete,
+Search budget: Elo \(K\in\{10,20,30\}\), trend half-life \(\in\{20,45,90\}\),
+logistic \(C\) on a 7-point log grid (63 direct candidates). Optional blend
+challenger evaluated with Platt calibration.
 
-\[
-R_h' = R_h + K M_g (Y_g-p^{Elo}_g),
-\]
+## April scoring
 
-\[
-R_a' = R_a - K M_g (Y_g-p^{Elo}_g),
-\]
+Primary: freeze performance state at 2026-03-31.  
+Sensitivity: sequential daily updates within April.
 
-where \(K=10\) and
+## Metrics
 
-\[
-M_g =
-\log(|m_g|+1)
-\frac{2.2}{
-0.001(R_h-R_a)+2.2
-},
-\]
-
-with \(m_g\) the home point margin. The denominator is guarded in code against
-pathological future values.
-
-The raw Elo feature is
-
-\[
-x^{Elo}_g = \frac{R_h-R_a+H}{400}.
-\]
-
-An L2-logistic calibration model is fitted to historical \(x^{Elo}\).
-
-## 4. Bradley-Terry component
-
-For each date, team strengths are fitted from earlier game outcomes:
-
-\[
-P(h \text{ beats } a)
-=
-\sigma(
-\alpha + q_h-q_a
-),
-\]
-
-where \(\alpha\) is the home intercept and \(q_i\) is team \(i\)'s fitted
-strength. L2 regularization controls the 30 team coefficients. The selected
-regularization is `C = 0.15`.
-
-The model feature is the Bradley-Terry decision value:
-
-\[
-x^{BT}_g = \hat \alpha + \hat q_h-\hat q_a.
-\]
-
-## 5. Recent trend
-
-For team \(i\), define point margin \(m_{ik}\) in each prior game from the
-team's perspective. Long-form margin is exponentially weighted:
-
-\[
-L_{i,d}
-=
-\frac{
-\sum_{k<d}
-2^{-\Delta days_{kd}/45} m_{ik}
-}{
-\sum_{k<d}
-2^{-\Delta days_{kd}/45}
-}.
-\]
-
-Short-form margin is the mean over the most recent ten games:
-
-\[
-S_{i,d}
-=
-\frac{1}{n_i}
-\sum_{\text{last } \min(10,n_i)} m_{ik}.
-\]
-
-Trend is the change relative to long-form strength:
-
-\[
-T_{i,d}=S_{i,d}-L_{i,d}.
-\]
-
-The matchup feature is
-
-\[
-x^{trend}_g=T_{h,d}-T_{a,d}.
-\]
-
-A second L2-logistic model maps
-\((x^{BT}_g, x^{trend}_g)\) to a rank-component probability.
-
-## 6. Log-odds blend
-
-Let \(p_E\) and \(p_R\) be the two component probabilities. They are combined
-in log-odds space:
-
-\[
-z_g =
-w\operatorname{logit}(p_E)
-+
-(1-w)\operatorname{logit}(p_R).
-\]
-
-Final calibration is
-
-\[
-p_g =
-\sigma\left(
-\frac{z_g}{\tau}+b
-\right).
-\]
-
-March selection chose:
-
-\[
-w=0.19,\qquad
-\tau=0.59,\qquad
-b=0.33.
-\]
-
-The temperature below one sharpens the component blend. That behavior improved
-March proper scores but increases overconfidence risk; calibration plots and
-April results are therefore retained as explicit diagnostics.
-
-## 7. Metrics
-
-Log loss:
-
-\[
-LL =
--\frac{1}{N}
-\sum_g
-\left[
-Y_g\log(p_g)
-+
-(1-Y_g)\log(1-p_g)
-\right].
-\]
-
-Brier score:
-
-\[
-BS =
-\frac{1}{N}
-\sum_g
-(p_g-Y_g)^2.
-\]
-
-AUC measures ranking. Accuracy uses the fixed threshold \(p_g \ge 0.5\). Log
-loss and Brier are primary because the deliverable is a probability price.
-
-## 8. Fair odds
-
-The output also reports zero-margin decimal odds:
-
-\[
-O_{home} = \frac{1}{p_g},
-\qquad
-O_{away} = \frac{1}{1-p_g}.
-\]
-
-These are mathematical fair odds, not a production sportsbook quote. They
-contain no overround, risk adjustment, liability response, or trader override.
+Log loss primary for pricing quality; Brier secondary; AUC/accuracy descriptive.
+Fair odds \(1/p\) are zero-margin mathematical transforms, not offered prices.

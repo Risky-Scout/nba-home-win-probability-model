@@ -1,0 +1,16 @@
+{
+  "feature_generation_and_scoring_wall_seconds": 14.280740911985049,
+  "score_and_write_wall_seconds": 14.280740911985049,
+  "april_games_scored": 96,
+  "includes": [
+    "feature rebuild (sequential + frozen)",
+    "final fit",
+    "locked March and frozen April scoring",
+    "calibration diagnostics",
+    "date-block bootstrap",
+    "figure export"
+  ],
+  "note": "Wall-clock for end-to-end score_and_write on this machine. Separate model-selection timing is recorded when scripts/select_model.py is run.",
+  "peak_memory_mb": null,
+  "peak_memory_note": "Not instrumented in this prototype run."
+}

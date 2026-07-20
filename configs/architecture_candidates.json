@@ -1,59 +1,32 @@
 {
-  "architectures": [
-    {
-      "name": "balanced",
-      "elo_k": 10.0,
-      "elo_hfa": 65.0,
-      "elo_mov": "log",
-      "bt_c": 0.15,
-      "trend_half_life_days": 45.0,
-      "trend_short_games": 10,
-      "elo_model_c": 100.0,
-      "rank_model_c": 0.1
-    },
-    {
-      "name": "conservative",
-      "elo_k": 7.5,
-      "elo_hfa": 55.0,
-      "elo_mov": "log",
-      "bt_c": 0.1,
-      "trend_half_life_days": 60.0,
-      "trend_short_games": 12,
-      "elo_model_c": 10.0,
-      "rank_model_c": 0.1
-    },
-    {
-      "name": "responsive",
-      "elo_k": 15.0,
-      "elo_hfa": 65.0,
-      "elo_mov": "log",
-      "bt_c": 0.25,
-      "trend_half_life_days": 30.0,
-      "trend_short_games": 8,
-      "elo_model_c": 10.0,
-      "rank_model_c": 0.1
-    },
-    {
-      "name": "hfa_75",
-      "elo_k": 10.0,
-      "elo_hfa": 75.0,
-      "elo_mov": "log",
-      "bt_c": 0.15,
-      "trend_half_life_days": 45.0,
-      "trend_short_games": 10,
-      "elo_model_c": 100.0,
-      "rank_model_c": 0.1
-    },
-    {
-      "name": "lower_bt_shrinkage",
-      "elo_k": 10.0,
-      "elo_hfa": 65.0,
-      "elo_mov": "log",
-      "bt_c": 0.3,
-      "trend_half_life_days": 45.0,
-      "trend_short_games": 10,
-      "elo_model_c": 100.0,
-      "rank_model_c": 0.3
+  "search_budget": {
+    "elo_k": [10.0, 20.0, 30.0],
+    "trend_half_life_days": [20.0, 45.0, 90.0],
+    "logistic_c": [0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0],
+    "direct_logistic_candidates": 63,
+    "blend_challenger_per_feature_arch": 1,
+    "rationale": {
+      "elo_k": "Covers slow, moderate, and fast sequential rating adaptation.",
+      "trend_half_life_days": "Covers short, medium, and long form memory.",
+      "logistic_c": "Log-spaced L2 strength for the direct three-feature logistic.",
+      "calibration": "Platt logistic calibration fitted on validation folds replaces dense temperature/shift search."
     }
+  },
+  "feature_defaults": {
+    "elo_hfa": 65.0,
+    "elo_mov": "log",
+    "bt_c": 0.15,
+    "trend_short_games": 10,
+    "elo_model_c": 1.0,
+    "rank_model_c": 0.1
+  },
+  "blend_challenger": {
+    "enabled": true,
+    "elo_weight": 0.2,
+    "notes": "Original-style log-odds blend retained as a challenger; Platt-calibrated per fold. Not promoted unless it wins pre-March mean log loss."
+  },
+  "notes": [
+    "Dense 341k temperature/shift grids are intentionally removed.",
+    "Temperature and shift do not change ranking for T>0; they are not treated as distinct ranking models."
   ]
 }

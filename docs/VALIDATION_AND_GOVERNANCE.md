@@ -1,144 +1,104 @@
-# Validation, selection, and governance
+# Validation and governance (audit remediation)
 
 ## Chronological periods
 
 | Period | Role |
 |---|---|
-| October-February | Fit March component coefficients |
-| March | Architecture and calibration selection |
-| October-March | Refit locked component coefficients |
-| April | Final retrospective scoring period |
-
-No random train/test split is used.
+| Oct–Dec / Jan; Oct–Jan / Feb | Pre-March selection folds |
+| March | Locked test after specification freeze |
+| April frozen at March 31 | Primary assignment scoring |
+| April sequential | Operational sensitivity |
 
 ## Selection input contract
 
-`scripts/select_model.py` executes:
+`scripts/select_model.py` truncates to `game_date < 2026-03-01`.
+`run_selection` / `assert_pre_march_selection_frame` raise if any March-or-later
+row is present.
 
-```python
-selection_games = games[games["game_date"] < "2026-04-01"].copy()
-```
+Proof: `artifacts/pre_march_selection_proof.json`.
 
-`nba_wp.selection.run_selection` then raises an exception if its maximum date
-is April 1 or later.
+## Search budget
 
-The generated proof is:
+Declared in `configs/architecture_candidates.json`.
 
-```text
-artifacts/selection_proof.json
-```
+| Hyperparameter | Candidate values | Why it exists | Why these values |
+|---|---|---|---|
+| Elo \(K\) | 10, 20, 30 | Controls how quickly sequential Elo adapts after each game | Slow / moderate / fast adaptation; enough to detect over- or under-updating without a dense grid |
+| Trend half-life (days) | 20, 45, 90 | Exponential memory of recent margin/form | Short / medium / long form windows aligned to roughly monthly and quarterly basketball form |
+| Logistic \(C\) | 0.01, 0.03, 0.1, 0.3, 1, 3, 10 | L2 inverse-regularization for the direct three-feature logistic | Log-spaced strengths covering strong shrinkage through near-MLE |
 
-It records:
+That is \(3 \times 3 \times 7 = 63\) direct-logistic specifications.
 
-- selection input maximum date;
-- number of April rows loaded;
-- selected architecture;
-- selected calibration;
-- predeclared ordering rule.
+An optional **Platt-calibrated blend challenger** may be evaluated per feature
+architecture. It is retained for comparison with the original submission and
+is promoted only when it wins pre-March mean validation log loss.
 
-## Architecture grid
+### Why the dense temperature/shift grid was removed
 
-Five named architectures are declared before execution in
-`configs/architecture_candidates.json`. They vary:
-
-- Elo update rate and home adjustment;
-- Bradley-Terry regularization;
-- trend horizon and short window;
-- component logistic regularization.
-
-This is a small, inspectable structural grid rather than unrestricted automated
-model discovery.
-
-## Calibration grid
-
-For each architecture:
-
-- Elo logit weight: 0.000 to 0.350 in 0.005 increments;
-- temperature: 0.55 to 0.85 in 0.01 increments;
-- shift: 0.10 to 0.40 in 0.01 increments.
-
-That is 68,231 calibration candidates per architecture and 341,155 total
-architecture-calibration combinations.
-
-AUC is calculated once per blend weight because a positive affine logit
-calibration does not alter ranking.
-
-## Selection rule
-
-A candidate is eligible only when its March values satisfy:
+For \(T > 0\),
 
 \[
-LL < 0.509645,
+p=\sigma(z/T+b)
 \]
+
+is strictly monotonic in the latent score \(z\). Changing temperature or shift
+therefore:
+
+- cannot change AUC / ranking;
+- only moves calibration and the 0.50 accuracy threshold;
+- does not justify treating hundreds of thousands of \((T,b)\) pairs as distinct
+  ranking models against a few hundred games.
+
+Calibration is estimated with logistic (Platt) calibration,
 
 \[
-Brier < 0.167618,
+\operatorname{logit}(p_{\mathrm{cal}})=\alpha+\gamma\operatorname{logit}(p_{\mathrm{raw}}),
 \]
 
-\[
-AUC > 0.831798,
-\]
+rather than a brute-force temperature-shift search.
 
-\[
-Accuracy > 0.7782.
-\]
+## Selection objective
 
-Eligible candidates are ordered lexicographically:
+- **Primary:** mean validation log loss across January and February folds.
+- **Secondary:** Brier score (tie-break).
+- **Descriptive only:** AUC and accuracy.
+- **Not used:** external benchmark floats as a hard gate.
 
-1. lower log loss;
-2. lower Brier;
-3. higher AUC;
-4. higher accuracy;
-5. architecture name for deterministic final tie-breaking.
+## Benchmarks
 
-The selected point is not copied into scoring source code. It is written by
-selection to `artifacts/selected_spec.json`, and the scorer loads that file.
-
-## Operational versus frozen state
-
-### `sequential_daily`
-
-This is a rolling one-step-ahead backtest. Model coefficients remain frozen
-during the target month, but results after each completed date update team
-state for later dates.
-
-It answers:
-
-> What probability would the system have issued each day using all information
-> available before that day?
-
-### `frozen_snapshot`
-
-Performance state is fixed at the last day before the target month. Schedule
-dates continue updating so rest remains meaningful.
-
-It answers:
-
-> What probabilities would be issued for the entire month from one month-start
-> performance snapshot?
-
-Both are exported. Reviewers can choose the information policy that matches
-their interpretation of the assignment.
-
-## Metric uncertainty and selection bias
-
-March is used for selection, so its reported champion metric is optimistic as
-an estimate of future performance. Dense calibration search has only three
-degrees of freedom, but it still increases selection risk.
-
-Accuracy changes in increments of \(1/239\) in March and \(1/96\) in April.
-Tiny threshold differences should not be treated as economically meaningful.
-
-A paired bootstrap against the constant baseline is included. Bootstrap
-intervals against individual components are also exported. Bootstrap evidence
-does not remove model-selection bias.
+`configs/benchmarks.json` values are retrospective references only.
+Provenance: `docs/BENCHMARK_PROVENANCE.md`. They do not determine selection.
 
 ## April exposure
 
-April had already been viewed during the broader project before this evidence
-build. Therefore, it is described as a **retrospective final scoring period**,
-not a pristine untouched scientific holdout.
+April is the assignment’s retrospective scoring period. The executable
+selection pipeline uses zero April rows, but April had previously been viewed
+during the broader project, so I do not claim that it is a pristine untouched
+holdout.
 
-The defensible claim is that the repository reconstructs an executable
-selection path that cannot read April. It does not claim the candidate had
-never seen the April figures in human development history.
+For future evidence, freeze the model under a Git tag and score genuinely
+unseen future games without modification.
+
+## Uncertainty
+
+Primary uncertainty artifact: paired **date-block** bootstrap on the frozen
+April predictions (`artifacts/date_block_bootstrap_*.`).
+
+- Games are grouped by date; dates are sampled with replacement.
+- Metrics and calibration intercept/slope are recomputed on each replicate.
+- Paired differences versus Elo and rank-component probabilities are reported.
+- Intervals **condition on the locked selected specification**; model selection
+  is not re-run inside each bootstrap sample (stated explicitly when time
+  precludes nested selection).
+
+## Calibration diagnostics
+
+`artifacts/calibration_diagnostics.json` reports intercept \(\alpha\), slope
+\(\gamma\), ECE, and probability range. Extreme-bin audit:
+`artifacts/extreme_probability_audit.csv`.
+
+April is not used to recalibrate.
+
+## Production claim
+
+Prototype / research readiness only. Not a deployable sportsbook system.

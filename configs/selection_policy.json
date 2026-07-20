@@ -1,23 +1,28 @@
 {
-  "selection_period": "2026-03-01 through 2026-03-31",
-  "training_period": "2025-10-21 through 2026-02-28",
-  "selection_rule": "Beat all four March targets, then lexicographically minimize log_loss, brier, negative auc, negative accuracy.",
-  "top_candidates_per_architecture": 100,
-  "calibration_grid": {
-    "elo_weight": {
-      "start": 0.0,
-      "stop": 0.35,
-      "step": 0.005
+  "selection_cutoff": "2026-03-01",
+  "selection_data_end": "2026-02-28",
+  "selection_metric": "mean_validation_log_loss",
+  "secondary_metrics": ["mean_validation_brier"],
+  "descriptive_metrics": ["mean_validation_auc", "mean_validation_accuracy"],
+  "folds": [
+    {
+      "name": "fold1_jan",
+      "train_end": "2026-01-01",
+      "validation_start": "2026-01-01",
+      "validation_end": "2026-02-01"
     },
-    "temperature": {
-      "start": 0.55,
-      "stop": 0.85,
-      "step": 0.01
-    },
-    "shift": {
-      "start": 0.1,
-      "stop": 0.4,
-      "step": 0.01
+    {
+      "name": "fold2_feb",
+      "train_end": "2026-02-01",
+      "validation_start": "2026-02-01",
+      "validation_end": "2026-03-01"
     }
-  }
+  ],
+  "notes": [
+    "Architecture and hyperparameter selection use only games before 2026-03-01.",
+    "March and April rows must not enter selection.",
+    "Primary objective is mean validation log loss across expanding-window folds.",
+    "Brier is a secondary tie-break. AUC and accuracy are descriptive only.",
+    "External benchmark JSON values do not gate or determine selection."
+  ]
 }

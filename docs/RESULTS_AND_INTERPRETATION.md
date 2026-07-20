@@ -1,100 +1,78 @@
-# Results and interpretation
+# Results and interpretation (audit remediation)
 
-## Operational one-step-ahead
+After running `make reproduce`, interpret artifacts as follows.
 
-| Period | Model log loss | Target | Model Brier | Target | Model AUC | Target | Model accuracy | Target |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| March | 0.487569 | 0.509645 | 0.156834 | 0.167618 | 0.831798246 | 0.831798000 | 77.8243% | 77.8200% |
-| April | 0.463375 | 0.468596 | 0.145639 | 0.150628 | 0.850202 | 0.868196 | 83.3333% | 81.2500% |
+## Primary April result (assignment)
 
-### March
+`outputs/april_predictions_frozen_snapshot.csv` and
+`final_metrics.json → primary_april_result`.
 
-March is the selection set. The champion exceeds all four rounded targets, but:
+This is the assignment-aligned frozen March 31 information set. All April games
+are scored from the March 31 performance-state snapshot without consuming April
+outcomes.
 
-- the AUC difference is approximately \(2.46\times 10^{-7}\);
-- the accuracy difference is one discrete classification boundary relative to
-  the rounded target;
-- neither margin should be described as a decisive generalization result.
+Representative values after remediation (direct logistic, pre-March selected):
 
-### April
+| Metric | Frozen April (primary) |
+|---|---|
+| Games | 96 |
+| Log loss | ≈ 0.469 |
+| Brier | ≈ 0.151 |
+| AUC | ≈ 0.862 |
+| Accuracy | 74 / 96 (≈ 77.1%) |
 
-April proper scores are favorable:
+## Sequential April (sensitivity only)
 
-\[
-\Delta LL = 0.463375 - 0.468596 = -0.005221,
-\]
+`final_metrics.json → sequential_daily.april` and
+`outputs/april_predictions.csv`.
 
-\[
-\Delta Brier = 0.145639 - 0.150628 = -0.004989.
-\]
+Earlier April results update ratings; later April games use those updates.
+Operationally useful, but **not** the headline assignment result.
 
-Accuracy is 83.33%, two correctly classified games above an 81.25% rate on a
-96-game sample.
+## Locked March test
 
-AUC is 0.8502, below 0.8682. The model therefore does not meet the objective on
-all four April metrics.
+`final_metrics.json → locked_march_test`.
 
-## Frozen snapshot sensitivity
+March was **not** used to select the specification on this branch. Report exact
+correct-game counts. Do not describe tiny AUC/accuracy gaps versus retrospective
+reference floats as meaningful wins.
 
-| Period | Log loss | Brier | AUC | Accuracy |
-|---|---:|---:|---:|---:|
-| March | 0.497736 | 0.162489 | 0.822442 | 76.1506% |
-| April | 0.458942 | 0.145299 | 0.862798 | 80.2083% |
+Example wording:
 
-The frozen April version has stronger proper scores and ranking than the
-operational version, but lower 0.5-threshold accuracy.
-
-## Ablation interpretation
-
-The March ablation shows:
-
-- a constant training prior is inadequate;
-- record differential contains substantial team-strength information;
-- Elo materially improves proper scoring;
-- Bradley-Terry plus trend provides the strongest component ranking;
-- the calibrated blend improves probability quality over either component;
-- adding rest and noisy box-score style signals in one rich linear challenger
-  does not earn promotion.
-
-See `artifacts/feature_group_ablation.csv`.
-
-## Permutation interpretation
-
-Mean March log-loss increase after shuffling:
-
-| Feature | Mean increase |
-|---|---:|
-| Bradley-Terry logit | 0.2325 |
-| Elo difference | 0.0205 |
-| Trend difference | 0.0061 |
-
-Trend has a small lower-tail value below zero across repeated permutations,
-which is consistent with a weak correction rather than a dominant signal.
-
-
-## Paired bootstrap
-
-On March, paired game-level bootstrap log-loss differences for
-`final minus component` are:
-
-| Comparison | Observed difference | 95% interval |
-|---|---:|---:|
-| Final - Elo component | -0.01993 | [-0.04538, 0.00879] |
-| Final - rank component | -0.04156 | [-0.07528, -0.00224] |
-
-The interval versus Elo includes zero, so the blend's advantage over Elo alone
-is not statistically decisive under this resampling diagnostic. The interval
-versus the rank component is favorable, but both comparisons remain affected
-by March model selection.
+> The model produced lower March log loss and Brier score than the retrospective
+> reference values. March AUC and accuracy were effectively ties at the reported
+> precision when differences are only rounding artifacts. Exact correct-game
+> count: see `locked_march_test.correct_games` / 239.
 
 ## Calibration
 
-Open:
+See `artifacts/calibration_diagnostics.json` and
+`artifacts/extreme_probability_audit.csv`.
 
-- `figures/march_calibration.png`
-- `figures/april_calibration.png`
-- `artifacts/march_calibration_bins.csv`
-- `artifacts/april_calibration_bins.csv`
+Interpretation:
 
-The selected temperature sharpens probabilities. Calibration should be treated
-as a monitored layer, not a permanent universal constant.
+- \(\alpha \approx 0\): calibration-in-the-large
+- \(\gamma \approx 1\): appropriate sharpness
+- \(\gamma < 1\): overconfident
+- \(\gamma > 1\): too conservative
+
+Do not recalibrate using April.
+
+## Uncertainty
+
+See `artifacts/date_block_bootstrap_summary.json`.
+
+Paired date-block intervals condition on the locked specification. Differences
+versus Elo and rank-component baselines are included when those columns are
+present.
+
+## Market language
+
+Use model-estimated fair probability / zero-margin fair odds only:
+
+\[
+\text{Fair decimal odds} = 1 / p
+\]
+
+This conversion does not include overround, market consensus, liability, limits,
+injuries, news, or trader adjustments. No alpha or profitability claims.
