@@ -18,9 +18,9 @@ Keep these files open in editor tabs:
 2. `nba_wp/features.py`
 3. `nba_wp/model.py`
 4. `nba_wp/selection.py`
-5. `artifacts/selection_proof.json`
-6. `artifacts/feature_group_ablation.csv`
-7. `outputs/april_predictions.csv`
+5. `artifacts/current/pre_march_selection_proof.json`
+6. `artifacts/current/feature_group_ablation.csv`
+7. `outputs/april_predictions_frozen_snapshot.csv`
 8. `docs/LIMITATIONS_AND_ROADMAP.md`
 
 ## Ten-minute presentation
@@ -39,7 +39,7 @@ Show `SUMMARY.md`.
 > IDs, and the supplied pregame records reconcile exactly. The task text says
 > fourteen columns, but the listed schema has sixteen.
 
-Show `artifacts/data_audit.json`.
+Show `artifacts/current/data_audit.json`.
 
 ### 2:00-4:00 - Leakage control
 
@@ -67,7 +67,7 @@ Show `docs/METHODOLOGY.md` and `nba_wp/model.py::blend_probabilities`.
 
 ### 6:00-7:30 - Selection proof
 
-Open `scripts/select_model.py` and `artifacts/selection_proof.json`.
+Open `scripts/select_model.py` and `artifacts/current/pre_march_selection_proof.json`.
 
 > The selection script truncates the raw input before April and the selection
 > function rejects any frame containing April. Five declared architectures and
@@ -77,7 +77,7 @@ Open `scripts/select_model.py` and `artifacts/selection_proof.json`.
 
 ### 7:30-9:00 - Feature proof
 
-Show `artifacts/feature_group_ablation.csv` and
+Show `artifacts/current/feature_group_ablation.csv` and
 `figures/permutation_importance.png`.
 
 > Record-only and richer box-score-style candidates were weaker. The selected
@@ -92,7 +92,7 @@ Show `artifacts/feature_group_ablation.csv` and
 > retune after that miss. I also export a strict month-start snapshot because
 > rolling daily and frozen-batch evaluations answer different questions.
 
-Show `artifacts/final_metrics.json`.
+Show `artifacts/current/final_metrics.json`.
 
 ## Live-run routes
 

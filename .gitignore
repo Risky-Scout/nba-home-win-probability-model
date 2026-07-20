@@ -10,3 +10,7 @@ artifacts/*.tmp
 .coverage
 .pytest_cache/
 htmlcov/
+
+# nested clone from other work
+wnba-props/
+

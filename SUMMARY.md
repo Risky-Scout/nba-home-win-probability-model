@@ -1,5 +1,8 @@
 # Two-minute summary (audit remediation)
 
+**Interview?** Open [`START_HERE.md`](START_HERE.md) first, then the 90-minute script
+in `docs/interview/`.
+
 ## Preservation
 
 Original submission tag: `v1-original-submission`.  

@@ -1,6 +1,6 @@
 {
   "status": "PASS",
-  "git_commit": "2778cbc27896d99a1c4df5c84c53e602f592aa61",
+  "git_commit": "28ca834c333da16f73406f0896c9ea114a83b904",
   "data_rows": 1230,
   "selection_data_end": "2026-02-28",
   "march_rows_used_in_selection": 0,
@@ -12,7 +12,5 @@
   "recompute_max_abs_probability_diff": 0.0,
   "artifact_dir": "artifacts/current",
   "original_submission_tag": "v1-original-submission",
-  "governance_note": "Pre-March selection is a reconstructed governance path on the remediation branch; it is not claimed as historical preregistration.",
-  "git_commit_validated": "2778cbc27896d99a1c4df5c84c53e602f592aa61",
-  "validation_note": "git_commit / git_commit_validated is the code commit that passed validate_submission.py --recompute with max abs April probability diff 0.0 across all 96 games. This report file may be committed in a follow-up commit after that SHA."
+  "governance_note": "Pre-March selection is a reconstructed governance path on the remediation branch; it is not claimed as historical preregistration."
 }
