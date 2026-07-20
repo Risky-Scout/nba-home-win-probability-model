@@ -1,12 +1,12 @@
 {
   "git_tag_original_submission": "v1-original-submission",
-  "git_commit": "fa5074895939f5832d3111c4fe32c433cdd80ce9",
+  "git_commit": "4b26d371f7f11a1c5502116ffa2ac387ddea7fbb",
   "selected_spec_path": "/workspace/artifacts/current/selected_spec_pre_march.json",
   "model_type": "direct_logistic",
   "architecture": {
-    "name": "k10_hl20",
-    "elo_k": 10.0,
-    "elo_hfa": 65.0,
+    "name": "k5_hfa80_hl20",
+    "elo_k": 5.0,
+    "elo_hfa": 80.0,
     "elo_mov": "log",
     "bt_c": 0.15,
     "trend_half_life_days": 20.0,
@@ -14,9 +14,9 @@
     "elo_model_c": 1.0,
     "rank_model_c": 0.1
   },
-  "logistic_c": 0.1,
+  "logistic_c": 0.03,
   "regularization": {
-    "logistic_c": 0.1
+    "logistic_c": 0.03
   },
   "training_cutoff_for_april": "2026-03-31",
   "primary_april_policy": "frozen_snapshot",
@@ -26,7 +26,7 @@
     "trend_diff"
   ],
   "data_sha256": "fc4d66b4a7d08cf975fe7b82f22e95cce37b84976536e627621d5238481638c3",
-  "score_wall_seconds": 14.25670770398574,
+  "score_wall_seconds": 13.98720139201032,
   "package_versions": {
     "numpy": "2.3.5",
     "pandas": "2.2.3",

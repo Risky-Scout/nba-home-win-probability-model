@@ -93,11 +93,12 @@ All numbers in this file are rendered programmatically from
 
 - Task: probability that the home team wins each April 2026 game, using
   October–March information only.
-- Selected model: **direct L2 logistic regression** on three leakage-controlled
-  features (`elo_diff`, `bt_logit`, `trend_diff`), architecture
-  `{spec['architecture']['name']}`, regularization C = {spec['logistic_c']}.
-- Selection used **only pre-March expanding folds** (January and February
-  validation). Proof: `{proof['march_rows_used_in_selection']}` March rows and
+- Selected model: **direct L2 logistic regression** on
+  `{', '.join(spec.get('features', ['elo_diff', 'bt_logit', 'trend_diff']))}`,
+  architecture `{spec['architecture']['name']}`, C = {spec['logistic_c']},
+  chosen by **prequential daily validation** ({proof.get('prequential_validation_games', 'n/a')}
+  January–February games) over {proof.get('total_candidates', 72)} declared candidates.
+- Proof: `{proof['march_rows_used_in_selection']}` March rows and
   `{proof['april_rows_used_in_selection']}` April rows entered selection.
 - Locked March test (scored once): log loss {_f(march['log_loss'])},
   {march['correct_games']}/{march['games']} correct.
@@ -147,13 +148,17 @@ than silently absorbed.
 
 ## Selection process
 
-Declared budget: 3 Elo K × 3 trend half-lives × 7 C values = 63 direct
-logistics + 9 architecture-matched blend challengers = **{proof['total_candidates']}
-candidates**. Primary metric: mean validation log loss; ties break by Brier,
-then AUC, accuracy, model type, architecture name.
+Declared budget (configs/model.yaml): Elo K × home advantage × trend half-life
+× 5 nested feature sets × 7 C values = **{proof['total_candidates']} candidates**
+(trend-free sets deduplicated across the half-life axis). Estimator:
+**prequential daily expanding validation** — fit on all games before date d,
+score date d, pooled per-game log loss over every January/February game
+({proof.get('prequential_validation_games', 'n/a')} games). Ties break by
+Brier, AUC, accuracy, then **fewer features**.
 
-Winner: `{proof['selected_architecture']}`, C = {proof['selected_logistic_c']},
-mean validation log loss {_f(spec['pre_march_validation_metrics']['mean_validation_log_loss'])}.
+Winner: `{proof['selected_architecture']}`, feature set
+`{proof.get('selected_feature_set', 'elo_bt_trend')}`, C = {proof['selected_logistic_c']},
+validation log loss {_f(next(iter([v for k, v in spec['pre_march_validation_metrics'].items() if 'log_loss' in k])))}.
 
 ## Selected model coefficients (fit through March for April scoring)
 

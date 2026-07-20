@@ -1,27 +1,28 @@
 {
-  "model_family": "direct L2 logistic on elo_diff + bt_logit + trend_diff",
+  "model_family": "direct L2 logistic on elo_diff",
   "model_type": "direct_logistic",
-  "selected_using": "Expanding-window pre-March validation: train < 2026-01-01 -> validate jan; train < 2026-02-01 -> validate feb",
+  "selected_using": "Prequential daily expanding validation over 2026-01-01 to 2026-03-01 (exclusive); fit < date d, score date d, pooled per-game log loss.",
+  "selection_method": "prequential_daily",
   "selection_data_end": "2026-02-28",
   "selection_data_max_date": "2026-02-28",
   "march_rows_used_in_selection": 0,
   "april_rows_used_in_selection": 0,
   "april_rows_loaded_during_selection": 0,
-  "selection_metric": "mean_validation_log_loss",
-  "selection_rule": "Minimize mean validation log loss across the expanding pre-March folds; tie-break by mean Brier, then AUC, accuracy, model type, architecture name. External benchmark values do not gate selection.",
-  "primary_metric": "mean_validation_log_loss",
+  "selection_metric": "prequential_log_loss",
+  "selection_rule": "Minimize pooled prequential per-game log loss over all January and February games; tie-break by Brier, AUC, accuracy, fewer features, architecture name. External benchmark values do not gate selection.",
+  "primary_metric": "prequential_log_loss",
   "secondary_metrics": [
-    "mean_validation_brier"
+    "prequential_brier"
   ],
   "descriptive_metrics": [
-    "mean_validation_auc",
-    "mean_validation_accuracy"
+    "prequential_auc",
+    "prequential_accuracy"
   ],
   "information_policy_primary_april": "frozen_snapshot",
   "architecture": {
-    "name": "k10_hl20",
-    "elo_k": 10.0,
-    "elo_hfa": 65.0,
+    "name": "k5_hfa80_hl20",
+    "elo_k": 5.0,
+    "elo_hfa": 80.0,
     "elo_mov": "log",
     "bt_c": 0.15,
     "trend_half_life_days": 20.0,
@@ -29,7 +30,11 @@
     "elo_model_c": 1.0,
     "rank_model_c": 0.1
   },
-  "logistic_c": 0.1,
+  "feature_set": "elo",
+  "features": [
+    "elo_diff"
+  ],
+  "logistic_c": 0.03,
   "calibration": {
     "elo_weight": 0.0,
     "temperature": 1.0,
@@ -38,21 +43,27 @@
   },
   "platt_calibration": null,
   "pre_march_validation_metrics": {
-    "mean_validation_log_loss": 0.631875924626764,
-    "mean_validation_brier": 0.2199693138814982,
-    "mean_validation_auc": 0.7138503688867767,
-    "mean_validation_accuracy": 0.6695925332230208
+    "prequential_log_loss": 0.6308892477853701,
+    "prequential_brier": 0.21962128964622138,
+    "prequential_auc": 0.7073348771647201,
+    "prequential_accuracy": 0.6666666666666666,
+    "prequential_games": 399
   },
   "search_budget": {
     "elo_k": [
+      5.0,
       10.0,
       20.0,
       30.0
     ],
+    "elo_hfa": [
+      50.0,
+      65.0,
+      80.0
+    ],
     "trend_half_life_days": [
       20.0,
-      45.0,
-      90.0
+      45.0
     ],
     "logistic_c": [
       0.01,
@@ -63,32 +74,44 @@
       3.0,
       10.0
     ],
-    "rationale": {
-      "elo_k": "Slow / moderate / fast sequential rating adaptation.",
-      "trend_half_life_days": "Short / medium / long form memory.",
-      "logistic_c": "Log-spaced L2 strength for the direct three-feature logistic.",
-      "search_size": "3 x 3 x 7 = 63 direct logistics + 9 architecture-matched blend challengers = 72 candidates."
+    "feature_sets": {
+      "elo": [
+        "elo_diff"
+      ],
+      "elo_bt": [
+        "elo_diff",
+        "bt_logit"
+      ],
+      "elo_bt_trend": [
+        "elo_diff",
+        "bt_logit",
+        "trend_diff"
+      ],
+      "core_schedule": [
+        "elo_diff",
+        "bt_logit",
+        "trend_diff",
+        "rest_advantage",
+        "back_to_back_advantage"
+      ],
+      "rich": [
+        "elo_diff",
+        "bt_logit",
+        "trend_diff",
+        "record_logit_diff",
+        "recent_margin_diff",
+        "rest_advantage",
+        "turnover_advantage_diff",
+        "rebound_advantage_diff",
+        "foul_advantage_diff"
+      ]
     }
   },
-  "fold_definitions": [
-    {
-      "name": "fold1_jan",
-      "train_end": "2026-01-01",
-      "validation_start": "2026-01-01",
-      "validation_end": "2026-02-01"
-    },
-    {
-      "name": "fold2_feb",
-      "train_end": "2026-02-01",
-      "validation_start": "2026-02-01",
-      "validation_end": "2026-03-01"
-    }
-  ],
+  "total_candidates": 672,
   "notes": [
     "No March or April row is loaded by model selection.",
     "March is a locked pre-final test after the specification is frozen.",
     "Frozen March 31 state is the primary April assignment result.",
-    "Sequential April scoring is retained only as operational sensitivity.",
     "Original v1 submission is preserved at git tag v1-original-submission."
   ]
 }

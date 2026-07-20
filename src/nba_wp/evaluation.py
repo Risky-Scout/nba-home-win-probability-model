@@ -28,6 +28,7 @@ BASELINE_NAMES = [
     "constant_home_rate",
     "record_difference_logistic",
     "elo_only_logistic",
+    "three_feature_challenger",
     "selected_model",
 ]
 
@@ -87,6 +88,13 @@ def baseline_probabilities(
     out["elo_only_logistic"] = elo_model.predict_proba(
         score["elo_diff"].to_numpy(dtype=float).reshape(-1, 1)
     )[:, 1]
+
+    # Superseded three-feature challenger (earlier fold-based winner), kept for
+    # transparent comparison. Reported only; never used for selection.
+    challenger = fit_direct_logistic(
+        train, 0.1, features=["elo_diff", "bt_logit", "trend_diff"]
+    )
+    out["three_feature_challenger"] = predict_direct_logistic(challenger, score)
 
     probability, _, _, _ = predict_from_spec(selected_spec, train, score)
     out["selected_model"] = probability

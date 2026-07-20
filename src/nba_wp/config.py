@@ -33,6 +33,9 @@ def selection_policy(cfg: dict[str, Any]) -> dict[str, Any]:
     sel = cfg["selection"]
     return {
         "selection_cutoff": str(sel["cutoff"]),
+        "method": str(sel.get("method", "expanding_folds")),
+        "validation_start": str(sel.get("validation_start", "2026-01-01")),
+        "validation_end": str(sel.get("validation_end", "2026-03-01")),
         "selection_metric": str(sel["metric"]),
         "secondary_metrics": list(sel.get("secondary_metrics", [])),
         "descriptive_metrics": list(sel.get("descriptive_metrics", [])),
@@ -43,7 +46,7 @@ def selection_policy(cfg: dict[str, Any]) -> dict[str, Any]:
                 "validation_start": str(f["validation_start"]),
                 "validation_end": str(f["validation_end"]),
             }
-            for f in sel["folds"]
+            for f in sel.get("folds", [])
         ],
     }
 

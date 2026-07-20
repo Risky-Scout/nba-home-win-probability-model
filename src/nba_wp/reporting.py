@@ -363,7 +363,8 @@ def permutation_importance_direct(
     baseline_metrics = evaluate(validation["home_win"], baseline)
     rng = np.random.default_rng(seed)
     rows: list[dict[str, Any]] = []
-    for feature in DIRECT_FEATURES:
+    feature_names = list(getattr(model, "feature_names", DIRECT_FEATURES))
+    for feature in feature_names:
         changes = []
         for _ in range(repeats):
             shuffled = validation.copy()

@@ -5,8 +5,8 @@ Open this file first. Everything else hangs off it.
 ## What you are defending
 
 **Assignment:** home-win probability for April games using Oct–Mar information  
-**Selected model:** direct L2 logistic on `elo_diff`, `bt_logit`, `trend_diff`  
-**Selection:** Jan/Feb expanding folds only (no March/April in selection)  
+**Selected model:** Elo-only L2 logistic (`elo_diff`; K=5, HFA=80, C=0.03) — won a 672-candidate prequential search  
+**Selection:** prequential daily validation over all 399 Jan–Feb games (no March/April rows)  
 **Primary April result:** frozen March 31 snapshot → `predictions/april_predictions.csv`  
 **Claim:** probability-forecasting prototype — not sportsbook alpha
 
@@ -31,30 +31,30 @@ Open this file first. Everything else hangs off it.
 \hat\beta_0
 +
 \hat\beta_1\,\Delta\mathrm{Elo}
-+
-\hat\beta_2\,\Delta\mathrm{BT}
-+
-\hat\beta_3\,\Delta\mathrm{Trend}
 \]
 
-Fitted coefficients (through March, standardized then mapped to raw units):
+Fitted coefficients (through March, standardized):
 
 | Term | Standardized \(\hat\beta\) | Where |
 |---|---|---|
-| intercept | 0.2385 | `artifacts/current/model_coefficients.json` |
-| elo_diff | 0.7321 | same |
-| bt_logit | 0.1560 | same |
-| trend_diff | 0.0617 | same |
+| intercept | 0.2319 | `artifacts/current/model_coefficients.json` |
+| elo_diff | 0.7831 | same |
 
-Selected hyperparameters:
+Selected hyperparameters (won a 672-candidate prequential search over
+K × HFA × half-life × 5 nested feature sets × C):
 
 | Parameter | Value | Class | Evidence |
 |---|---|---|---|
-| Elo \(K\) | 10 | Selected (pre-March) | `selected_spec_pre_march.json` |
-| Elo HFA | 65 | Fixed in search (default) | `configs/model.yaml` |
-| Trend half-life | 20 days | Selected | same |
-| Logistic \(C\) | 0.1 | Selected | same |
+| Feature set | `elo` (Elo-only) | Selected (pre-March) | `selected_spec_pre_march.json` |
+| Elo \(K\) | 5 | Selected | same |
+| Elo HFA | 80 | Selected | same |
+| Logistic \(C\) | 0.03 | Selected | same |
 | Elo start / scale | 1500 / 400 | Fixed by design | `src/nba_wp/features.py` |
+
+Richer feature sets (BT, trend, rest, schedule, box-score diffs) were in the
+declared ladder and **lost** on pooled prequential log loss over 399 Jan–Feb
+games. The tie-break also prefers fewer features. Simplicity here is the
+outcome of the search, not an assumption.
 
 ## Assignment artifacts (primary)
 

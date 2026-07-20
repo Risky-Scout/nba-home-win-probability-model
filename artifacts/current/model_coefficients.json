@@ -3,31 +3,15 @@
     {
       "component": "direct_logistic",
       "feature": "elo_diff",
-      "standardized_coefficient": 0.7320943728053962,
-      "training_mean": 0.16685920352598477,
-      "training_scale": 0.3390078610479993,
-      "raw_unit_coefficient": 2.1595203442841133
-    },
-    {
-      "component": "direct_logistic",
-      "feature": "bt_logit",
-      "standardized_coefficient": 0.15601597382186272,
-      "training_mean": 0.25373418704799144,
-      "training_scale": 0.5323095844808791,
-      "raw_unit_coefficient": 0.29309255059537054
-    },
-    {
-      "component": "direct_logistic",
-      "feature": "trend_diff",
-      "standardized_coefficient": 0.06168440358453506,
-      "training_mean": -0.026387827320736235,
-      "training_scale": 3.563245223639699,
-      "raw_unit_coefficient": 0.017311299030249493
+      "standardized_coefficient": 0.7831132953658099,
+      "training_mean": 0.20373044428518872,
+      "training_scale": 0.22515461614965201,
+      "raw_unit_coefficient": 3.4781134349264384
     },
     {
       "component": "direct_logistic",
       "feature": "(intercept)",
-      "standardized_coefficient": 0.23848778829614511,
+      "standardized_coefficient": 0.2319445115543841,
       "training_mean": null,
       "training_scale": null,
       "raw_unit_coefficient": null

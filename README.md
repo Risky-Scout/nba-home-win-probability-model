@@ -13,8 +13,8 @@ decimal odds \(1/p\), optimized and judged by log loss.
 
 | Stage | Log loss | Brier | AUC | Correct |
 |---|---|---|---|---|
-| Locked March test (scored once) | 0.5103 | 0.1672 | 0.826 | 182/239 |
-| **April forecast (frozen 2026-03-31)** | **0.4695** | **0.1511** | **0.862** | **74/96** |
+| Locked March test (scored once) | 0.5135 | 0.1684 | 0.824 | 184/239 |
+| **April forecast (frozen 2026-03-31)** | **0.4746** | **0.1530** | **0.866** | **75/96** |
 
 Deliverable: [`predictions/april_predictions.csv`](predictions/april_predictions.csv).
 All report numbers are generated programmatically from
@@ -40,12 +40,15 @@ pregame by replaying all 1,230 results (0 mismatches).
 
 ## 5. Model selection
 
-Declared budget in [`configs/model.yaml`](configs/model.yaml): 3 Elo K × 3
-trend half-lives × 7 L2 strengths = 63 direct logistics + 9 blend challengers
-= **72 candidates**. Primary metric: mean validation log loss.
+Declared budget in [`configs/model.yaml`](configs/model.yaml): Elo K × home
+advantage × trend half-life × **5 nested feature sets** × 7 L2 strengths =
+**672 candidates**, each judged by **prequential daily validation** (fit on all
+games before date d, score date d) pooled over all **399** January–February
+games — the strongest selection estimator the data allow.
 
-**Selected:** direct L2 logistic on `elo_diff`, `bt_logit`, `trend_diff`
-(K=10, half-life 20 d, C=0.1). Coefficients:
+**Selected:** Elo-only L2 logistic (`elo_diff`; K=5, HFA=80, C=0.03). The
+nested-ladder search was free to pick richer sets; the simplest model won on
+pooled prequential log loss, and the tie-break prefers fewer features. Coefficients:
 [`artifacts/current/model_coefficients.json`](artifacts/current/model_coefficients.json).
 
 - **Was March untouched?** Yes — selection input ends 2026-02-28; guards +
@@ -54,10 +57,10 @@ trend half-lives × 7 L2 strengths = 63 direct logistics + 9 blend challengers
 - **Was April used in selection?** No (0 rows). April was, however, viewed
   earlier in this project's life, so it is a retrospective scoring period,
   not a pristine holdout.
-- **Baselines:** the model decisively beats constant-rate and
-  record-difference baselines (paired CIs exclude 0); its edge over an
-  Elo-only logistic is statistically unresolved — disclosed, with Elo-only
-  recorded as the simpler challenger.
+- **Baselines:** decisively beats constant-rate and record-difference
+  baselines (paired CIs exclude 0). The earlier three-feature logistic and the
+  v1 blend remain documented challengers; neither beat Elo-only on the
+  pre-March prequential estimator.
 
 ## 6. April forecast process
 

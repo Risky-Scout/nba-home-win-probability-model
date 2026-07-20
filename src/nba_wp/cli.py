@@ -113,7 +113,11 @@ def cmd_predict(args: argparse.Namespace) -> int:
 
 
 def cmd_select(args: argparse.Namespace) -> int:
-    from .selection import assert_pre_march_selection_frame, run_selection
+    from .selection import (
+        assert_pre_march_selection_frame,
+        run_prequential_selection,
+        run_selection,
+    )
 
     cfg = load_config(args.config)
     games = load_games(args.data)
@@ -121,10 +125,16 @@ def cmd_select(args: argparse.Namespace) -> int:
         games["game_date"] < str(cfg["selection"]["cutoff"])
     ].copy()
     assert_pre_march_selection_frame(selection_games)
-    spec, fold_table, selection_table = run_selection(
+    policy = selection_policy(cfg)
+    arch_cfg = architecture_config(cfg)
+    if policy["method"] == "prequential_daily" and "feature_sets" in arch_cfg["search_budget"]:
+        runner = run_prequential_selection
+    else:
+        runner = run_selection
+    spec, fold_table, selection_table = runner(
         selection_games,
-        architecture_config(cfg),
-        selection_policy(cfg),
+        arch_cfg,
+        policy,
         benchmarks(cfg),
     )
     artifact_dir = Path(args.artifact_dir)
@@ -144,14 +154,20 @@ def cmd_select(args: argparse.Namespace) -> int:
         "april_rows_used_in_selection": int(
             (selection_games["game_date"] >= "2026-04-01").sum()
         ),
+        "selection_method": policy["method"],
         "selection_metric": str(cfg["selection"]["metric"]),
         "selected_model_type": spec["model_type"],
         "selected_architecture": spec["architecture"]["name"],
+        "selected_feature_set": spec.get("feature_set"),
+        "selected_features": spec.get("features"),
         "selected_logistic_c": spec.get("logistic_c"),
         "direct_logistic_candidates": n_direct,
         "blend_challengers": n_blend,
         "total_candidates": int(len(selection_table)),
-        "fold_names": [f["name"] for f in selection_policy(cfg)["folds"]],
+        "validation_window": [policy["validation_start"], policy["validation_end"]],
+        "prequential_validation_games": (
+            spec.get("pre_march_validation_metrics", {}).get("prequential_games")
+        ),
         "original_submission_tag": "v1-original-submission",
     }
     (artifact_dir / "pre_march_selection_proof.json").write_text(

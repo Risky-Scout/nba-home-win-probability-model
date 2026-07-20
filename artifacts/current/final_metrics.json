@@ -1,11 +1,11 @@
 {
-  "model": "direct L2 logistic on elo_diff + bt_logit + trend_diff",
+  "model": "direct L2 logistic on elo_diff",
   "model_type": "direct_logistic",
   "selected_spec": {
     "architecture": {
-      "name": "k10_hl20",
-      "elo_k": 10.0,
-      "elo_hfa": 65.0,
+      "name": "k5_hfa80_hl20",
+      "elo_k": 5.0,
+      "elo_hfa": 80.0,
       "elo_mov": "log",
       "bt_c": 0.15,
       "trend_half_life_days": 20.0,
@@ -13,7 +13,7 @@
       "elo_model_c": 1.0,
       "rank_model_c": 0.1
     },
-    "logistic_c": 0.1,
+    "logistic_c": 0.03,
     "calibration": {
       "elo_weight": 0.0,
       "temperature": 1.0,
@@ -26,74 +26,74 @@
     "information_policy": "frozen_snapshot",
     "cutoff": "2026-03-31",
     "metrics": {
-      "log_loss": 0.46945329897034593,
-      "brier": 0.1510597206887083,
-      "auc": 0.8623481781376517,
-      "accuracy": 0.7708333333333334,
+      "log_loss": 0.4745967416925961,
+      "brier": 0.15304918700479656,
+      "auc": 0.8654970760233919,
+      "accuracy": 0.78125,
       "games": 96,
       "home_win_rate": 0.59375,
-      "mean_probability": 0.549499731270403,
-      "correct_games": 74
+      "mean_probability": 0.5496575266585649,
+      "correct_games": 75
     },
     "note": "Primary assignment result: April games scored from the March 31 performance-state snapshot."
   },
   "locked_march_test": {
     "information_policy": "sequential_daily",
     "metrics": {
-      "log_loss": 0.510286566025754,
-      "brier": 0.16716310240580326,
-      "auc": 0.8259502923976608,
-      "accuracy": 0.7615062761506276,
+      "log_loss": 0.5134605553573361,
+      "brier": 0.16837279109507486,
+      "auc": 0.8241228070175439,
+      "accuracy": 0.7698744769874477,
       "games": 239,
       "home_win_rate": 0.602510460251046,
-      "mean_probability": 0.5465915109025038,
-      "correct_games": 182
+      "mean_probability": 0.5479631263712662,
+      "correct_games": 184
     },
-    "correct_games": 182,
+    "correct_games": 184,
     "note": "March is a locked pre-final test after pre-March selection. It is not used for architecture or hyperparameter selection."
   },
   "sequential_daily": {
     "march": {
-      "log_loss": 0.510286566025754,
-      "brier": 0.16716310240580326,
-      "auc": 0.8259502923976608,
-      "accuracy": 0.7615062761506276,
+      "log_loss": 0.5134605553573361,
+      "brier": 0.16837279109507486,
+      "auc": 0.8241228070175439,
+      "accuracy": 0.7698744769874477,
       "games": 239,
       "home_win_rate": 0.602510460251046,
-      "mean_probability": 0.5465915109025038,
-      "correct_games": 182
+      "mean_probability": 0.5479631263712662,
+      "correct_games": 184
     },
     "april": {
-      "log_loss": 0.47046439667982504,
-      "brier": 0.15165864408115393,
-      "auc": 0.8632478632478632,
+      "log_loss": 0.47280870372465156,
+      "brier": 0.15252191971645337,
+      "auc": 0.8614484930274403,
       "accuracy": 0.7916666666666666,
       "games": 96,
       "home_win_rate": 0.59375,
-      "mean_probability": 0.5517161220265191,
+      "mean_probability": 0.5528618352020515,
       "correct_games": 76
     }
   },
   "frozen_snapshot": {
     "march": {
-      "log_loss": 0.5208802936120105,
-      "brier": 0.17135163807225723,
-      "auc": 0.8201023391812865,
-      "accuracy": 0.7489539748953975,
+      "log_loss": 0.5248550110102377,
+      "brier": 0.17277659818417102,
+      "auc": 0.8209795321637426,
+      "accuracy": 0.7531380753138075,
       "games": 239,
       "home_win_rate": 0.602510460251046,
-      "mean_probability": 0.5440093871085808,
-      "correct_games": 179
+      "mean_probability": 0.5456861640190198,
+      "correct_games": 180
     },
     "april": {
-      "log_loss": 0.46945329897034593,
-      "brier": 0.1510597206887083,
-      "auc": 0.8623481781376517,
-      "accuracy": 0.7708333333333334,
+      "log_loss": 0.4745967416925961,
+      "brier": 0.15304918700479656,
+      "auc": 0.8654970760233919,
+      "accuracy": 0.78125,
       "games": 96,
       "home_win_rate": 0.59375,
-      "mean_probability": 0.549499731270403,
-      "correct_games": 74
+      "mean_probability": 0.5496575266585649,
+      "correct_games": 75
     }
   },
   "information_policy_note": "Frozen March 31 April scoring is the primary assignment result. Sequential daily April scoring is an operational sensitivity analysis.",

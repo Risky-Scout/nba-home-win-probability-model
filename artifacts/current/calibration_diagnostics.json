@@ -1,20 +1,20 @@
 {
   "march_locked_test": {
-    "expected_calibration_error": 0.11062571641244351,
-    "min_predicted_probability": 0.06706118184287925,
-    "max_predicted_probability": 0.9556811105549184,
-    "mean_predicted_probability": 0.5465915109025038,
+    "expected_calibration_error": 0.10423793331674094,
+    "min_predicted_probability": 0.07170783927342966,
+    "max_predicted_probability": 0.9420741091986079,
+    "mean_predicted_probability": 0.5479631263712662,
     "observed_home_win_rate": 0.602510460251046,
-    "calibration_intercept_alpha": 0.2666378698277368,
-    "calibration_slope_gamma": 1.4079066556167144
+    "calibration_intercept_alpha": 0.24031383289266525,
+    "calibration_slope_gamma": 1.483378396900702
   },
   "april_frozen_primary": {
-    "expected_calibration_error": 0.11332909071931636,
-    "min_predicted_probability": 0.08251204702842162,
-    "max_predicted_probability": 0.9652282899028878,
-    "mean_predicted_probability": 0.549499731270403,
+    "expected_calibration_error": 0.10287675237658558,
+    "min_predicted_probability": 0.0870958516524063,
+    "max_predicted_probability": 0.9582034649222706,
+    "mean_predicted_probability": 0.5496575266585649,
     "observed_home_win_rate": 0.59375,
-    "calibration_intercept_alpha": 0.2562633601946635,
-    "calibration_slope_gamma": 1.4366694053162217
+    "calibration_intercept_alpha": 0.24649867153994023,
+    "calibration_slope_gamma": 1.529280098836364
   }
 }

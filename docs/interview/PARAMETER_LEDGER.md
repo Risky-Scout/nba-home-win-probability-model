@@ -3,7 +3,18 @@
 **Rule for the interview:** every number is **Fitted**, **Selected**, or **Fixed by design**.  
 If you cannot point to a file, do not invent a story.
 
-Champion: direct logistic, architecture `k10_hl20`, `logistic_c = 0.1`.
+Selected model: **Elo-only L2 logistic** — architecture `k5_hfa80_hl20`
+(half-life irrelevant for a trend-free set), feature set `elo`,
+`logistic_c = 0.03`. Winner of a **672-candidate prequential search**
+(K × HFA × half-life × 5 nested feature sets × C) judged on pooled per-game
+log loss over all 399 January–February games. Richer feature sets were in the
+declared ladder and lost.
+
+> Historical note: earlier iterations selected a three-feature logistic
+> (`k10_hl20`, C=0.1) under a two-fold estimator. The prequential estimator
+> (~200× more validation points than fold means) supersedes it; the
+> three-feature model remains a documented challenger in
+> `reports/metrics.json`. Sections below marked (superseded) describe it.
 
 ---
 

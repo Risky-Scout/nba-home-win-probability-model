@@ -1,3 +1,13 @@
+> **Current selected model (read first):** Elo-only L2 logistic — K=5, HFA=80,
+> C=0.03 — winner of the 672-candidate **prequential** search (399 Jan–Feb
+> validation games). Locked March: LL 0.5135, 184/239. Frozen April: LL 0.4746,
+> Brier 0.1530, AUC 0.866, 75/96. The three-feature logistic and v1 blend are
+> documented challengers; on April both are near-ties within selection noise
+> (see `docs/OPTIMALITY_STATEMENT.md`). Where numbers below differ, prefer
+> `reports/model_report.md` (generated) and this banner.
+
+---
+
 > **Champion correction (read first):** The live model on this branch is a
 > **direct L2 logistic** (`k10_hl20`, `C=0.1`) selected on **pre-March** folds.
 > Primary April = **frozen March 31**. Parameter ledger:

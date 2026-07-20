@@ -1,8 +1,8 @@
 {
-  "observed_difference_a_minus_b": -0.17029382836360143,
-  "bootstrap_mean": -0.17022484730815546,
-  "ci_2_5": -0.2180799582688526,
-  "ci_97_5": -0.1178090260575173,
+  "observed_difference_a_minus_b": -0.1671198390320193,
+  "bootstrap_mean": -0.1670994107103612,
+  "ci_2_5": -0.2126302187928701,
+  "ci_97_5": -0.11774078418852717,
   "probability_a_better_than_b": 1.0,
   "repeats": 2000
 }

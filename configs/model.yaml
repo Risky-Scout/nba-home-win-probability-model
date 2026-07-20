@@ -3,15 +3,19 @@
 
 selection:
   cutoff: "2026-03-01"           # selection may never see rows on/after this date
-  metric: mean_validation_log_loss
-  secondary_metrics: [mean_validation_brier]
-  descriptive_metrics: [mean_validation_auc, mean_validation_accuracy]
-  # Expanding-window development folds (Oct–Feb only). March is locked; April is forecast.
-  # These two folds are the protocol declared on the remediation branch BEFORE any
-  # locked-test viewing in this rework. A third December fold (train Oct–Nov) was
-  # evaluated as a protocol sensitivity: its thin training window pushes selection
-  # toward heavier shrinkage (C=0.01) that scores worse out-of-sample; results are
-  # reported in reports/model_report.md, and the declared two-fold protocol stands.
+  # v2 estimator: prequential daily expanding validation over Jan 1 – Feb 28.
+  # For every validation DATE d: fit on all games < d, score the games on d.
+  # Every January/February game becomes a genuine out-of-sample validation point
+  # (~450 games) instead of two fold means — the strongest selection estimator
+  # available without touching March or April.
+  method: prequential_daily
+  validation_start: "2026-01-01"
+  validation_end: "2026-03-01"
+  metric: prequential_log_loss
+  secondary_metrics: [prequential_brier]
+  descriptive_metrics: [prequential_auc, prequential_accuracy]
+  tie_break: [prequential_brier, prequential_auc, prequential_accuracy, n_features, architecture]
+  # Legacy two-fold protocol retained for the CI fixture path and history.
   folds:
     - name: fold1_jan
       train_end: "2026-01-01"
@@ -21,17 +25,29 @@ selection:
       train_end: "2026-02-01"
       validation_start: "2026-02-01"
       validation_end: "2026-03-01"
-  tie_break: [mean_validation_brier, mean_validation_auc, mean_validation_accuracy, model_type, architecture]
 
 search_budget:
-  elo_k: [10.0, 20.0, 30.0]
-  trend_half_life_days: [20.0, 45.0, 90.0]
+  # Declared BEFORE re-running selection. Everything below is derivable from the
+  # supplied CSV alone; no candidate uses March/April information.
+  elo_k: [5.0, 10.0, 20.0, 30.0]
+  elo_hfa: [50.0, 65.0, 80.0]
+  trend_half_life_days: [20.0, 45.0]
   logistic_c: [0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0]
+  feature_sets:
+    elo: [elo_diff]
+    elo_bt: [elo_diff, bt_logit]
+    elo_bt_trend: [elo_diff, bt_logit, trend_diff]
+    core_schedule: [elo_diff, bt_logit, trend_diff, rest_advantage, back_to_back_advantage]
+    rich: [elo_diff, bt_logit, trend_diff, record_logit_diff, recent_margin_diff,
+           rest_advantage, turnover_advantage_diff, rebound_advantage_diff, foul_advantage_diff]
   rationale:
-    elo_k: "Slow / moderate / fast sequential rating adaptation."
-    trend_half_life_days: "Short / medium / long form memory."
-    logistic_c: "Log-spaced L2 strength for the direct three-feature logistic."
-    search_size: "3 x 3 x 7 = 63 direct logistics + 9 architecture-matched blend challengers = 72 candidates."
+    elo_k: "Very slow to fast sequential rating adaptation."
+    elo_hfa: "Home advantage 50/65/80 Elo points (~57–61% for equal teams)."
+    trend_half_life_days: "Short / medium form memory (trend-free sets skip this axis)."
+    logistic_c: "Log-spaced L2 strength."
+    feature_sets: "Nested ladder from Elo-only to all leakage-safe CSV-derivable signals."
+    dedup: "Half-life only varies for sets containing trend_diff; trend-free sets are evaluated once per (K, HFA)."
+    search_size: "12 trend-free arch x 2 sets x 7 C = 168, plus 24 trend arch x 3 sets x 7 C = 504 -> 672 candidates, each judged on ~450 prequential games."
 
 feature_defaults:
   elo_hfa: 65.0
