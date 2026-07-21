@@ -1,6 +1,6 @@
 {
-  "feature_generation_and_scoring_wall_seconds": 5.369769332930446,
-  "score_and_write_wall_seconds": 5.369769332930446,
+  "feature_generation_and_scoring_wall_seconds": 5.2561452076770365,
+  "score_and_write_wall_seconds": 5.2561452076770365,
   "april_games_scored": 96,
   "includes": [
     "feature rebuild (sequential + frozen)",

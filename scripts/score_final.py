@@ -46,45 +46,6 @@ def main() -> None:
     )
     elapsed = time.perf_counter() - started
 
-    from nba_wp.config import benchmarks as _benchmarks, load_config
-
-    benchmarks = _benchmarks(load_config(args.config))
-    rows = []
-    comparisons = [
-        ("locked_march_test", "march", metrics["locked_march_test"]["metrics"]),
-        (
-            "primary_april_frozen",
-            "april",
-            metrics["primary_april_result"]["metrics"],
-        ),
-        (
-            "sequential_april_sensitivity",
-            "april",
-            metrics["sequential_daily"]["april"],
-        ),
-    ]
-    for policy, period, model_metrics in comparisons:
-        for metric in ["log_loss", "brier", "auc", "accuracy"]:
-            model_value = model_metrics[metric]
-            target = benchmarks[period][metric]
-            higher_is_better = metric in {"auc", "accuracy"}
-            rows.append(
-                {
-                    "information_policy": policy,
-                    "period": period,
-                    "metric": metric,
-                    "model_value": model_value,
-                    "retrospective_reference": target,
-                    "difference_model_minus_reference": model_value - target,
-                    "higher_is_better": higher_is_better,
-                    "reference_role": "context_only_not_selection_gate",
-                }
-            )
-    pd.DataFrame(rows).to_csv(
-        Path(args.artifact_dir) / "benchmark_comparison.csv",
-        index=False,
-    )
-
     import subprocess
 
     try:
@@ -104,7 +65,7 @@ def main() -> None:
         "regularization": {"logistic_c": selected_spec.get("logistic_c")},
         "training_cutoff_for_april": "2026-03-31",
         "primary_april_policy": "frozen_snapshot",
-        "feature_names": ["elo_diff", "bt_logit", "trend_diff"],
+        "feature_names": selected_spec.get("features", ["elo_diff"]),
         "data_sha256": sha256_file(args.data),
         "score_wall_seconds": elapsed,
         "package_versions": {

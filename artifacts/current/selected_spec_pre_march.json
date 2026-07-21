@@ -30,7 +30,7 @@
     "elo_model_c": 1.0,
     "rank_model_c": 0.1
   },
-  "feature_set": "elo",
+  "feature_set": "elo_only",
   "features": [
     "elo_diff"
   ],
@@ -75,7 +75,7 @@
       10.0
     ],
     "feature_sets": {
-      "elo": [
+      "elo_only": [
         "elo_diff"
       ],
       "elo_bt": [
@@ -86,28 +86,10 @@
         "elo_diff",
         "bt_logit",
         "trend_diff"
-      ],
-      "core_schedule": [
-        "elo_diff",
-        "bt_logit",
-        "trend_diff",
-        "rest_advantage",
-        "back_to_back_advantage"
-      ],
-      "rich": [
-        "elo_diff",
-        "bt_logit",
-        "trend_diff",
-        "record_logit_diff",
-        "recent_margin_diff",
-        "rest_advantage",
-        "turnover_advantage_diff",
-        "rebound_advantage_diff",
-        "foul_advantage_diff"
       ]
     }
   },
-  "total_candidates": 672,
+  "total_candidates": 336,
   "notes": [
     "No March or April row is loaded by model selection.",
     "March is a locked pre-final test after the specification is frozen.",
