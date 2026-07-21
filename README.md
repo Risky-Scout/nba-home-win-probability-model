@@ -120,6 +120,17 @@ presented as statistically decisive.
 | Saved probabilities reproduce | `python validate_submission.py --recompute ...` |
 | Feature contribution is measurable | `artifacts/feature_group_ablation.csv`, `artifacts/permutation_importance.csv` |
 
+## Excel companion — full mathematical transparency
+
+[`NBA_Model_Fully_Formulated.xlsx`](NBA_Model_Fully_Formulated.xlsx) rebuilds the
+entire model in live spreadsheet formulas: the sequential Elo chain for all
+1,230 games, the frozen Bradley-Terry strengths, the trend EWMA, the component
+logistics, the MLE logistic stacker, and the frozen April predictions. Sheet
+`11_Reconcile_Dashboard` checks every stage against this repository's committed
+artifacts (tolerances 1e-6 to 1e-9); all stacker coefficients and April
+probabilities match `artifacts/selected_spec.json` and
+`outputs/april_predictions_frozen_snapshot.csv` to machine precision.
+
 ## Run locally
 
 ```bash
