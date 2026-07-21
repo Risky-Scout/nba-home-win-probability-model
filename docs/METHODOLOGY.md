@@ -135,37 +135,33 @@ x^{trend}_g=T_{h,d}-T_{a,d}.
 A second L2-logistic model maps
 \((x^{BT}_g, x^{trend}_g)\) to a rank-component probability.
 
-## 6. Log-odds blend
+## 6. Log-odds blend (logistic stacking)
 
-Let \(p_E\) and \(p_R\) be the two component probabilities. They are combined
-in log-odds space:
-
-\[
-z_g =
-w\operatorname{logit}(p_E)
-+
-(1-w)\operatorname{logit}(p_R).
-\]
-
-Final calibration is
+Let \(p_E\) and \(p_R\) be the two component probabilities. The blend is a
+logistic regression on their logits, fitted by penalized maximum likelihood:
 
 \[
 p_g =
-\sigma\left(
-\frac{z_g}{\tau}+b
-\right).
+\sigma\bigl(
+a\operatorname{logit}(p_E)
++
+b\operatorname{logit}(p_R)
++
+c
+\bigr).
 \]
 
-March selection chose:
+The March fit produced:
 
 \[
-w=0.19,\qquad
-\tau=0.59,\qquad
-b=0.33.
+a=0.5796,\qquad
+b=0.9838,\qquad
+c=0.3154.
 \]
 
-The temperature below one sharpens the component blend. That behavior improved
-March proper scores but increases overconfidence risk; calibration plots and
+This is equivalent to the \((w, \tau, s)\) parameterization via
+\(w=a/(a+b)=0.371\), \(\tau=1/(a+b)=0.640\), \(s=c=0.315\). An implied
+temperature below one sharpens the component blend; calibration plots and
 April results are therefore retained as explicit diagnostics.
 
 ## 7. Metrics

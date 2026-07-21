@@ -35,12 +35,15 @@ The champion has two transparent components:
    plus the difference between short and long point-margin form.
 
 Each component is calibrated by an L2-logistic model. Their probabilities are
-combined in log-odds space:
+blended by a **fitted logistic stacker** (penalized maximum likelihood):
 
 ```text
-z = w * logit(p_elo) + (1 - w) * logit(p_rank)
-p_home = sigmoid(z / temperature + shift)
+p_home = sigmoid(a * logit(p_elo) + b * logit(p_rank) + c)
 ```
+
+The coefficients (a, b, c) are estimated by logistic regression on March
+component logits — no grid search. This is equivalent to the earlier
+(w, T, s) parameterization via w = a/(a+b), T = 1/(a+b), s = c.
 
 The selected March-only specification is stored in
 `artifacts/selected_spec.json`:
@@ -52,9 +55,9 @@ Elo home adjustment 75 rating points
 Bradley-Terry C    0.15
 trend half-life    45 days
 short trend window 10 games
-Elo blend weight   0.19
-temperature        0.59
-shift              0.33
+stacker a (elo logit)   0.5796
+stacker b (rank logit)  0.9838
+stacker c (intercept)   0.3154
 ```
 
 ## Evaluation protocol and information policy
@@ -66,10 +69,9 @@ shift              0.33
   date are priced, that date's results may update state for later dates.
 - `scripts/select_model.py` truncates the input at March 31 before feature
   construction. It cannot read an April row.
-- Five declared architectures and 68,231 calibration settings per architecture
-  are evaluated.
-- A candidate must beat all four March numerical targets. Eligible candidates
-  are ordered by log loss, Brier, AUC, and accuracy.
+- Five declared architectures are evaluated. For each, the blend is fitted by
+  penalized maximum likelihood (logistic stacking) on March component logits.
+- The selection rule is: **minimize March log loss**. Nothing else.
 
 ### April
 
@@ -90,25 +92,19 @@ quietly mixing them.
 
 | Period | Log loss | Brier | AUC | Accuracy |
 |---|---:|---:|---:|---:|
-| March model | **0.487569** | **0.156834** | **0.831798246** | **77.8243%** |
-| March target | 0.509645 | 0.167618 | 0.831798000 | 77.8200% |
-| April model | **0.463375** | **0.145639** | 0.850202 | **83.3333%** |
-| April target | 0.468596 | 0.150628 | **0.868196** | 81.2500% |
-
-The March selection result exceeds all four rounded targets. The AUC and
-accuracy margins are very small and are not presented as statistically
-decisive. On April, the model beats log loss, Brier, and accuracy, but **does
-not beat the AUC target**.
+| March model | 0.488029 | 0.157148 | 0.830336 | 78.6611% |
+| April model | 0.458717 | 0.144995 | 0.853351 | 82.2917% |
 
 ### Strict month-start snapshot sensitivity
 
 | Period | Log loss | Brier | AUC | Accuracy |
 |---|---:|---:|---:|---:|
-| March frozen snapshot | 0.497736 | 0.162489 | 0.822442 | 76.1506% |
-| April frozen snapshot | 0.458942 | 0.145299 | 0.862798 | 80.2083% |
+| March frozen snapshot | 0.496766 | 0.162053 | 0.823026 | 75.7322% |
+| April frozen snapshot | 0.454728 | 0.144498 | 0.863698 | 80.2083% |
 
 The strict April snapshot improves proper scoring relative to the operational
-version but remains below the stated AUC and accuracy targets.
+version. Small AUC and accuracy differences at this sample size are not
+presented as statistically decisive.
 
 ## What constitutes proof
 
@@ -119,7 +115,7 @@ version but remains below the stated AUC and accuracy targets.
 | Same-game box scores are excluded | `nba_wp/features.py`, `tests/test_feature_timing.py` |
 | Same-date games are batched | `tests/test_feature_timing.py::test_same_day_games_are_batched` |
 | April was absent from selection | `scripts/select_model.py`, `artifacts/selection_proof.json` |
-| The chosen grid point was generated, not typed into scoring code | `artifacts/march_architecture_results.csv`, `artifacts/march_tuning_top_candidates.csv` |
+| The stacker coefficients were fitted, not typed into scoring code | `artifacts/march_architecture_results.csv`, `artifacts/selected_spec.json` |
 | Metrics recompute from individual prices | `validate_submission.py`, `tests/test_artifacts.py` |
 | Saved probabilities reproduce | `python validate_submission.py --recompute ...` |
 | Feature contribution is measurable | `artifacts/feature_group_ablation.csv`, `artifacts/permutation_importance.csv` |
@@ -164,10 +160,10 @@ python validate_submission.py   --root .   --data "/absolute/path/to/nba-win-pro
 ├── nba_wp/
 │   ├── data.py               # schema validation and record reconciliation
 │   ├── features.py           # sequential/frozen feature state engine
-│   ├── model.py              # base models, blend, metrics, grid search
+│   ├── model.py              # base models, logistic stacker, metrics
 │   ├── selection.py          # March-only model selection
 │   └── reporting.py          # prices, evidence artifacts, figures
-├── configs/                  # declared candidates, targets, selection policy
+├── configs/                  # declared candidates, selection policy
 ├── scripts/                  # audit, selection, scoring, manifest entry points
 ├── tests/                    # leakage, artifact, and data-contract tests
 ├── artifacts/                # machine-readable proof

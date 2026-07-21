@@ -12,7 +12,7 @@ has a corresponding code path, generated artifact, or automated test.
 | Same-date games are batched | `nba_wp/features.py::build_features` | feature `performance_cutoff` | `test_same_day_games_are_batched` |
 | Frozen snapshot stops target-month performance updates | `build_features(..., freeze_date=...)` | frozen prediction CSVs | `test_frozen_snapshot_stops_performance_updates` |
 | April cannot enter model selection | `scripts/select_model.py`; `nba_wp/selection.py` | `artifacts/selection_proof.json` | validator selection assertions |
-| The selected configuration came from the grid | `nba_wp/model.py::search_calibration` | `march_architecture_results.csv`; `march_tuning_top_candidates.csv`; `selected_spec.json` | full reproduction |
+| The stacker coefficients were fitted, not typed | `nba_wp/model.py::fit_logit_stacker` | `march_architecture_results.csv`; `selected_spec.json` | full reproduction |
 | March probabilities use coefficients fitted through February | `scripts/score_final.py`; `nba_wp/reporting.py::score_and_write` | `outputs/march_predictions.csv` | validator |
 | April coefficients are refitted through March | `score_and_write` | `artifacts/trained_model.joblib`; April output | full recomputation |
 | Metrics equal the game-level probabilities | `nba_wp/model.py::evaluate` | `artifacts/final_metrics.json` | `tests/test_artifacts.py`; `validate_submission.py` |

@@ -75,8 +75,6 @@ def main() -> None:
                 str(root / "artifacts"),
                 "--figure-dir",
                 str(root / "figures"),
-                "--benchmarks",
-                str(root / "configs" / "benchmarks.json"),
             ]
         )
 

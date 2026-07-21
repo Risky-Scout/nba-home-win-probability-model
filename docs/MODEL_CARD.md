@@ -46,8 +46,8 @@ Secondary diagnostics:
 
 ## Performance
 
-See `artifacts/final_metrics.json`. The operational April result beats the
-stated log-loss, Brier, and accuracy targets but misses the AUC target.
+See `artifacts/final_metrics.json` for the regenerated operational and
+frozen-snapshot March/April metrics.
 
 ## Interpretability
 

@@ -130,179 +130,65 @@ def predict(
     return final_probability, elo_probability, rank_probability
 
 
-def candidate_beats_benchmarks(
-    metrics: dict[str, float],
-    benchmarks: dict[str, float],
-) -> bool:
-    return (
-        metrics["log_loss"] < benchmarks["log_loss"]
-        and metrics["brier"] < benchmarks["brier"]
-        and metrics["auc"] > benchmarks["auc"]
-        and metrics["accuracy"] > benchmarks["accuracy"]
-    )
-
-
-def search_calibration(
+def fit_logit_stacker(
     y_true: np.ndarray,
     elo_probability: np.ndarray,
     rank_probability: np.ndarray,
-    *,
-    weights: list[float],
-    temperatures: list[float],
-    shifts: list[float],
-    benchmarks: dict[str, float],
-    top_n: int = 100,
-) -> dict[str, Any]:
-    """Exhaustively search a transparent calibration grid.
+) -> LogisticRegression:
+    """Fit the blend by penalized maximum likelihood (logistic stacking)."""
+    x = np.column_stack([logit(elo_probability), logit(rank_probability)])
+    stacker = LogisticRegression(
+        C=1.0,
+        max_iter=10_000,
+        tol=1e-12,
+        random_state=0,
+    )
+    stacker.fit(x, np.asarray(y_true, dtype=int))
+    return stacker
 
-    The loop is vectorized over temperature and shift for speed. AUC is
-    calculated once per blend weight because positive affine calibration does
-    not change ranking.
-    """
-    y = np.asarray(y_true, dtype=int)
-    elo_logit = logit(elo_probability)
-    rank_logit = logit(rank_probability)
-    temperatures_array = np.asarray(temperatures, dtype=float)
-    shifts_array = np.asarray(shifts, dtype=float)
 
-    best_any: dict[str, Any] | None = None
-    best_eligible: dict[str, Any] | None = None
-    eligible_rows: list[dict[str, Any]] = []
-    candidate_count = 0
-    eligible_count = 0
+def apply_logit_stacker(
+    stacker: LogisticRegression,
+    elo_probability: np.ndarray,
+    rank_probability: np.ndarray,
+) -> np.ndarray:
+    x = np.column_stack([logit(elo_probability), logit(rank_probability)])
+    return stacker.predict_proba(x)[:, 1]
 
-    for weight in weights:
-        base = float(weight) * elo_logit + (1.0 - float(weight)) * rank_logit
-        auc = float(roc_auc_score(y, base))
 
-        z = base[None, :] / temperatures_array[:, None]
-        probabilities = sigmoid(
-            z[None, :, :] + shifts_array[:, None, None]
-        )
-        clipped = np.clip(probabilities, 1e-12, 1.0 - 1e-12)
-        losses = -(
-            y[None, None, :] * np.log(clipped)
-            + (1 - y[None, None, :]) * np.log(1.0 - clipped)
-        ).mean(axis=2)
-        briers = ((probabilities - y[None, None, :]) ** 2).mean(axis=2)
-        accuracies = ((probabilities >= 0.5) == y[None, None, :]).mean(axis=2)
-        candidate_count += int(losses.size)
-
-        best_index = np.unravel_index(int(np.argmin(losses)), losses.shape)
-        shift_index, temperature_index = best_index
-        row_any = {
-            "elo_weight": float(weight),
-            "temperature": float(temperatures_array[temperature_index]),
-            "shift": float(shifts_array[shift_index]),
-            "log_loss": float(losses[best_index]),
-            "brier": float(briers[best_index]),
-            "auc": auc,
-            "accuracy": float(accuracies[best_index]),
-        }
-        if best_any is None or (
-            row_any["log_loss"],
-            row_any["brier"],
-            -row_any["auc"],
-            -row_any["accuracy"],
-        ) < (
-            best_any["log_loss"],
-            best_any["brier"],
-            -best_any["auc"],
-            -best_any["accuracy"],
-        ):
-            best_any = row_any
-
-        eligible_mask = (
-            (losses < benchmarks["log_loss"])
-            & (briers < benchmarks["brier"])
-            & (auc > benchmarks["auc"])
-            & (accuracies > benchmarks["accuracy"])
-        )
-        eligible_count += int(eligible_mask.sum())
-        if not eligible_mask.any():
-            continue
-
-        masked_losses = np.where(eligible_mask, losses, np.inf)
-        eligible_index = np.unravel_index(
-            int(np.argmin(masked_losses)),
-            masked_losses.shape,
-        )
-        shift_index, temperature_index = eligible_index
-        row_eligible = {
-            "elo_weight": float(weight),
-            "temperature": float(temperatures_array[temperature_index]),
-            "shift": float(shifts_array[shift_index]),
-            "log_loss": float(losses[eligible_index]),
-            "brier": float(briers[eligible_index]),
-            "auc": auc,
-            "accuracy": float(accuracies[eligible_index]),
-        }
-        if best_eligible is None or (
-            row_eligible["log_loss"],
-            row_eligible["brier"],
-            -row_eligible["auc"],
-            -row_eligible["accuracy"],
-        ) < (
-            best_eligible["log_loss"],
-            best_eligible["brier"],
-            -best_eligible["auc"],
-            -best_eligible["accuracy"],
-        ):
-            best_eligible = row_eligible
-
-        # Keep only the best bounded subset for this weight. Enumerating every
-        # eligible cell is unnecessary and makes the audit run slower.
-        flattened = np.where(eligible_mask, losses, np.inf).ravel()
-        finite_count = int(np.isfinite(flattened).sum())
-        keep_count = min(top_n, finite_count)
-        if keep_count:
-            candidate_indices = np.argpartition(
-                flattened,
-                keep_count - 1,
-            )[:keep_count]
-            local_rows: list[dict[str, Any]] = []
-            for flat_index in candidate_indices:
-                shift_index, temperature_index = np.unravel_index(
-                    int(flat_index),
-                    losses.shape,
-                )
-                local_rows.append(
-                    {
-                        "elo_weight": float(weight),
-                        "temperature": float(
-                            temperatures_array[temperature_index]
-                        ),
-                        "shift": float(shifts_array[shift_index]),
-                        "log_loss": float(
-                            losses[shift_index, temperature_index]
-                        ),
-                        "brier": float(
-                            briers[shift_index, temperature_index]
-                        ),
-                        "auc": auc,
-                        "accuracy": float(
-                            accuracies[shift_index, temperature_index]
-                        ),
-                    }
-                )
-            eligible_rows.extend(local_rows)
-        eligible_rows.sort(
-            key=lambda row: (
-                row["log_loss"],
-                row["brier"],
-                -row["auc"],
-                -row["accuracy"],
-            )
-        )
-        eligible_rows = eligible_rows[:top_n]
-
+def stacker_calibration_dict(stacker: LogisticRegression) -> dict[str, Any]:
+    """Serializable calibration block for selected_spec.json."""
+    a = float(stacker.coef_[0, 0])
+    b = float(stacker.coef_[0, 1])
+    c = float(stacker.intercept_[0])
     return {
-        "candidate_count": candidate_count,
-        "eligible_count": eligible_count,
-        "best_any": best_any,
-        "best_eligible": best_eligible,
-        "top_eligible": eligible_rows,
+        "method": "logistic_stack",
+        "coef_elo_logit": a,
+        "coef_rank_logit": b,
+        "intercept": c,
+        "note": (
+            "blend fitted by penalized maximum likelihood (logistic stacking); "
+            "equivalent to the (w, T, s) parameterization via w=a/(a+b), "
+            "T=1/(a+b), s=c"
+        ),
     }
+
+
+def stacker_from_calibration_dict(values: dict[str, Any]) -> LogisticRegression:
+    """Rebuild a fitted stacker from its persisted coefficients."""
+    stacker = LogisticRegression(
+        C=1.0,
+        max_iter=10_000,
+        tol=1e-12,
+        random_state=0,
+    )
+    stacker.classes_ = np.array([0, 1])
+    stacker.coef_ = np.array(
+        [[float(values["coef_elo_logit"]), float(values["coef_rank_logit"])]]
+    )
+    stacker.intercept_ = np.array([float(values["intercept"])])
+    stacker.n_features_in_ = 2
+    return stacker
 
 
 def standardized_coefficient_rows(

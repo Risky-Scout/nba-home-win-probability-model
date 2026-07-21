@@ -16,12 +16,12 @@ from sklearn.preprocessing import StandardScaler
 from .features import Architecture, CANDIDATE_FEATURES, build_features, feature_dictionary
 from .model import (
     BaseModels,
-    Calibration,
-    blend_probabilities,
+    apply_logit_stacker,
     component_probabilities,
     evaluate,
     fit_base_models,
-    predict,
+    fit_logit_stacker,
+    stacker_calibration_dict,
     standardized_coefficient_rows,
 )
 
@@ -112,7 +112,7 @@ def ablation_table(
     train: pd.DataFrame,
     validation: pd.DataFrame,
     final_models: BaseModels,
-    calibration: Calibration,
+    stacker,
 ) -> pd.DataFrame:
     y = validation["home_win"].to_numpy(dtype=int)
     rows: list[dict[str, Any]] = []
@@ -163,11 +163,16 @@ def ablation_table(
             }
         )
 
-    final_probability, _, _ = predict(final_models, validation, calibration)
+    elo_probability, rank_probability = component_probabilities(
+        final_models, validation
+    )
+    final_probability = apply_logit_stacker(
+        stacker, elo_probability, rank_probability
+    )
     rows.append(
         {
             "stage": "B7",
-            "model": "Selected calibrated Elo + BT/trend blend",
+            "model": "Selected logistic-stacked Elo + BT/trend blend",
             "features": "elo_diff | bt_logit + trend_diff",
             **evaluate(y, final_probability),
         }
@@ -186,12 +191,16 @@ def ablation_table(
 def permutation_importance(
     models: BaseModels,
     validation: pd.DataFrame,
-    calibration: Calibration,
+    stacker,
     *,
     repeats: int = 100,
     seed: int = 365,
 ) -> pd.DataFrame:
-    baseline, _, _ = predict(models, validation, calibration)
+    def _predict(frame: pd.DataFrame) -> np.ndarray:
+        elo_probability, rank_probability = component_probabilities(models, frame)
+        return apply_logit_stacker(stacker, elo_probability, rank_probability)
+
+    baseline = _predict(validation)
     baseline_metrics = evaluate(validation["home_win"], baseline)
     rng = np.random.default_rng(seed)
     rows: list[dict[str, Any]] = []
@@ -201,7 +210,7 @@ def permutation_importance(
         for repeat in range(repeats):
             shuffled = validation.copy()
             shuffled[feature] = rng.permutation(shuffled[feature].to_numpy())
-            probability, _, _ = predict(models, shuffled, calibration)
+            probability = _predict(shuffled)
             metric = evaluate(shuffled["home_win"], probability)
             changes.append(metric["log_loss"] - baseline_metrics["log_loss"])
         changes_array = np.asarray(changes)
@@ -336,7 +345,6 @@ def score_and_write(
     figure_path.mkdir(parents=True, exist_ok=True)
 
     architecture = Architecture.from_dict(selected_spec["architecture"])
-    calibration = Calibration.from_dict(selected_spec["calibration"])
 
     sequential_features = build_features(games, architecture)
     frozen_march_features = build_features(
@@ -365,17 +373,19 @@ def score_and_write(
     ].copy()
 
     march_models = fit_base_models(train_feb, architecture)
-    march_probability, march_elo, march_rank = predict(
-        march_models,
-        march,
-        calibration,
+    march_elo, march_rank = component_probabilities(march_models, march)
+    # Refit the stacker the same way as selection: on March component
+    # probabilities from base models trained through February.
+    stacker = fit_logit_stacker(
+        march["home_win"].to_numpy(dtype=int),
+        march_elo,
+        march_rank,
     )
+    march_probability = apply_logit_stacker(stacker, march_elo, march_rank)
+
     final_models = fit_base_models(through_march, architecture)
-    april_probability, april_elo, april_rank = predict(
-        final_models,
-        april,
-        calibration,
-    )
+    april_elo, april_rank = component_probabilities(final_models, april)
+    april_probability = apply_logit_stacker(stacker, april_elo, april_rank)
 
     march_output = prediction_frame(
         march,
@@ -402,15 +412,17 @@ def score_and_write(
     frozen_april = frozen_april_features[
         frozen_april_features["game_date"] >= "2026-04-01"
     ].copy()
-    frozen_march_probability, frozen_march_elo, frozen_march_rank = predict(
-        march_models,
-        frozen_march,
-        calibration,
+    frozen_march_elo, frozen_march_rank = component_probabilities(
+        march_models, frozen_march
     )
-    frozen_april_probability, frozen_april_elo, frozen_april_rank = predict(
-        final_models,
-        frozen_april,
-        calibration,
+    frozen_march_probability = apply_logit_stacker(
+        stacker, frozen_march_elo, frozen_march_rank
+    )
+    frozen_april_elo, frozen_april_rank = component_probabilities(
+        final_models, frozen_april
+    )
+    frozen_april_probability = apply_logit_stacker(
+        stacker, frozen_april_elo, frozen_april_rank
     )
     frozen_march_output = prediction_frame(
         frozen_march,
@@ -437,7 +449,7 @@ def score_and_write(
         "model": selected_spec["model_family"],
         "selected_spec": {
             "architecture": selected_spec["architecture"],
-            "calibration": selected_spec["calibration"],
+            "calibration": stacker_calibration_dict(stacker),
         },
         "sequential_daily": {
             "march": evaluate(march["home_win"], march_probability),
@@ -467,7 +479,7 @@ def score_and_write(
         train_feb,
         march,
         march_models,
-        calibration,
+        stacker,
     )
     ablation.to_csv(
         artifact_path / "feature_group_ablation.csv",
@@ -477,7 +489,7 @@ def score_and_write(
     importance = permutation_importance(
         march_models,
         march,
-        calibration,
+        stacker,
     )
     importance.to_csv(
         artifact_path / "permutation_importance.csv",
@@ -553,7 +565,8 @@ def score_and_write(
     joblib.dump(
         {
             "architecture": architecture.to_dict(),
-            "calibration": calibration.to_dict(),
+            "calibration": stacker_calibration_dict(stacker),
+            "stacker": stacker,
             "elo_model": final_models.elo_model,
             "rank_model": final_models.rank_model,
         },
