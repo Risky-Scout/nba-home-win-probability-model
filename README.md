@@ -123,8 +123,8 @@ presented as statistically decisive.
 ## Run locally
 
 ```bash
-git clone <your-repository-url>
-cd <repository>
+git clone https://github.com/Risky-Scout/nba-home-win-probability-model.git
+cd nba-home-win-probability-model
 
 bash scripts/bootstrap_macos.sh
 source .venv/bin/activate
