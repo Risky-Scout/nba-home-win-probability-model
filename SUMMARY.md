@@ -48,4 +48,4 @@ Open next:
 1. `artifacts/selection_proof.json`
 2. `artifacts/feature_group_ablation.csv`
 3. `outputs/april_predictions.csv`
-4. `docs/INTERVIEW_WALKTHROUGH.md`
+4. `docs/REVIEWER_GUIDE.md`

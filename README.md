@@ -10,7 +10,7 @@ artifact, or an automated test.
 | Review time | Route |
 |---|---|
 | 2 minutes | Read `SUMMARY.md`, then open `artifacts/final_metrics.json`. |
-| 10 minutes | Follow `docs/INTERVIEW_WALKTHROUGH.md`. |
+| 10 minutes | Follow `docs/REVIEWER_GUIDE.md`. |
 | Reproduce | Run `make reproduce DATA=/absolute/path/to/nba-win-probability-data.csv`. |
 | Audit | Run `make verify DATA=/absolute/path/to/nba-win-probability-data.csv`. |
 | Trace claims | Open `docs/CLAIM_TO_ARTIFACT_MAP.md`. |
