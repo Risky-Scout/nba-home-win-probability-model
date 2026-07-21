@@ -1,9 +1,9 @@
 {
-  "model_family": "calibrated logit blend: Elo + Bradley-Terry/recent-trend",
+  "model_family": "logistic-stacked blend: Elo + Bradley-Terry/recent-trend",
   "selected_using": "March 2026 operational one-step-ahead validation",
   "selection_data_max_date": "2026-03-31",
   "april_rows_loaded_during_selection": 0,
-  "selection_rule": "Filter to candidates beating all four March targets; minimize March log loss; tie-break by Brier, AUC, accuracy, architecture name.",
+  "selection_rule": "Minimize March log loss.",
   "primary_metric": "log_loss",
   "secondary_metrics": [
     "brier",
@@ -23,38 +23,17 @@
     "rank_model_c": 0.1
   },
   "calibration": {
-    "elo_weight": 0.19,
-    "temperature": 0.59,
-    "shift": 0.33
+    "method": "logistic_stack",
+    "coef_elo_logit": 0.5795901386714818,
+    "coef_rank_logit": 0.9837561153917409,
+    "intercept": 0.31535451734572173,
+    "note": "blend fitted by penalized maximum likelihood (logistic stacking); equivalent to the (w, T, s) parameterization via w=a/(a+b), T=1/(a+b), s=c"
   },
   "march_validation_metrics": {
-    "log_loss": 0.48756877187854697,
-    "brier": 0.1568336751688191,
-    "auc": 0.8317982456140351,
-    "accuracy": 0.7782426778242678
-  },
-  "march_benchmarks": {
-    "log_loss": 0.509645,
-    "brier": 0.167618,
-    "auc": 0.831798,
-    "accuracy": 0.7782
-  },
-  "calibration_grid": {
-    "elo_weight": {
-      "start": 0.0,
-      "stop": 0.35,
-      "step": 0.005
-    },
-    "temperature": {
-      "start": 0.55,
-      "stop": 0.85,
-      "step": 0.01
-    },
-    "shift": {
-      "start": 0.1,
-      "stop": 0.4,
-      "step": 0.01
-    }
+    "log_loss": 0.488028662122789,
+    "brier": 0.15714820756609457,
+    "auc": 0.8303362573099415,
+    "accuracy": 0.7866108786610879
   },
   "architecture_count": 5,
   "notes": [

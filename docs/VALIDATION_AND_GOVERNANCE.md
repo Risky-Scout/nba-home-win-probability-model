@@ -49,50 +49,28 @@ Five named architectures are declared before execution in
 This is a small, inspectable structural grid rather than unrestricted automated
 model discovery.
 
-## Calibration grid
+## Calibration fitting
 
-For each architecture:
+For each architecture, the blend is fitted by penalized maximum likelihood
+(logistic stacking) on March component logits:
 
-- Elo logit weight: 0.000 to 0.350 in 0.005 increments;
-- temperature: 0.55 to 0.85 in 0.01 increments;
-- shift: 0.10 to 0.40 in 0.01 increments.
+\[
+p = \sigma\bigl(a\operatorname{logit}(p_E) + b\operatorname{logit}(p_R) + c\bigr).
+\]
 
-That is 68,231 calibration candidates per architecture and 341,155 total
-architecture-calibration combinations.
-
-AUC is calculated once per blend weight because a positive affine logit
-calibration does not alter ranking.
+The three coefficients \((a, b, c)\) are estimated by a single
+`LogisticRegression(C=1.0)` fit — there is no calibration grid. This is
+equivalent to the \((w, \tau, s)\) parameterization via \(w = a/(a+b)\),
+\(\tau = 1/(a+b)\), \(s = c\).
 
 ## Selection rule
 
-A candidate is eligible only when its March values satisfy:
+Minimize March log loss. Architecture name is used only for deterministic
+tie-breaking of exact ties.
 
-\[
-LL < 0.509645,
-\]
-
-\[
-Brier < 0.167618,
-\]
-
-\[
-AUC > 0.831798,
-\]
-
-\[
-Accuracy > 0.7782.
-\]
-
-Eligible candidates are ordered lexicographically:
-
-1. lower log loss;
-2. lower Brier;
-3. higher AUC;
-4. higher accuracy;
-5. architecture name for deterministic final tie-breaking.
-
-The selected point is not copied into scoring source code. It is written by
-selection to `artifacts/selected_spec.json`, and the scorer loads that file.
+The selected coefficients are not copied into scoring source code. They are
+written by selection to `artifacts/selected_spec.json`, and the scorer refits
+the stacker the same way before applying it to April.
 
 ## Operational versus frozen state
 

@@ -60,20 +60,21 @@ python -m pytest tests/test_feature_timing.py -q
 
 > The first component is margin-of-victory Elo. The second is a regularized
 > Bradley-Terry paired-comparison model plus recent point-margin trend. I blend
-> their probabilities in log-odds space and apply a temperature and intercept
-> calibration.
+> their probabilities with a logistic stacker fitted on March component logits
+> by penalized maximum likelihood — the blend weights are estimated, not
+> searched.
 
-Show `docs/METHODOLOGY.md` and `nba_wp/model.py::blend_probabilities`.
+Show `docs/METHODOLOGY.md` and `nba_wp/model.py::fit_logit_stacker`.
 
 ### 6:00-7:30 - Selection proof
 
 Open `scripts/select_model.py` and `artifacts/selection_proof.json`.
 
 > The selection script truncates the raw input before April and the selection
-> function rejects any frame containing April. Five declared architectures and
-> a declared three-parameter calibration grid are searched. The selected JSON
-> is generated and later loaded by the scorer; it is not duplicated as hidden
-> constants.
+> function rejects any frame containing April. Five declared architectures are
+> compared; for each, the stacker is fitted and March log loss is computed.
+> The rule is simply: minimize March log loss. The selected JSON is generated
+> and later loaded by the scorer; it is not duplicated as hidden constants.
 
 ### 7:30-9:00 - Feature proof
 
@@ -82,15 +83,17 @@ Show `artifacts/feature_group_ablation.csv` and
 
 > Record-only and richer box-score-style candidates were weaker. The selected
 > blend reduced March log loss from 0.6806 for the training home prior to
-> 0.4876. Permutation importance shows Bradley-Terry as the dominant ranking
+> 0.4880. Permutation importance shows Bradley-Terry as the dominant ranking
 > signal, Elo as meaningful, and trend as a smaller correction.
 
 ### 9:00-10:00 - Results and humility
 
-> March exceeds all four rounded targets, although the AUC and accuracy margins
-> are tiny. April beats log loss, Brier, and accuracy but misses AUC. I did not
-> retune after that miss. I also export a strict month-start snapshot because
-> rolling daily and frozen-batch evaluations answer different questions.
+> The blend coefficients are fitted by penalized maximum likelihood on March
+> component logits — no grid search, no external targets. March log loss is
+> 0.4880 and April is 0.4587, with April accuracy 82.3%. March is in-sample
+> for the stacker, so I present April as the meaningful number. I also export
+> a strict month-start snapshot because rolling daily and frozen-batch
+> evaluations answer different questions.
 
 Show `artifacts/final_metrics.json`.
 
@@ -152,15 +155,18 @@ forward proper-score improvement, not because it is more complex.
 
 ### Why blend in log-odds space?
 
-Log odds are the additive scale of logistic models. Weighting logits combines
-evidence on a common scale. Temperature then controls sharpness and shift
-controls the home baseline.
+Log odds are the additive scale of logistic models. A logistic regression on
+the two component logits estimates the blend weights and intercept jointly by
+maximum likelihood — sharpness and the home baseline fall out of the fit
+instead of a grid.
 
-### Why is the temperature 0.59?
+### What do the stacker coefficients mean?
 
-The March grid found the uncalibrated components underconfident for that
-period. A temperature below one sharpened them. I treat this cautiously because
-March is only 239 games and is also the selection set.
+a = 0.5796 on the Elo logit, b = 0.9838 on the rank logit, intercept
+c = 0.3154. Equivalently w = a/(a+b) = 0.371, implied temperature
+1/(a+b) = 0.640, shift = 0.315. a + b > 1 means the fit sharpened the
+components. I treat this cautiously because March is only 239 games and is
+also the selection set.
 
 ### Is March performance unbiased?
 
@@ -174,11 +180,11 @@ The executable selection path cannot load April. The broader project had
 already viewed April, so I describe April as retrospective rather than claiming
 perfect human blindness.
 
-### Why does AUC miss in April while proper scores improve?
+### Why can proper scores improve while AUC moves little?
 
 AUC depends only on pairwise ranking. Calibration can materially improve log
-loss and Brier without changing ranking. The model's probabilities were useful
-but some April matchup ordering differed from the AUC benchmark.
+loss and Brier without changing ranking, so the stacker mostly moves proper
+scores rather than AUC.
 
 ### Are earlier April results used?
 

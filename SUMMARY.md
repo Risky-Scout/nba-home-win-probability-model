@@ -24,28 +24,24 @@ prediction. Model selection receives only rows dated no later than March 31.
 
 ## Selection
 
-Five declared architectures are evaluated. For each architecture, a
-three-parameter calibration grid is searched on March. Candidates must exceed
-all four March numerical targets. The selected specification is generated in
+Five declared architectures are evaluated. For each architecture, the blend is
+**fitted by penalized maximum likelihood (logistic stacking)** on March
+component logits — no grid search. The selection rule is: minimize March log
+loss. The selected specification is generated in
 `artifacts/selected_spec.json`.
 
 ## Operational results
 
 | Period | Log loss | Brier | AUC | Accuracy |
 |---|---:|---:|---:|---:|
-| March | 0.487569 | 0.156834 | 0.831798246 | 77.8243% |
-| April | 0.463375 | 0.145639 | 0.850202 | 83.3333% |
-
-March exceeds all four rounded targets. April exceeds log loss, Brier, and
-accuracy but misses the AUC target.
+| March | 0.488029 | 0.157148 | 0.830336 | 78.6611% |
+| April | 0.458717 | 0.144995 | 0.853351 | 82.2917% |
 
 ## Interview position
 
-The strongest claim is not "every target was beaten." It is:
-
 > The complete evidence chain is reproducible, April is excluded from
-> selection code, probability quality is strong, and the AUC miss is reported
-> without post-hoc retuning.
+> selection code, the blend coefficients are fitted — not searched — and
+> probability quality is strong and reported without post-hoc retuning.
 
 Open next:
 

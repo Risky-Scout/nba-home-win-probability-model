@@ -29,7 +29,6 @@ def main() -> None:
         selection_games,
         load_json(config_dir / "architecture_candidates.json"),
         load_json(config_dir / "selection_policy.json"),
-        load_json(config_dir / "benchmarks.json"),
     )
 
     (artifact_dir / "selected_spec.json").write_text(

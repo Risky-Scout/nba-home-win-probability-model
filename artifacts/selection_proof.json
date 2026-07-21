@@ -4,9 +4,11 @@
   "april_rows_loaded": 0,
   "selected_architecture": "hfa_75",
   "selected_calibration": {
-    "elo_weight": 0.19,
-    "temperature": 0.59,
-    "shift": 0.33
+    "method": "logistic_stack",
+    "coef_elo_logit": 0.5795901386714818,
+    "coef_rank_logit": 0.9837561153917409,
+    "intercept": 0.31535451734572173,
+    "note": "blend fitted by penalized maximum likelihood (logistic stacking); equivalent to the (w, T, s) parameterization via w=a/(a+b), T=1/(a+b), s=c"
   },
-  "selection_rule": "Filter to candidates beating all four March targets; minimize March log loss; tie-break by Brier, AUC, accuracy, architecture name."
+  "selection_rule": "Minimize March log loss."
 }

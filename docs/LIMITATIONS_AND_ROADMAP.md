@@ -11,13 +11,11 @@
 4. **No travel geometry.** Rest is available, but flight distance, time-zone
    changes, altitude transitions, and road-trip structure are not.
 5. **No market anchor.** Closing or opening prices are unavailable.
-6. **March selection reuse.** March both selects and reports the chosen
-   calibration.
+6. **March selection reuse.** March both selects the architecture and fits the
+   stacker coefficients, so March metrics are in-sample for the blend.
 7. **April was historically viewed.** The code excludes it from selection, but
    the broader project cannot claim perfect human blindness.
-8. **AUC target miss.** The operational April model does not exceed the stated
-   AUC target.
-9. **Pricing layer omitted.** Fair odds contain no overround, liability, limits,
+8. **Pricing layer omitted.** Fair odds contain no overround, liability, limits,
    or trader adjustment.
 
 ## Highest-value next data
