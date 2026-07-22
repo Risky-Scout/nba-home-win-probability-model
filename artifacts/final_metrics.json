@@ -14,16 +14,16 @@
     },
     "calibration": {
       "method": "logistic_stack",
-      "coef_elo_logit": 0.5795901386714818,
-      "coef_rank_logit": 0.9837561153917409,
-      "intercept": 0.31535451734572173,
+      "coef_elo_logit": 0.5795901348781234,
+      "coef_rank_logit": 0.9837561206667516,
+      "intercept": 0.31535451800901687,
       "note": "blend fitted by penalized maximum likelihood (logistic stacking); equivalent to the (w, T, s) parameterization via w=a/(a+b), T=1/(a+b), s=c"
     }
   },
   "sequential_daily": {
     "march": {
-      "log_loss": 0.488028662122789,
-      "brier": 0.15714820756609457,
+      "log_loss": 0.48802866204106454,
+      "brier": 0.15714820753837705,
       "auc": 0.8303362573099415,
       "accuracy": 0.7866108786610879,
       "games": 239,
@@ -31,33 +31,33 @@
       "mean_probability": 0.6025104602046744
     },
     "april": {
-      "log_loss": 0.4587173023013022,
-      "brier": 0.14499470458306105,
+      "log_loss": 0.45871730280570494,
+      "brier": 0.14499470479263768,
       "auc": 0.8533513270355376,
       "accuracy": 0.8229166666666666,
       "games": 96,
       "home_win_rate": 0.59375,
-      "mean_probability": 0.6036714341259999
+      "mean_probability": 0.6036714340845174
     }
   },
   "frozen_snapshot_sensitivity": {
     "march": {
-      "log_loss": 0.4967656344688253,
-      "brier": 0.16205339109628664,
+      "log_loss": 0.4967656344777464,
+      "brier": 0.16205339109879777,
       "auc": 0.8230263157894736,
       "accuracy": 0.7573221757322176,
       "games": 239,
       "home_win_rate": 0.602510460251046,
-      "mean_probability": 0.5990993121652941
+      "mean_probability": 0.5990993121797423
     },
     "april": {
-      "log_loss": 0.45472759062545665,
-      "brier": 0.14449842177402714,
+      "log_loss": 0.4547275906759541,
+      "brier": 0.14449842178281255,
       "auc": 0.8636977058029689,
       "accuracy": 0.8020833333333334,
       "games": 96,
       "home_win_rate": 0.59375,
-      "mean_probability": 0.6035087189193216
+      "mean_probability": 0.6035087190033094
     }
   },
   "information_policy_note": "sequential_daily updates team-performance state after each completed date. frozen_snapshot holds performance state fixed at month start."
