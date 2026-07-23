@@ -1,1 +1,20 @@
-.......                                                                  [100%]
+................                                                         [100%]
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED tests/test_artifacts.py::test_selection_proof_excludes_april
+PASSED tests/test_artifacts.py::test_saved_metrics_recompute_from_predictions
+PASSED tests/test_elo_mov_winner_diff.py::test_mov_multiplier_is_larger_for_upset
+PASSED tests/test_elo_mov_winner_diff.py::test_elo_update_is_team_swap_symmetric_with_zero_hfa
+PASSED tests/test_feature_timing.py::test_current_game_postgame_values_do_not_change_current_features
+PASSED tests/test_feature_timing.py::test_same_day_games_are_batched
+PASSED tests/test_feature_timing.py::test_frozen_snapshot_stops_performance_updates
+PASSED tests/test_leakage_mutations.py::test_future_april_outcomes_do_not_change_march_features
+PASSED tests/test_leakage_mutations.py::test_april_boxscore_stats_do_not_leak_into_frozen_april_features
+PASSED tests/test_leakage_mutations.py::test_input_row_order_does_not_change_features
+PASSED tests/test_leakage_mutations.py::test_positive_control_march_outcome_changes_frozen_april_features
+PASSED tests/test_leakage_mutations.py::test_positive_control_february_outcome_changes_march_features
+PASSED tests/test_primary_april_frozen.py::test_primary_april_probabilities_ignore_all_april_results
+PASSED tests/test_real_data_contract.py::test_real_data_audit
+PASSED tests/test_real_data_contract.py::test_april_mutation_cannot_change_march_features
+PASSED tests/test_stacker_temperature_floor.py::test_stacker_temperature_floor_removes_sharpening
+16 passed in 7.71s
