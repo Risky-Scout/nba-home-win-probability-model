@@ -136,14 +136,52 @@ fold is scored. Pooling all 7 folds (335 out-of-sample games):
 |---|---:|---:|---:|---:|---:|
 | Rolling one-step-ahead | 0.505 | 0.166 | 0.835 | 78.2% | 0.118 |
 
-Honest read: under this stricter protocol the model is **mildly underconfident
-in the mid-range** (e.g. the ~0.51 decile realizes ~0.77; the ~0.60 decile
-realizes ~0.82), giving an expected calibration error of about 0.12 — larger
-than the single frozen-April window suggests. This is the expected cost of the
-conservative `T >= 1` temperature floor plus small per-fold training windows,
-and underconfidence is the safer failure mode than the overconfidence we
-removed. See `figures/rolling_oof_calibration.png` and
-`artifacts/rolling_oof_calibration.csv`.
+Honest read: under this stricter protocol the model is **underconfident in the
+mid-range** (e.g. the ~0.51 decile realizes ~0.77; the ~0.60 decile realizes
+~0.82), giving an expected calibration error of about 0.12 — larger than the
+single frozen-April window suggests. An ECE near 0.12 is **material** for
+pricing, not negligible. This rolling audit has fold-level outcome holdouts but
+is *not* a fully nested model-selection backtest (the architecture came from
+full-March selection), so it is a robustness diagnostic, not definitive proof.
+See `figures/rolling_oof_calibration.png` and the fully nested audit below.
+
+### Nested rolling-origin validation (the honest verdict)
+
+`scripts/nested_validation.py` removes the two weaknesses above. For each outer
+weekly fold (Feb–Apr, 11 folds, **501 out-of-sample games**): the architecture
+is selected by an *inner* rolling-origin search on data strictly before the
+fold; the constrained stacker is trained on inner **out-of-fold** component
+predictions (matching deployment); base models are refit on all pre-fold data;
+and the untouched outer fold is scored. No architecture chosen on a period is
+ever scored on that period. Four candidate procedures are priced on identical
+outer-fold rows:
+
+| Candidate (nested OOS, 501 games) | Log loss | Brier | AUC |
+|---|---:|---:|---:|
+| Constant home rate | 0.688 | 0.247 | — |
+| **Elo-only** | **0.527** | **0.175** | 0.813 |
+| Rank-only (BT + trend) | 0.544 | 0.181 | 0.811 |
+| Constrained blend | 0.561 | 0.189 | 0.805 |
+
+Week-block bootstrap, blend − Elo-only: **ΔlogLoss = +0.034** (95% CI
+`[+0.027, +0.042]`), **ΔBrier = +0.014** (95% CI `[+0.011, +0.017]`);
+P(blend better) = 0 on both metrics.
+
+**Finding: under honest nested validation the blend is significantly *worse*
+than Elo-only** — not merely tied. The convex-logit blend with the `T >= 1`
+floor is underconfident: the calibration regression `logit(y) = α + β logit(p̂)`
+gives **β ≈ 2.0** (95% CI `[1.73, 2.41]`; β = 1 is perfect), i.e. the blend's
+prices are compressed toward 0.5. It also places ~64% of its weight on the
+weaker rank component. Nested architecture selection prefers `conservative`
+(10 of 11 folds), not the deployed `hfa_75`.
+
+**Champion–challenger decision (`decision: keep_elo_only`).** With Elo-only as
+champion and the blend as challenger, the rule "promote only if the blend beats
+Elo-only on both log loss and Brier with stable evidence" is **not** met. On the
+current evidence the defensible deployed model is **Elo-only**; the blend is a
+well-audited prototype that does not earn its added complexity. See
+`artifacts/nested_backtest_summary.json` and
+`figures/nested_backtest_reliability.png`.
 
 ## What constitutes proof
 
@@ -160,6 +198,7 @@ removed. See `figures/rolling_oof_calibration.png` and
 | Primary April is frozen (April outcomes cannot change April prices) | `nba_wp/reporting.py`, `tests/test_primary_april_frozen.py` |
 | Leakage battery: future/box-score/row-order do not move features; past outcomes provably do (positive controls) | `tests/test_leakage_mutations.py` |
 | Calibration holds out-of-sample under rolling one-step-ahead folds | `scripts/rolling_oof_calibration.py`, `artifacts/rolling_oof_calibration.csv`, `artifacts/rolling_oof_metrics.json`, `figures/rolling_oof_calibration.png` |
+| Nested rolling-origin validation of the whole procedure (inner architecture selection + OOF stacker), candidate comparison, block-bootstrap, calibration regression, champion-challenger | `scripts/nested_validation.py`, `artifacts/nested_backtest_summary.json`, `artifacts/nested_backtest_folds.csv`, `figures/nested_backtest_reliability.png` |
 | Metrics recompute from individual prices | `validate_submission.py`, `tests/test_artifacts.py` |
 | Saved probabilities reproduce | `python validate_submission.py --recompute ...` |
 | Feature contribution is measurable | `artifacts/feature_group_ablation.csv`, `artifacts/permutation_importance.csv` |
@@ -243,3 +282,13 @@ selection performance, so March is not an unbiased final estimate. April has
 also been viewed during the broader project; the repository reconstructs a
 machine-enforced pre-April selection path and reports that limitation rather
 than claiming perfect historical blindness.
+
+Honest verdict on the blend: the fully nested rolling-origin audit
+(`scripts/nested_validation.py`) shows the constrained Elo + rank blend does
+**not** beat Elo-only out-of-sample (it is significantly worse on log loss and
+Brier) and is underconfident (calibration slope β ≈ 2.0). The blend is
+therefore presented as a rigorously validated *prototype*, and the evidence
+recommends **Elo-only as the deployed champion**. The value of this project is
+the reproducible, leakage-controlled pipeline and the validation that is honest
+enough to reject its own added complexity — not a claim that the blend is
+superior.
