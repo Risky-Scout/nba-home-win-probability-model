@@ -42,22 +42,28 @@ p_home = sigmoid(a * logit(p_elo) + b * logit(p_rank) + c)
 ```
 
 The coefficients (a, b, c) are estimated by logistic regression on March
-component logits — no grid search. This is equivalent to the earlier
-(w, T, s) parameterization via w = a/(a+b), T = 1/(a+b), s = c.
+component logits — no grid search — and then **deployed with a temperature
+floor T >= 1**. An unconstrained stacker on two highly correlated component
+logits (rho approx 0.97) learns a + b > 1, i.e. temperature T = 1/(a+b) < 1,
+which sharpens duplicate information and produced extreme (99%+) prices. The
+deploy blend keeps the same Elo/rank weight but sets a + b = 1 (convex logit
+blend, no sharpening) and refits only the intercept.
 
 The selected March-only specification is stored in
 `artifacts/selected_spec.json`:
 
 ```text
-architecture       hfa_75
-Elo K              10
-Elo home adjustment 75 rating points
-Bradley-Terry C    0.15
-trend half-life    45 days
-short trend window 10 games
-stacker a (elo logit)   0.5796
-stacker b (rank logit)  0.9838
-stacker c (intercept)   0.3154
+architecture            hfa_75
+Elo K                   10
+Elo home adjustment     75 rating points
+Elo MOV multiplier      winner Elo - loser Elo (FiveThirtyEight log form)
+Bradley-Terry C         0.15
+trend half-life         45 days
+short trend window      10 games
+deploy stacker a        0.3593   (elo logit weight)
+deploy stacker b        0.6407   (rank logit weight, a + b = 1, T = 1)
+deploy stacker c        0.3254   (intercept)
+unconstrained a, b, c   0.5696, 1.0159, 0.3132  (stored for audit only)
 ```
 
 ## Evaluation protocol and information policy
@@ -76,35 +82,47 @@ stacker c (intercept)   0.3154
 ### April
 
 - Architecture and calibration are frozen from March selection.
-- Base component coefficients are refitted through March.
-- `sequential_daily` is the operational backtest: earlier April dates may
-  update team state for later April dates, but no same-day or future result is
-  visible.
-- `frozen_snapshot` is also exported: no April result updates any April
-  performance state.
-
-These are different information sets. The repository reports both rather than
-quietly mixing them.
+- **Primary deliverable** `outputs/april_predictions.csv` is the
+  **frozen pre-April** file: no April result updates any April performance
+  state, and the base-model generator matches the March stacker fit (trained
+  through February) so the calibrator inputs mean the same thing at fit and
+  deploy time.
+- `outputs/april_predictions_sequential_backtest.csv` is an optional
+  live-update simulation only (earlier April dates may update team state for
+  later April dates). It is clearly labelled and is not the headline result.
 
 ## Results
 
-### Operational one-step-ahead results
+### Primary April holdout (frozen pre-April)
 
 | Period | Log loss | Brier | AUC | Accuracy |
 |---|---:|---:|---:|---:|
-| March model | 0.488029 | 0.157148 | 0.830336 | 78.6611% |
-| April model | 0.458717 | 0.144995 | 0.853351 | 82.2917% |
+| **April frozen (primary)** | 0.484432 | 0.155823 | 0.862798 | 81.2500% |
 
-### Strict month-start snapshot sensitivity
+Frozen April price distribution: maximum `home_win_probability` approx 0.948;
+4 of 96 games priced at or above 0.90; none at or above 0.95.
+
+### March (selection / stacker-training period — in-sample)
+
+| Stacker | Log loss | Brier | AUC | Accuracy |
+|---|---:|---:|---:|---:|
+| Deploy (T >= 1) | 0.508373 | 0.164854 | 0.830044 | 76.9874% |
+| Unconstrained (selection surface only) | 0.488026 | 0.157018 | 0.830044 | 78.6611% |
+
+March is simultaneously the architecture-selection set and the stacker-training
+set, so March numbers are **in-sample for the blend** and are not an unbiased
+out-of-sample score. The architecture is chosen on the unconstrained March log
+loss; the deployed model then applies the T >= 1 floor.
+
+### Optional April sequential backtest (live-update simulation)
 
 | Period | Log loss | Brier | AUC | Accuracy |
 |---|---:|---:|---:|---:|
-| March frozen snapshot | 0.496766 | 0.162053 | 0.823026 | 75.7322% |
-| April frozen snapshot | 0.454728 | 0.144498 | 0.863698 | 80.2083% |
+| April sequential | 0.474545 | 0.152112 | 0.852901 | 82.2917% |
 
-The strict April snapshot improves proper scoring relative to the operational
-version. Small AUC and accuracy differences at this sample size are not
-presented as statistically decisive.
+The sequential backtest scores slightly better but uses within-April state
+updates; the frozen version is the honest answer to "use October-March to price
+April" and is therefore the primary submission.
 
 ## What constitutes proof
 
@@ -116,20 +134,27 @@ presented as statistically decisive.
 | Same-date games are batched | `tests/test_feature_timing.py::test_same_day_games_are_batched` |
 | April was absent from selection | `scripts/select_model.py`, `artifacts/selection_proof.json` |
 | The stacker coefficients were fitted, not typed into scoring code | `artifacts/march_architecture_results.csv`, `artifacts/selected_spec.json` |
+| Elo MOV uses winner - loser rating diff (upsets move ratings more) | `nba_wp/features.py`, `tests/test_elo_mov_winner_diff.py` |
+| Deploy stacker never sharpens (temperature T >= 1) | `nba_wp/model.py`, `tests/test_stacker_temperature_floor.py` |
+| Primary April is frozen (April outcomes cannot change April prices) | `nba_wp/reporting.py`, `tests/test_primary_april_frozen.py` |
 | Metrics recompute from individual prices | `validate_submission.py`, `tests/test_artifacts.py` |
 | Saved probabilities reproduce | `python validate_submission.py --recompute ...` |
 | Feature contribution is measurable | `artifacts/feature_group_ablation.csv`, `artifacts/permutation_importance.csv` |
 
-## Excel companion — full mathematical transparency
+## Human-readable results export
 
-[`NBA_Model_Fully_Formulated.xlsx`](NBA_Model_Fully_Formulated.xlsx) rebuilds the
-entire model in live spreadsheet formulas: the sequential Elo chain for all
-1,230 games, the frozen Bradley-Terry strengths, the trend EWMA, the component
-logistics, the MLE logistic stacker, and the frozen April predictions. Sheet
-`11_Reconcile_Dashboard` checks every stage against this repository's committed
-artifacts (tolerances 1e-6 to 1e-9); all stacker coefficients and April
-probabilities match `artifacts/selected_spec.json` and
-`outputs/april_predictions_frozen_snapshot.csv` to machine precision.
+For a spreadsheet-friendly view of the prices, run:
+
+```bash
+python -m scripts.export_results_spreadsheet
+```
+
+This writes an `.xlsx` (and CSV fallback) with the frozen April predictions
+(primary), March predictions, the April sequential backtest, and a summary
+sheet. A pre-rendered `outputs/april_predictions_readable.csv` is also committed.
+Every value reconciles to `artifacts/selected_spec.json` and
+`outputs/april_predictions_frozen_snapshot.csv`, which is identical to the
+primary `outputs/april_predictions.csv`.
 
 ## Run locally
 

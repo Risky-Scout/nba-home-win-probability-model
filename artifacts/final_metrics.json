@@ -14,51 +14,90 @@
     },
     "calibration": {
       "method": "logistic_stack",
-      "coef_elo_logit": 0.5795901348781234,
-      "coef_rank_logit": 0.9837561206667516,
-      "intercept": 0.31535451800901687,
-      "note": "blend fitted by penalized maximum likelihood (logistic stacking); equivalent to the (w, T, s) parameterization via w=a/(a+b), T=1/(a+b), s=c"
+      "coef_elo_logit": 0.35925296071565577,
+      "coef_rank_logit": 0.6407470392843442,
+      "intercept": 0.32536299895224763,
+      "temperature": 1.0,
+      "elo_weight": 0.35925296071565577,
+      "temperature_floor": 1.0,
+      "temperature_floor_applied": true,
+      "note": "blend fitted by penalized maximum likelihood (logistic stacking); equivalent to (w, T, s) via w=a/(a+b), T=1/(a+b), s=c. If the unconstrained fit had T < temperature_floor, coefficients were projected to T = temperature_floor (no sharpening) and the intercept was refit.",
+      "unconstrained_coef_elo_logit": 0.5696035387238357,
+      "unconstrained_coef_rank_logit": 1.0159186448349236,
+      "unconstrained_intercept": 0.31321089628395066
+    }
+  },
+  "primary_april_policy": "frozen_pre_april",
+  "primary_holdout": {
+    "april": {
+      "log_loss": 0.48443243638913724,
+      "brier": 0.15582256501695727,
+      "auc": 0.8627980206927575,
+      "accuracy": 0.8125,
+      "games": 96,
+      "home_win_rate": 0.59375,
+      "mean_probability": 0.6017546973126938
     }
   },
   "sequential_daily": {
     "march": {
-      "log_loss": 0.48802866204106454,
-      "brier": 0.15714820753837705,
-      "auc": 0.8303362573099415,
-      "accuracy": 0.7866108786610879,
+      "log_loss": 0.5083729200619467,
+      "brier": 0.16485364885586673,
+      "auc": 0.8300438596491228,
+      "accuracy": 0.7698744769874477,
       "games": 239,
       "home_win_rate": 0.602510460251046,
-      "mean_probability": 0.6025104602046744
+      "mean_probability": 0.6025104639711694
     },
     "april": {
-      "log_loss": 0.45871730280570494,
-      "brier": 0.14499470479263768,
-      "auc": 0.8533513270355376,
+      "log_loss": 0.48443243638913724,
+      "brier": 0.15582256501695727,
+      "auc": 0.8627980206927575,
+      "accuracy": 0.8125,
+      "games": 96,
+      "home_win_rate": 0.59375,
+      "mean_probability": 0.6017546973126938
+    }
+  },
+  "sequential_daily_backtest": {
+    "march": {
+      "log_loss": 0.5083729200619467,
+      "brier": 0.16485364885586673,
+      "auc": 0.8300438596491228,
+      "accuracy": 0.7698744769874477,
+      "games": 239,
+      "home_win_rate": 0.602510460251046,
+      "mean_probability": 0.6025104639711694
+    },
+    "april": {
+      "log_loss": 0.4745447600668837,
+      "brier": 0.15211188598276146,
+      "auc": 0.8529014844804318,
       "accuracy": 0.8229166666666666,
       "games": 96,
       "home_win_rate": 0.59375,
-      "mean_probability": 0.6036714340845174
+      "mean_probability": 0.6102872025026974
     }
   },
   "frozen_snapshot_sensitivity": {
     "march": {
-      "log_loss": 0.4967656344777464,
-      "brier": 0.16205339109879777,
-      "auc": 0.8230263157894736,
-      "accuracy": 0.7573221757322176,
+      "log_loss": 0.5195784039101211,
+      "brier": 0.16977141624514755,
+      "auc": 0.8233187134502923,
+      "accuracy": 0.7656903765690377,
       "games": 239,
       "home_win_rate": 0.602510460251046,
-      "mean_probability": 0.5990993121797423
+      "mean_probability": 0.5989209098380487
     },
     "april": {
-      "log_loss": 0.4547275906759541,
-      "brier": 0.14449842178281255,
-      "auc": 0.8636977058029689,
-      "accuracy": 0.8020833333333334,
+      "log_loss": 0.48443243638913724,
+      "brier": 0.15582256501695727,
+      "auc": 0.8627980206927575,
+      "accuracy": 0.8125,
       "games": 96,
       "home_win_rate": 0.59375,
-      "mean_probability": 0.6035087190033094
+      "mean_probability": 0.6017546973126938
     }
   },
-  "information_policy_note": "sequential_daily updates team-performance state after each completed date. frozen_snapshot holds performance state fixed at month start."
+  "information_policy_note": "Primary April output is frozen_pre_april: performance state and base-model generator stop at 2026-03-31 / through-February fit. april_predictions_sequential_backtest.csv is a live-update simulation only. March stacker fit and architecture selection reuse March outcomes (in-sample for the blend); treat reported March metrics as selection-period scores, not pristine holdout."
 }

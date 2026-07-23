@@ -5,10 +5,17 @@
   "selected_architecture": "hfa_75",
   "selected_calibration": {
     "method": "logistic_stack",
-    "coef_elo_logit": 0.5795901348781234,
-    "coef_rank_logit": 0.9837561206667516,
-    "intercept": 0.31535451800901687,
-    "note": "blend fitted by penalized maximum likelihood (logistic stacking); equivalent to the (w, T, s) parameterization via w=a/(a+b), T=1/(a+b), s=c"
+    "coef_elo_logit": 0.35925296071565577,
+    "coef_rank_logit": 0.6407470392843442,
+    "intercept": 0.32536299895224763,
+    "temperature": 1.0,
+    "elo_weight": 0.35925296071565577,
+    "temperature_floor": 1.0,
+    "temperature_floor_applied": true,
+    "note": "blend fitted by penalized maximum likelihood (logistic stacking); equivalent to (w, T, s) via w=a/(a+b), T=1/(a+b), s=c. If the unconstrained fit had T < temperature_floor, coefficients were projected to T = temperature_floor (no sharpening) and the intercept was refit.",
+    "unconstrained_coef_elo_logit": 0.5696035387238357,
+    "unconstrained_coef_rank_logit": 1.0159186448349236,
+    "unconstrained_intercept": 0.31321089628395066
   },
-  "selection_rule": "Minimize March log loss."
+  "selection_rule": "Minimize unconstrained March log loss; deploy stacker with temperature floor T>=1 (no sharpening)."
 }

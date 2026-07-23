@@ -51,18 +51,25 @@ R_h' = R_h + K M_g (Y_g-p^{Elo}_g),
 R_a' = R_a - K M_g (Y_g-p^{Elo}_g),
 \]
 
-where \(K=10\) and
+where \(K=10\) and the margin-of-victory multiplier follows the
+FiveThirtyEight log form, evaluated on the **winner-minus-loser** rating
+difference:
 
 \[
 M_g =
 \log(|m_g|+1)
 \frac{2.2}{
-0.001(R_h-R_a)+2.2
+0.001\,(R_{\text{win}}-R_{\text{lose}})+2.2
 },
 \]
 
-with \(m_g\) the home point margin. The denominator is guarded in code against
-pathological future values.
+with \(m_g\) the home point margin, and \(R_{\text{win}}, R_{\text{lose}}\) the
+pregame ratings of the winning and losing team. Using the winner's rating
+difference (rather than a fixed home-minus-away difference) is what makes an
+upset — a low-rated team beating a high-rated team — move the ratings *more*
+than an expected result, and keeps the update team-swap symmetric at zero home
+advantage. The denominator is guarded in code against pathological values, and
+the behaviour is pinned by `tests/test_elo_mov_winner_diff.py`.
 
 The raw Elo feature is
 
@@ -151,18 +158,35 @@ c
 \bigr).
 \]
 
-The March fit produced:
+The unconstrained March fit produced:
 
 \[
-a=0.5796,\qquad
-b=0.9838,\qquad
-c=0.3154.
+a=0.5696,\qquad
+b=1.0159,\qquad
+c=0.3132,
 \]
 
-This is equivalent to the \((w, \tau, s)\) parameterization via
-\(w=a/(a+b)=0.371\), \(\tau=1/(a+b)=0.640\), \(s=c=0.315\). An implied
-temperature below one sharpens the component blend; calibration plots and
-April results are therefore retained as explicit diagnostics.
+equivalent to \((w, \tau, s)\) via \(w=a/(a+b)=0.359\),
+\(\tau=1/(a+b)=0.631\), \(s=c=0.313\). Because the two component logits are
+near-duplicates (\(\rho\approx 0.97\)), the unconstrained fit learns
+\(a+b>1\), i.e. temperature \(\tau<1\), which **sharpens** the blend and
+produced extreme (99%+) prices out of sample.
+
+The model is therefore deployed with a **temperature floor** \(\tau\ge 1\).
+When the unconstrained fit sharpens, the Elo/rank weight \(w\) is preserved but
+the coefficients are projected onto \(a+b=1\) (a convex logit blend, no
+sharpening) and the intercept is refit:
+
+\[
+a=0.3593,\qquad
+b=0.6407,\qquad
+c=0.3254,\qquad
+\tau=1.0.
+\]
+
+These deploy coefficients are what score April. The floor is enforced in code
+and pinned by `tests/test_stacker_temperature_floor.py`; both the unconstrained
+and deployed coefficients are stored in `artifacts/selected_spec.json`.
 
 ## 7. Metrics
 

@@ -1,317 +1,359 @@
 ---
 title: "NBA Home-Win Probability Model — Mathematics"
-author: "GitHub main · architecture hfa_75"
+subtitle: "Champion architecture `hfa_75` (GitHub main)"
+author: "Joseph Shackelford"
 geometry: margin=0.85in
 fontsize: 11pt
 header-includes:
-  - \usepackage{amsmath,amssymb}
-  - \usepackage{booktabs}
+  - \usepackage{amsmath,amssymb,booktabs}
   - \usepackage{enumitem}
-  - \setlist{itemsep=0.2em,topsep=0.3em}
+  - \setlist{nosep,leftmargin=1.2em}
   - \setlength{\parskip}{0.45em}
   - \setlength{\parindent}{0pt}
 ---
 
-# NBA Home-Win Probability Model
+# Overview
 
-## Mathematical summary
+The deliverable is a **price**: for each game $g$, estimate
+\[
+p_g \;=\; P(Y_g = 1 \mid \text{pregame information}),
+\]
+where $Y_g = 1$ if the home team wins and $0$ otherwise.
 
-**Champion family.** Logistic-stacked blend of Elo and Bradley–Terry with recent-form trend.
-
-**Selected architecture.** `hfa_75`
-
-| Symbol | Meaning | Selected value |
-|:------:|:--------|:---------------|
-| $H$ | Elo home-field advantage (rating points) | $75$ |
-| $K$ | Elo learning rate | $10$ |
-| — | Elo MOV mode | $\log$ |
-| $C_{\mathrm{BT}}$ | Bradley–Terry $\ell_2$ inverse-regularization | $0.15$ |
-| $h$ | Trend EWMA half-life (days) | $45$ |
-| $n_S$ | Short-form window (games) | $10$ |
-| $C_E$ | Elo calibrator inverse-regularization | $100$ |
-| $C_R$ | Rank calibrator inverse-regularization | $0.1$ |
-
-**Fitted stacker (March).** $a = 0.5796,\quad b = 0.9838,\quad c = 0.3154$.
-
----
-
-## 1. Target
-
-For game $g$ with home points $P_h$ and away points $P_a$,
-
-$$
-Y_g =
-\begin{cases}
-1 & \text{if } P_h > P_a,\\[0.25em]
-0 & \text{otherwise}.
-\end{cases}
-$$
-
-The model delivers a probability price
-$$
-\hat p_g \;=\; \widehat{\Pr}(Y_g = 1).
-$$
-
----
-
-## 2. Information timing (no leakage)
-
-Let $\mathcal{H}_{<d}$ be all outcomes and box scores from dates **strictly before** game date $d$. For every game $g$ on date $d$,
-
-$$
-X_g \;=\; f\!\bigl(\mathcal{H}_{<d}\bigr).
-$$
-
-**Same-day protocol.** On date $d$: (1) refresh Bradley–Terry from prior games; (2) write feature rows for **all** games on $d$; (3) **then** update Elo / histories from results. No same-date result enters another same-date feature row.
-
----
-
-## 3. Link functions
-
-$$
-\sigma(z) \;=\; \frac{1}{1+e^{-z}},
-\qquad
-\operatorname{logit}(p) \;=\; \log\!\frac{p}{1-p}.
-$$
-
----
-
-## 4. Elo component
-
-### 4.1 Raw Elo probability
-
-Each team starts at rating $R_i = 1500$. For home $h$ and away $a$,
-
-$$
-p^{\mathrm{Elo,raw}}_g
-\;=\;
-\frac{1}{1 + 10^{-(R_h - R_a + H)/400}}.
-$$
-
-Equal teams ($R_h = R_a$) with $H = 75$ give
-$$
-p^{\mathrm{Elo,raw}} \;=\; \frac{1}{1+10^{-75/400}} \;\approx\; 0.606.
-$$
-
-The scaled Elo feature used by the calibrator is
-$$
-x^{\mathrm{Elo}}_g \;=\; \frac{R_h - R_a + H}{400}.
-$$
-
-### 4.2 Rating update (after the date completes)
-
-Home margin $m_g = P_h - P_a$. Margin-of-victory multiplier (log mode):
-
-$$
-M_g
-\;=\;
-\log\bigl(|m_g| + 1\bigr)
-\cdot
-\frac{2.2}{\max\!\bigl(0.25,\; 0.001\,(R_h - R_a) + 2.2\bigr)}.
-$$
-
-Updates:
-
-\begin{align*}
-R_h' &= R_h + K\, M_g \bigl(Y_g - p^{\mathrm{Elo,raw}}_g\bigr),\\[0.35em]
-R_a' &= R_a - K\, M_g \bigl(Y_g - p^{\mathrm{Elo,raw}}_g\bigr),
-\end{align*}
-
-with $K = 10$.
-
-### 4.3 Elo calibrator
-
-An $\ell_2$-logistic regression (sklearn `LogisticRegression`, features standardized) maps $x^{\mathrm{Elo}}$ to a calibrated component probability $p_E$:
-
-$$
-p_E
-\;=\;
-\sigma\!\bigl(
-\beta_{E,0} + \beta_{E,1}\, \widetilde{x}^{\mathrm{Elo}}
-\bigr),
-$$
-
-where $\widetilde{x}^{\mathrm{Elo}}$ is the standardized version of $x^{\mathrm{Elo}}$, and the inverse-regularization strength is $C_E = 100$.
-
----
-
-## 5. Bradley–Terry component
-
-From all completed games before date $d$, fit team strengths $q_i$ and home intercept $\alpha$ by $\ell_2$-regularized logistic regression on design rows with $+1$ for home, $-1$ for away:
-
-$$
-\Pr(h \text{ beats } a)
-\;=\;
-\sigma\!\bigl(\alpha + q_h - q_a\bigr),
-\qquad
-C_{\mathrm{BT}} = 0.15.
-$$
-
-The matchup feature is the decision value
-$$
-x^{\mathrm{BT}}_g \;=\; \hat\alpha + \hat q_h - \hat q_a.
-$$
-
----
-
-## 6. Recent-form trend
-
-For team $i$, let $m_{ik}$ be that team’s point margin in prior game $k$, and let $\Delta\mathrm{days}_{kd}$ be the age of that game in days at date $d$.
-
-**Long form** (exponentially weighted, half-life $h = 45$ days):
-$$
-L_{i,d}
-\;=\;
-\frac{
-\sum_{k < d} 2^{-\Delta\mathrm{days}_{kd}/h}\, m_{ik}
-}{
-\sum_{k < d} 2^{-\Delta\mathrm{days}_{kd}/h}
-}.
-$$
-
-**Short form** (mean of the last $n_S = 10$ games, or fewer if unavailable):
-$$
-S_{i,d}
-\;=\;
-\frac{1}{n_i}\sum_{\text{last }n_i} m_{ik},
-\qquad
-n_i = \min(10,\, \#\{\text{prior games}\}).
-$$
-
-**Team trend and matchup feature:**
-$$
-T_{i,d} \;=\; S_{i,d} - L_{i,d},
-\qquad
-x^{\mathrm{trend}}_g \;=\; T_{h,d} - T_{a,d}.
-$$
-
----
-
-## 7. Rank calibrator (BT + trend)
-
-A second $\ell_2$-logistic maps $(x^{\mathrm{BT}},\, x^{\mathrm{trend}})$ to the rank-component probability $p_R$:
-
-$$
-p_R
-\;=\;
-\sigma\!\bigl(
-\beta_{R,0}
+**Champion form.** Two calibrated component probabilities (Elo and Bradley–Terry + recent trend) are combined by a logistic stacker:
+\[
+\boxed{
+p_g
+=
+\sigma\!\Bigl(
+a\,\operatorname{logit}(p_g^{E})
 +
-\beta_{R,1}\, \widetilde{x}^{\mathrm{BT}}
-+
-\beta_{R,2}\, \widetilde{x}^{\mathrm{trend}}
-\bigr),
-$$
-
-with inverse-regularization $C_R = 0.1$ and standardized inputs.
-
----
-
-## 8. Logistic stacking (final price)
-
-Let $p_E$ and $p_R$ be the two component probabilities. The final model is a logistic regression on their logits, fitted by penalized maximum likelihood on **March** component logits:
-
-$$
-\hat p_g
-\;=\;
-\sigma\!\bigl(
-a\,\operatorname{logit}(p_E)
-+
-b\,\operatorname{logit}(p_R)
+b\,\operatorname{logit}(p_g^{R})
 +
 c
-\bigr).
-$$
+\Bigr)
+}
+\]
+with **deployed** stacker coefficients (temperature-floored to $\tau\ge 1$)
+\[
+a = 0.3593,\qquad
+b = 0.6407,\qquad
+c = 0.3254,
+\]
+where $a+b=1$. The unconstrained MLE fit was $a=0.5696$, $b=1.0159$,
+$c=0.3132$ ($\tau=1/(a+b)\approx 0.63<1$); it is kept for audit only. See §7.
 
-**March fit (architecture `hfa_75`):**
-$$
-a = 0.5796,\qquad
-b = 0.9838,\qquad
-c = 0.3154.
-$$
+**Selected hyperparameters** (`hfa_75`):
+$K=10$, $H=75$, MOV $=$ log, BT regularization $C_{\mathrm{BT}}=0.15$,
+trend half-life $45$ days, short window $10$ games,
+Elo-logistic $C_E=100$, rank-logistic $C_R=0.1$.
 
-**Equivalent $(w,\tau,s)$ form** (same mapping):
-\begin{align*}
-w &= \frac{a}{a+b} \approx 0.371,\\[0.25em]
-\tau &= \frac{1}{a+b} \approx 0.640,\\[0.25em]
-s &= c \approx 0.315,
-\end{align*}
-$$
-\hat p_g
-\;=\;
-\sigma\!\Bigl(
-\frac{w\,\operatorname{logit}(p_E) + (1-w)\,\operatorname{logit}(p_R)}{\tau}
-+ s
-\Bigr).
-$$
+**Notation.**
+$\sigma(z)=1/(1+e^{-z})$,
+$\operatorname{logit}(p)=\log\!\bigl(p/(1-p)\bigr)$.
 
 ---
 
-## 9. Selection rule
+# 1. Target
 
-Among architecture candidates, choose the one that **minimizes March sequential log loss**. April rows are **not** used in selection ($0$ April rows loaded; selection data max date $2026$-$03$-$31$).
-
-Base component coefficients for March scoring are trained on games through February; March state updates sequentially by date. Final April scoring refits base coefficients through March under the locked architecture and stacker policy documented in `artifacts/selected_spec.json`.
-
----
-
-## 10. Evaluation metrics
-
-**Log loss**
-$$
-\mathrm{LL}
-\;=\;
--\frac{1}{N}\sum_g
-\Bigl[
-Y_g\log \hat p_g
-+
-(1-Y_g)\log(1-\hat p_g)
-\Bigr].
-$$
-
-**Brier score**
-$$
-\mathrm{BS}
-\;=\;
-\frac{1}{N}\sum_g \bigl(\hat p_g - Y_g\bigr)^2.
-$$
-
-**Accuracy** uses the fixed threshold $\hat p_g \ge 0.5$. AUC is reported for ranking.
-
-**Headline sequential-daily results (committed artifacts):**
-
-| Period | Log loss | Accuracy @ $0.5$ |
-|:-------|:--------:|:----------------:|
-| March (selection) | $\approx 0.488$ | $188/239$ ($\approx 78.7\%$) |
-| April (holdout) | $\approx 0.459$ | $79/96$ ($\approx 82.3\%$) |
+\[
+Y_g
+=
+\begin{cases}
+1, & \text{home points}_g > \text{away points}_g,\\[0.25em]
+0, & \text{otherwise}.
+\end{cases}
+\]
 
 ---
 
-## 11. Fair decimal odds
+# 2. Information / no leakage
 
-Zero-margin (no overround) fair odds implied by the price:
-$$
-O_{\mathrm{home}} \;=\; \frac{1}{\hat p_g},
+For game date $d$, every feature for games on $d$ is a function of history
+strictly before $d$:
+\[
+X_g = f(\mathcal{H}_{<d}).
+\]
+All same-date rows are written **before** any result on $d$ updates ratings,
+Bradley–Terry strengths, or trend histories.
+
+---
+
+# 3. Elo component
+
+## 3.1 Raw Elo probability
+
+Each team starts at $R_i = 1500$. For home $h$ and away $a$,
+\[
+p_g^{\mathrm{Elo,raw}}
+=
+\frac{1}{1 + 10^{-(R_h - R_a + H)/400}},
+\qquad H = 75.
+\]
+Equal teams ($R_h=R_a$) imply
+\[
+p^{\mathrm{home}}
+=
+\frac{1}{1+10^{-75/400}}
+\approx 0.606.
+\]
+
+The Elo feature used by the calibrated logistic is the scaled rating gap:
+\[
+x_g^{E}
+=
+\frac{R_h - R_a + H}{400}.
+\]
+
+## 3.2 Margin-of-victory update
+
+After date $d$ is complete, with home margin $m_g$ (home points $-$ away points)
+and $K=10$:
+\[
+R_h' = R_h + K\, M_g\, (Y_g - p_g^{\mathrm{Elo,raw}}),
 \qquad
-O_{\mathrm{away}} \;=\; \frac{1}{1-\hat p_g}.
-$$
+R_a' = R_a - K\, M_g\, (Y_g - p_g^{\mathrm{Elo,raw}}),
+\]
+where the MOV multiplier uses the **winner-minus-loser** rating difference:
+\[
+M_g
+=
+\log\!\big(|m_g|+1\big)
+\cdot
+\frac{2.2}{\max\!\bigl(0.25,\; 0.001(R_{\mathrm{win}}-R_{\mathrm{lose}})+2.2\bigr)}.
+\]
+Here $R_{\mathrm{win}},R_{\mathrm{lose}}$ are the pregame ratings of the winning
+and losing team (matching the FiveThirtyEight form). This makes an upset move
+ratings *more* than an expected result and keeps the update team-swap symmetric
+at zero home advantage. (The $\max$ guard is in code; ratings exclude $H$.)
 
-These are mathematical fair odds, not a production sportsbook quote.
+## 3.3 Calibrated Elo probability
+
+An L2-logistic model (with feature standardization) maps $x_g^{E}$ to
+\[
+p_g^{E}
+=
+\sigma\!\bigl(\beta_0^{E} + \beta_1^{E}\, \tilde x_g^{E}\bigr),
+\]
+where $\tilde x$ is the standardized feature and regularization uses
+$C_E = 100$.
 
 ---
 
-## 12. End-to-end map
+# 4. Bradley–Terry component
 
-$$
+From all prior games (before date $d$), fit team strengths $q_i$ and home intercept $\alpha$ by L2-logistic regression on design rows
+\[
+\mathbf{x}_g^{\mathrm{BT}}
+=
+\mathbf{e}_h - \mathbf{e}_a
+\quad\text{(home $+1$, away $-1$)},
+\]
+\[
+P(Y_g=1)
+=
+\sigma\!\bigl(\alpha + q_h - q_a\bigr),
+\qquad C_{\mathrm{BT}} = 0.15.
+\]
+The pregame feature is the decision value
+\[
+x_g^{\mathrm{BT}}
+=
+\hat\alpha + \hat q_h - \hat q_a.
+\]
+
+---
+
+# 5. Recent-form trend
+
+For team $i$ on date $d$, let $m_{ik}$ be that team’s point margin in prior game $k$,
+and $\Delta_{kd}$ the age of that game in days.
+
+**Long form** (exponentially weighted, half-life $45$ days):
+\[
+L_{i,d}
+=
+\frac{
+\sum_{k:\,\mathrm{date}_k < d}
+2^{-\Delta_{kd}/45}\, m_{ik}
+}{
+\sum_{k:\,\mathrm{date}_k < d}
+2^{-\Delta_{kd}/45}
+}.
+\]
+
+**Short form** (mean of the last $\min(10,n_i)$ games):
+\[
+S_{i,d}
+=
+\frac{1}{n_i^{\mathrm{short}}}
+\sum_{\text{last } n_i^{\mathrm{short}}} m_{ik},
+\qquad
+n_i^{\mathrm{short}}=\min(10,n_i).
+\]
+
+**Trend and matchup feature:**
+\[
+T_{i,d} = S_{i,d} - L_{i,d},
+\qquad
+x_g^{\mathrm{trend}} = T_{h,d} - T_{a,d}.
+\]
+
+---
+
+# 6. Rank (BT + trend) component
+
+A second L2-logistic model maps $(x_g^{\mathrm{BT}},\, x_g^{\mathrm{trend}})$ to
+\[
+p_g^{R}
+=
+\sigma\!\bigl(
+\beta_0^{R}
++
+\beta_{\mathrm{BT}}\, \tilde x_g^{\mathrm{BT}}
++
+\beta_{\mathrm{tr}}\, \tilde x_g^{\mathrm{trend}}
+\bigr),
+\qquad C_R = 0.1.
+\]
+
+---
+
+# 7. Logistic stack (final price)
+
+Component logits are blended by a third logistic regression fitted on **March**
+one-step-ahead component probabilities (penalized MLE, $C=1$), then projected
+onto a **temperature floor** $\tau\ge 1$ so the deployed blend never sharpens:
+\[
+\boxed{
+p_g
+=
+\sigma\!\Bigl(
+a\,\operatorname{logit}(p_g^{E})
++
+b\,\operatorname{logit}(p_g^{R})
++
+c
+\Bigr)
+}
+\]
+\[
+a = 0.3593,\quad
+b = 0.6407,\quad
+c = 0.3254 \qquad (\text{deploy}, \; a+b=1).
+\]
+
+The two component logits are near-duplicates ($\rho\approx 0.97$), so the
+unconstrained MLE learns $a+b=1.586>1$, i.e. $\tau=1/(a+b)\approx 0.63<1$, which
+sharpens the blend toward $0$/$1$ and produced extreme out-of-sample prices.
+Deployment preserves the Elo weight $w=a/(a+b)=0.3593$, sets $a+b=1$
+($a=w$, $b=1-w$), and refits the intercept to $c=0.3254$. Both sets of
+coefficients are stored in `artifacts/selected_spec.json`; the floor is pinned
+by `tests/test_stacker_temperature_floor.py`.
+
+**Equivalent $(w,\tau,s)$ form** (same mapping, deploy values):
+\[
+w = \frac{a}{a+b} = 0.3593,\qquad
+\tau = \frac{1}{a+b} = 1.000,\qquad
+s = c = 0.3254,
+\]
+\[
+p_g
+=
+\sigma\!\Biggl(
+\frac{
+w\,\operatorname{logit}(p_g^{E})
++
+(1-w)\,\operatorname{logit}(p_g^{R})
+}{\tau}
++
+s
+\Biggr).
+\]
+
+---
+
+# 8. Selection rule
+
+Architectures are scored by **March** sequential (daily) log loss using the
+**unconstrained** stacker fit. April rows are **not** used in selection
+($N_{\mathrm{April}}^{\mathrm{selection}}=0$, max selection date $2026$-$03$-$31$).
+Chosen architecture: **`hfa_75`**. The temperature floor is applied only to the
+deployed model, after selection. Because March is used both to pick the
+architecture and to fit the stacker, March metrics are **in-sample for the
+blend** and are not an unbiased holdout.
+
+---
+
+# 9. Scoring metrics
+
+**Log loss** (primary):
+\[
+\mathrm{LL}
+=
+-\frac{1}{N}\sum_{g=1}^{N}
+\Bigl[
+Y_g\log p_g
++
+(1-Y_g)\log(1-p_g)
+\Bigr].
+\]
+
+**Brier score:**
+\[
+\mathrm{BS}
+=
+\frac{1}{N}\sum_{g=1}^{N}(p_g - Y_g)^2.
+\]
+
+**Accuracy** uses the fixed cutoff $p_g \ge 1/2$. AUC ranks games by $p_g$.
+
+Champion results. **Primary April holdout (frozen pre-April):**
+$\mathrm{LL}=0.4844$, Brier $=0.1558$, AUC $=0.8628$, accuracy $81.25\%$
+($78/96$). March selection surface (unconstrained stacker): $\mathrm{LL}=0.4880$;
+the deployed (floored) stacker scores March $\mathrm{LL}=0.5084$. Optional April
+sequential backtest (live-update simulation): $\mathrm{LL}=0.4745$.
+
+---
+
+# 10. Fair odds (zero-margin)
+
+\[
+O_g^{\mathrm{home}} = \frac{1}{p_g},
+\qquad
+O_g^{\mathrm{away}} = \frac{1}{1-p_g}.
+\]
+These are mathematical fair decimal odds (no overround).
+
+---
+
+# 11. End-to-end map
+
+\[
 \begin{aligned}
-&\text{CSV}
-\;\xrightarrow{\;\text{audit}\;}
-X_g = \bigl(x^{\mathrm{Elo}},\, x^{\mathrm{BT}},\, x^{\mathrm{trend}}\bigr)\\[0.4em]
-&\xrightarrow{\;\text{calibrators}\;}
-(p_E,\, p_R)
-\xrightarrow{\;\text{stacker}\;}
-\hat p_g = \sigma\!\bigl(a\,\operatorname{logit}(p_E)+b\,\operatorname{logit}(p_R)+c\bigr).
+&(R_h,R_a,H)
+\;\rightarrow\;
+x^{E}
+\;\rightarrow\;
+p^{E}
+\\
+&(q,\alpha)
+\;\rightarrow\;
+x^{\mathrm{BT}}
+\\
+&(S,L)
+\;\rightarrow\;
+x^{\mathrm{trend}}
+\\
+&(x^{\mathrm{BT}},x^{\mathrm{trend}})
+\;\rightarrow\;
+p^{R}
+\\
+&(p^{E},p^{R})
+\;\xrightarrow{\;a,\,b,\,c\;}
+p
 \end{aligned}
-$$
+\]
 
-**Code anchors.** Features: `nba_wp/features.py`. Calibrators & stacker: `nba_wp/model.py`. Selection: `nba_wp/selection.py`. Locked numbers: `artifacts/selected_spec.json`.
+**Sources in code:** `nba_wp/features.py`, `nba_wp/model.py`, `nba_wp/selection.py`;
+fitted values in `artifacts/selected_spec.json`.

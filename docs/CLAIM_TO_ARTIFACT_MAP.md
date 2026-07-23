@@ -13,6 +13,9 @@ has a corresponding code path, generated artifact, or automated test.
 | Frozen snapshot stops target-month performance updates | `build_features(..., freeze_date=...)` | frozen prediction CSVs | `test_frozen_snapshot_stops_performance_updates` |
 | April cannot enter model selection | `scripts/select_model.py`; `nba_wp/selection.py` | `artifacts/selection_proof.json` | validator selection assertions |
 | The stacker coefficients were fitted, not typed | `nba_wp/model.py::fit_logit_stacker` | `march_architecture_results.csv`; `selected_spec.json` | full reproduction |
+| Elo MOV uses winner − loser rating difference | `nba_wp/features.py::build_features` | `outputs/engineered_features.csv` | `tests/test_elo_mov_winner_diff.py` |
+| Deploy stacker never sharpens (temperature T >= 1) | `nba_wp/model.py::fit_logit_stacker` | `selected_spec.json` (floored + unconstrained coeffs) | `tests/test_stacker_temperature_floor.py` |
+| Primary April is frozen (April outcomes cannot change April prices) | `nba_wp/reporting.py::score_and_write` | `outputs/april_predictions.csv` | `tests/test_primary_april_frozen.py` |
 | March probabilities use coefficients fitted through February | `scripts/score_final.py`; `nba_wp/reporting.py::score_and_write` | `outputs/march_predictions.csv` | validator |
 | April coefficients are refitted through March | `score_and_write` | `artifacts/trained_model.joblib`; April output | full recomputation |
 | Metrics equal the game-level probabilities | `nba_wp/model.py::evaluate` | `artifacts/final_metrics.json` | `tests/test_artifacts.py`; `validate_submission.py` |

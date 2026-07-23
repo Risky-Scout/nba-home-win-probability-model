@@ -34,11 +34,13 @@ python -m pytest tests/test_feature_timing.py -q
 
 ## 4. Model
 
-`docs/METHODOLOGY.md` — margin-of-victory Elo and a regularized Bradley–Terry
-model with a recent-form trend, each calibrated by a small logistic model,
-combined by a logistic stacker fitted by penalized maximum likelihood on March
-component logits (coefficients in `artifacts/selected_spec.json`, with the
-(w, τ, s) equivalence note).
+`docs/METHODOLOGY.md` — margin-of-victory Elo (MOV multiplier on the
+winner − loser rating difference) and a regularized Bradley–Terry model with a
+recent-form trend, each calibrated by a small logistic model, combined by a
+logistic stacker fitted by penalized maximum likelihood on March component
+logits and then deployed with a temperature floor (T >= 1, no sharpening).
+Both the unconstrained and deployed coefficients are in
+`artifacts/selected_spec.json`, with the (w, τ, s) equivalence note.
 
 ## 5. Selection provenance
 
@@ -59,11 +61,13 @@ reported as such.
 
 ## 7. Results
 
-`artifacts/final_metrics.json` — March (the selection set, in-sample for the
-stacker) and April under two clearly separated information policies:
-sequential daily and a strict March-31 frozen snapshot. Reliability diagrams in
-`figures/`, bin tables in `artifacts/*_calibration_bins.csv`. Fair decimal
-odds in the prediction CSVs are zero-margin transforms of the probabilities.
+`artifacts/final_metrics.json` — the **primary April holdout** (frozen
+pre-April: LL 0.4844, Brier 0.1558, AUC 0.8628, accuracy 81.25%), the March
+selection surface (in-sample for the stacker; unconstrained LL 0.4880, deployed
+floored LL 0.5084), and an optional April sequential backtest (live-update
+simulation, LL 0.4745). Reliability diagrams in `figures/`, bin tables in
+`artifacts/*_calibration_bins.csv`. Fair decimal odds in the prediction CSVs
+are zero-margin transforms of the probabilities.
 
 ## 8. Known limitations
 
@@ -71,8 +75,10 @@ odds in the prediction CSVs are zero-margin transforms of the probabilities.
 the project level, no injury/lineup/travel data, single season, and the
 production extensions that would address each.
 
-## Excel companion
+## Human-readable results export
 
-`NBA_Model_Fully_Formulated.xlsx` rebuilds the model in live spreadsheet
-formulas and reconciles every stage against the committed artifacts
-(`11_Reconcile_Dashboard`).
+Run `python -m scripts.export_results_spreadsheet` to write an `.xlsx`/CSV with
+the frozen April predictions (primary), March predictions, the April sequential
+backtest, and a summary sheet. A pre-rendered
+`outputs/april_predictions_readable.csv` is also committed. Every value
+reconciles to `artifacts/selected_spec.json` and the committed prediction CSVs.

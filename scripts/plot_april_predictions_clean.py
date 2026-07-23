@@ -136,7 +136,7 @@ def main() -> None:
         f"Accuracy: {apr['accuracy']:.1%}",
         "",
         "Source: outputs/april_predictions.csv",
-        "Policy: sequential_daily",
+        "Policy: frozen_pre_april",
     ]
     ax.text(
         0.02,

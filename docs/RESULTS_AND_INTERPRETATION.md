@@ -1,34 +1,41 @@
 # Results and interpretation
 
-## Operational one-step-ahead
+## Primary April holdout (frozen pre-April)
 
 | Period | Log loss | Brier | AUC | Accuracy |
 |---|---:|---:|---:|---:|
-| March | 0.488029 | 0.157148 | 0.830336 | 78.6611% |
-| April | 0.458717 | 0.144995 | 0.853351 | 82.2917% |
+| April frozen (primary) | 0.484432 | 0.155823 | 0.862798 | 81.2500% |
 
-### March
+This is the headline deliverable: base models trained through February, the
+deploy stacker (temperature floor T >= 1), and no April result allowed to update
+any April performance state. Accuracy is 81.25% (78 of 96 games) on a 96-game
+sample. The frozen April price distribution is well-behaved: maximum
+`home_win_probability` approx 0.948, 4 of 96 games at or above 0.90, and none
+at or above 0.95.
 
-March is the selection set: the architecture minimizing March log loss is
-chosen, and the blend coefficients are fitted on March component logits by
-penalized maximum likelihood. March numbers are therefore in-sample for the
-stacker and should not be read as an independent test.
+## March (selection / stacker-training period)
 
-### April
+| Stacker | Log loss | Brier | AUC | Accuracy |
+|---|---:|---:|---:|---:|
+| Deploy (T >= 1) | 0.508373 | 0.164854 | 0.830044 | 76.9874% |
+| Unconstrained (selection surface) | 0.488026 | 0.157018 | 0.830044 | 78.6611% |
 
-April proper scores are favorable relative to March, and accuracy is 82.29%
-(79 of 96 games) on a 96-game sample. Small AUC or accuracy movements at this
-sample size are not statistically decisive.
+March is the selection set: the architecture minimizing **unconstrained** March
+log loss is chosen, and the blend coefficients are fitted on March component
+logits by penalized maximum likelihood. March numbers are therefore in-sample
+for the stacker and should not be read as an independent test. The deployed
+model applies the temperature floor (a + b = 1), which trades a little in-sample
+March log loss for honest, non-sharpened probabilities out of sample.
 
-## Frozen snapshot sensitivity
+## April sequential backtest (live-update simulation)
 
 | Period | Log loss | Brier | AUC | Accuracy |
 |---|---:|---:|---:|---:|
-| March | 0.496766 | 0.162053 | 0.823026 | 75.7322% |
-| April | 0.454728 | 0.144498 | 0.863698 | 80.2083% |
+| April sequential | 0.474545 | 0.152112 | 0.852901 | 82.2917% |
 
-The frozen April version has stronger proper scores and ranking than the
-operational version, but lower 0.5-threshold accuracy.
+The sequential backtest lets earlier April dates update team state for later
+April dates. It scores slightly better than the frozen version but answers a
+different (live-update) question, so it is reported as a diagnostic only.
 
 ## Ablation interpretation
 

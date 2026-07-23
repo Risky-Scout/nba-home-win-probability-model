@@ -383,9 +383,14 @@ def score_and_write(
     )
     march_probability = apply_logit_stacker(stacker, march_elo, march_rank)
 
+    # Sequential April backtest may refit base models through March (live sim).
+    # Primary April holdout keeps the same base-model generator used to build
+    # March stacker inputs (trained through February) on frozen pre-April state.
     final_models = fit_base_models(through_march, architecture)
-    april_elo, april_rank = component_probabilities(final_models, april)
-    april_probability = apply_logit_stacker(stacker, april_elo, april_rank)
+    april_elo_seq, april_rank_seq = component_probabilities(final_models, april)
+    april_probability_seq = apply_logit_stacker(
+        stacker, april_elo_seq, april_rank_seq
+    )
 
     march_output = prediction_frame(
         march,
@@ -393,14 +398,17 @@ def score_and_write(
         march_elo,
         march_rank,
     )
-    april_output = prediction_frame(
+    april_sequential_output = prediction_frame(
         april,
-        april_probability,
-        april_elo,
-        april_rank,
+        april_probability_seq,
+        april_elo_seq,
+        april_rank_seq,
     )
     march_output.to_csv(output_path / "march_predictions.csv", index=False)
-    april_output.to_csv(output_path / "april_predictions.csv", index=False)
+    april_sequential_output.to_csv(
+        output_path / "april_predictions_sequential_backtest.csv",
+        index=False,
+    )
     sequential_features.to_csv(
         output_path / "engineered_features.csv",
         index=False,
@@ -418,8 +426,9 @@ def score_and_write(
     frozen_march_probability = apply_logit_stacker(
         stacker, frozen_march_elo, frozen_march_rank
     )
+    # Same generator as March stacker training (through February).
     frozen_april_elo, frozen_april_rank = component_probabilities(
-        final_models, frozen_april
+        march_models, frozen_april
     )
     frozen_april_probability = apply_logit_stacker(
         stacker, frozen_april_elo, frozen_april_rank
@@ -436,6 +445,8 @@ def score_and_write(
         frozen_april_elo,
         frozen_april_rank,
     )
+    # Primary assignment deliverable: no April outcomes in feature state.
+    frozen_april_output.to_csv(output_path / "april_predictions.csv", index=False)
     frozen_march_output.to_csv(
         output_path / "march_predictions_frozen_snapshot.csv",
         index=False,
@@ -445,29 +456,44 @@ def score_and_write(
         index=False,
     )
 
+    primary_april_metrics = evaluate(
+        frozen_april["home_win"],
+        frozen_april_probability,
+    )
     metrics = {
         "model": selected_spec["model_family"],
         "selected_spec": {
             "architecture": selected_spec["architecture"],
             "calibration": stacker_calibration_dict(stacker),
         },
+        "primary_april_policy": "frozen_pre_april",
+        "primary_holdout": {
+            "april": primary_april_metrics,
+        },
+        # Kept for backward compatibility with validators/scripts that read
+        # sequential_daily.april — that key now mirrors the primary frozen holdout.
         "sequential_daily": {
             "march": evaluate(march["home_win"], march_probability),
-            "april": evaluate(april["home_win"], april_probability),
+            "april": primary_april_metrics,
+        },
+        "sequential_daily_backtest": {
+            "march": evaluate(march["home_win"], march_probability),
+            "april": evaluate(april["home_win"], april_probability_seq),
         },
         "frozen_snapshot_sensitivity": {
             "march": evaluate(
                 frozen_march["home_win"],
                 frozen_march_probability,
             ),
-            "april": evaluate(
-                frozen_april["home_win"],
-                frozen_april_probability,
-            ),
+            "april": primary_april_metrics,
         },
         "information_policy_note": (
-            "sequential_daily updates team-performance state after each completed "
-            "date. frozen_snapshot holds performance state fixed at month start."
+            "Primary April output is frozen_pre_april: performance state and "
+            "base-model generator stop at 2026-03-31 / through-February fit. "
+            "april_predictions_sequential_backtest.csv is a live-update simulation "
+            "only. March stacker fit and architecture selection reuse March "
+            "outcomes (in-sample for the blend); treat reported March metrics as "
+            "selection-period scores, not pristine holdout."
         ),
     }
     write_json(artifact_path / "final_metrics.json", metrics)
@@ -510,7 +536,7 @@ def score_and_write(
         artifact_path / "march_calibration_bins.csv",
         index=False,
     )
-    calibration_bins(april_output).to_csv(
+    calibration_bins(frozen_april_output).to_csv(
         artifact_path / "april_calibration_bins.csv",
         index=False,
     )
@@ -556,7 +582,7 @@ def score_and_write(
     save_figures(
         figure_path,
         march_output,
-        april_output,
+        frozen_april_output,
         ablation,
         importance,
         correlations,

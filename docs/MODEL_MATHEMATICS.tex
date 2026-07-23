@@ -1,0 +1,626 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{amsmath,amssymb,booktabs,enumitem,hyperref,longtable,array}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\setlist{nosep,leftmargin=1.2em}
+\setlength{\parskip}{0.35em}
+\setlength{\parindent}{0pt}
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+\newcommand{\cls}[1]{\textbf{#1}}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\title{\textbf{NBA Home-Win Probability Model}\\[0.25em]
+\large Mathematics \& Full Constant Provenance\\[0.15em]
+\normalsize Champion architecture \texttt{hfa\_75} --- technical briefing}
+\author{Joseph Shackelford\\[0.15em]
+\small Prepared for recruiter / technical review.\\
+\small Every number below is classified
+\cls{Fixed}, \cls{Selected}, \cls{Fitted}, \cls{Derived}, or \cls{Numerical},
+with an explicit source or calculation.\\
+\small Artifacts: \code{artifacts/selected\_spec.json},
+\code{march\_architecture\_results.csv},
+\code{coefficient\_table.csv}.}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.0em}
+
+\noindent\textit{Purpose of this document.}
+This note states the model equations and accounts for \textbf{every numeric
+constant}: if a number is calculated, the exact optimization is written; if it
+is not calculated, the external or design source is named. No constant is left
+as an unexplained ``magic number.''
+
+\section{Champion model (one equation)}
+
+\[
+\boxed{
+p_g
+=
+\sigma\!\Bigl(
+a\,\operatorname{logit}(p_g^{E})
++
+b\,\operatorname{logit}(p_g^{R})
++
+c
+\Bigr)
+}
+\]
+with \textbf{deployed} stacker coefficients
+\(a=0.3592529607156558\),
+\(b=0.6407470392843442\),
+\(c=0.3253629989522476\),
+and
+\(\sigma(z)=1/(1+e^{-z})\),
+\(\operatorname{logit}(p)=\log(p/(1-p))\).
+
+These deploy coefficients satisfy \(a+b=1\) (temperature \(\tau=1\)): the model
+is fitted by penalized maximum likelihood and then \textbf{projected onto a
+temperature floor} \(\tau\ge 1\) so it never sharpens duplicate component
+information. The raw unconstrained MLE fit was
+\(a=0.5696035387238357\),
+\(b=1.0159186448349236\),
+\(c=0.3132108962839507\)
+(\(\tau=1/(a+b)\approx 0.63<1\)); both sets are stored in
+\code{artifacts/selected\_spec.json}. See \S\ref{sec:stacker} for the
+derivation and rationale.
+
+Component probabilities \(p_g^{E}\) and \(p_g^{R}\) are themselves L2-logistic
+calibrations of Elo and (Bradley--Terry + trend) features built with
+architecture \texttt{hfa\_75}.
+
+\section{How to read every constant}
+
+\begin{center}
+\begin{tabular}{@{}lp{4.6in}@{}}
+\toprule
+\textbf{Class} & \textbf{Meaning} \\
+\midrule
+\cls{Fixed} & Hardcoded design choice. Not estimated on this CSV. \\
+\cls{Selected} & Chosen by comparing candidates on \textbf{March log loss}. \\
+\cls{Fitted} & Numeric solution of an optimization / MLE on data. \\
+\cls{Derived} & Algebraic consequence of other constants (no new information). \\
+\cls{Numerical} & Solver / clip / RNG setting; not a modeling claim. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Honesty rule used below.}
+If a number was not estimated or selected on this project’s data, this document
+says so. In particular, the MOV constant \(2.2\) is \cls{Fixed} (literature),
+not \cls{Fitted}.
+
+%==============================================================================
+\section{Master ledger --- every constant}
+%==============================================================================
+
+\subsection{A. Elo core (\cls{Fixed} unless noted)}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.15in}
+>{\raggedright\arraybackslash}p{0.72in}
+>{\raggedright\arraybackslash}p{0.72in}
+>{\raggedright\arraybackslash}p{3.55in}@{}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Class} & \textbf{Provenance / calculation} \\
+\midrule
+\endhead
+Initial rating \(R_i(0)\) & \(1500\) & Fixed & Standard Elo origin. Code: \code{ratings = \{team: 1500.0\}} in \code{features.py}. Not fit. \\
+Elo scale \(S\) & \(400\) & Fixed & Classical Elo logistic scale: a \(400\)-point gap \(\Rightarrow\) \(10{:}1\) odds in the raw Elo formula. Denominator in \(x^{E}=(R_h-R_a+H)/400\). \\
+Base of Elo logistic & \(10\) & Fixed & Classical Elo uses base-\(10\) logistic, not \(e\). Formula \(1/(1+10^{-x})\). \\
+MOV mode & \texttt{log} & Selected$^\star$ & Architecture field \code{elo\_mov}. All five candidates used \texttt{log}; mode itself was not raced against \texttt{none} in selection. \\
+MOV blowout shape & \(\ln(|m|+1)\) & Fixed & FiveThirtyEight / Nate Silver NFL Elo log-MOV form. \\
+MOV constant \(b_{\mathrm{MOV}}\) & \(2.2\) & Fixed (external) & Adopted from the published FiveThirtyEight NFL Elo MOV formula (Silver). \textbf{Not re-estimated on this CSV.} Full professional rationale, benefits, and how to compute a data-optimal alternative: \S\ref{sec:mov}. \\
+MOV slope \(a_{\mathrm{MOV}}\) & \(0.001\) & Fixed & Paired with \(2.2\) in the same FTE formula. Ratio \(a/b\) sets favorite/underdog discount. Not fit here. \\
+MOV denom floor & \(0.25\) & Fixed & Code guard \code{max(0.25, denom)} against pathological denominators. Not estimated. \\
+\bottomrule
+\end{longtable}
+{\footnotesize $^\star$Selected only in the weak sense that the winning architecture kept \texttt{log}; no candidate used \texttt{none}.}
+
+\subsection{B. Architecture hyperparameters for champion \texttt{hfa\_75}}
+
+These appear in \code{configs/architecture\_candidates.json} and the winner in
+\code{artifacts/selected\_spec.json}.
+\textbf{Selection rule:} minimize March sequential log loss
+(\code{nba\_wp/selection.py}). April rows loaded during selection: \(0\).
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.35in}
+>{\raggedright\arraybackslash}p{0.55in}
+>{\raggedright\arraybackslash}p{0.72in}
+>{\raggedright\arraybackslash}p{3.5in}@{}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Class} & \textbf{Provenance / calculation} \\
+\midrule
+\endhead
+\(K\) (Elo step) & \(10\) & Selected & Member of \texttt{hfa\_75} candidate. Chosen because that architecture had lowest March LL among 5 candidates (Table~\ref{tab:march}). Not a continuous MLE. \\
+\(H\) (home Elo pts) & \(75\) & Selected & Same: \texttt{hfa\_75} beat \(H\in\{55,65\}\) variants on March LL. Equal-team home edge \(\Rightarrow 1/(1+10^{-75/400})\approx 0.606\). \\
+\(C_{\mathrm{BT}}\) & \(0.15\) & Selected & sklearn \code{LogisticRegression(C=0.15)} for Bradley--Terry. Value from winning architecture. \\
+Trend half-life \(\tau_{1/2}\) & \(45\) days & Selected & EWMA weight \(2^{-\Delta\mathrm{days}/45}\). From \texttt{hfa\_75}. \\
+Trend short window \(n_S\) & \(10\) games & Selected & Mean of last \(\min(10,n_i)\) margins. From \texttt{hfa\_75}. \\
+Elo logistic \(C_E\) & \(100\) & Selected & Regularization for Elo calibrator. From \texttt{hfa\_75}. \\
+Rank logistic \(C_R\) & \(0.1\) & Selected & Regularization for BT+trend calibrator. From \texttt{hfa\_75}. \\
+Architecture name & \texttt{hfa\_75} & Selected & Argmin of March LL over 5 named bundles (not independent continuous search over each coordinate). \\
+\bottomrule
+\end{longtable}
+
+\subsection{C. Stacker coefficients \(a,b,c\) (\cls{Fitted}, then floored)}
+\label{sec:stacker}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.0in}
+>{\raggedright\arraybackslash}p{1.5in}
+>{\raggedright\arraybackslash}p{0.6in}
+>{\raggedright\arraybackslash}p{3.05in}@{}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Class} & \textbf{How calculated} \\
+\midrule
+\endhead
+\(a\) (deploy) & \(0.3592529607156558\) & Derived & Floored coef on \(\operatorname{logit}(p^{E})\): \(a=w/\tau_{\mathrm{floor}}\). Scores April. \\
+\(b\) (deploy) & \(0.6407470392843442\) & Derived & Floored coef on \(\operatorname{logit}(p^{R})\): \(b=(1-w)/\tau_{\mathrm{floor}}\). \\
+\(c\) (deploy) & \(0.3253629989522476\) & Fitted & Intercept refit after flooring, given \(a,b\) fixed. \\
+\(a\) (raw MLE) & \(0.5696035387238357\) & Fitted & Unconstrained MLE coef on \(\operatorname{logit}(p^{E})\). Selection surface only. \\
+\(b\) (raw MLE) & \(1.0159186448349236\) & Fitted & Unconstrained MLE coef on \(\operatorname{logit}(p^{R})\). \\
+\(c\) (raw MLE) & \(0.3132108962839507\) & Fitted & Unconstrained MLE intercept. \\
+\(\tau_{\mathrm{floor}}\) & \(1.0\) & Fixed & Temperature floor: deploy blend may not sharpen (\(a+b\le 1\)). \\
+Stacker \(C\) & \(1.0\) & Fixed & \code{LogisticRegression(C=1.0)} in \code{fit\_logit\_stacker}. Penalty strength not selected on March. \\
+\bottomrule
+\end{longtable}
+
+\noindent\textbf{Step 1 --- unconstrained MLE} (no closed form). Let March games
+be \(g=1,\ldots,239\). After fitting base models on dates \(<\) 2026-03-01 and
+scoring March component probs \(p_g^{E},p_g^{R}\),
+\begin{align*}
+\hat a,\hat b,\hat c
+&=
+\arg\max_{a,b,c}
+\sum_{g\in\mathrm{Mar}}
+\Big[
+Y_g\log p_g
++(1-Y_g)\log(1-p_g)
+\Big]
+-\tfrac12(a^2+b^2),
+\\
+p_g
+&=
+\sigma\!\big(
+a\operatorname{logit}(p_g^{E})
++b\operatorname{logit}(p_g^{R})
++c
+\big).
+\end{align*}
+Solved by \code{lbfgs} (\code{sklearn}), giving the raw MLE
+\((0.5696,1.0159,0.3132)\).
+
+\noindent\textbf{Step 2 --- temperature floor.} The two component logits are
+near-duplicates (\(\rho\approx 0.97\)), so the unconstrained fit yields
+\(a+b=1.586>1\), i.e.\ temperature \(\tau=1/(a+b)\approx 0.63<1\). A temperature
+below one \emph{sharpens} the blend and produced extreme (99\%+) out-of-sample
+prices --- a leakage/overfit red flag. The model is therefore deployed with a
+floor \(\tau\ge 1\). Preserving the Elo weight \(w=a/(a+b)=0.3593\) and setting
+\(a+b=1\):
+\[
+a \leftarrow \frac{w}{\tau_{\mathrm{floor}}}=0.3593,\qquad
+b \leftarrow \frac{1-w}{\tau_{\mathrm{floor}}}=0.6407,
+\]
+then \(c\) is refit by one-dimensional MLE with \(a,b\) fixed, giving
+\(c=0.3254\). The floor is enforced in \code{fit\_logit\_stacker} and pinned by
+\code{tests/test\_stacker\_temperature\_floor.py}. Architecture selection still
+ranks candidates on the \emph{unconstrained} March log loss; only the deployed
+model carries the floor.
+
+\subsection{D. Base-component logistic coefficients (\cls{Fitted})}
+
+From \code{artifacts/coefficient\_table.csv} (April-scoring fit; base models
+refit through March for final April prices). Features are standardized
+inside the pipeline; both standardized and raw-unit coefficients are stored.
+
+\begin{longtable}{@{}llll@{}}
+\toprule
+\textbf{Component} & \textbf{Feature} & \textbf{Std.\ coef} & \textbf{Raw-unit coef} \\
+\midrule
+\endhead
+Elo & \(x^{E}=\mathrm{elo\_diff}\) & \(0.92651570\) & \(2.71292059\) \\
+Elo & intercept & \(0.24151143\) & --- \\
+Rank & \(x^{\mathrm{BT}}=\mathrm{bt\_logit}\) & \(0.80373649\) & \(1.50990421\) \\
+Rank & \(x^{\mathrm{trend}}=\mathrm{trend\_diff}\) & \(0.14417900\) & \(0.02999535\) \\
+Rank & intercept & \(0.23352102\) & --- \\
+\bottomrule
+\end{longtable}
+
+\noindent\textbf{How calculated.} For training rows available at that stage,
+\[
+\hat{\boldsymbol{\beta}}
+=
+\arg\max_{\boldsymbol{\beta}}
+\sum_i
+\big[
+Y_i\log\sigma(\beta_0+\boldsymbol{\beta}^\top\tilde{\mathbf{x}}_i)
++(1-Y_i)\log(1-\cdots)
+\big]
+-\tfrac{1}{2C}\|\boldsymbol{\beta}\|_2^2,
+\]
+with \(\tilde{\mathbf{x}}\) standardized (\code{StandardScaler}),
+\(C=C_E\) or \(C_R\), solver \code{lbfgs}.
+Raw-unit coef \(=\) standardized coef \(/\) training scale.
+
+\subsection{E. Bradley--Terry / trend auxiliaries}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.35in}
+>{\raggedright\arraybackslash}p{0.7in}
+>{\raggedright\arraybackslash}p{0.72in}
+>{\raggedright\arraybackslash}p{3.35in}@{}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Class} & \textbf{Provenance} \\
+\midrule
+\endhead
+BT design coding & \(+1/-1\) & Fixed & Home column \(+1\), away \(-1\). Standard BT contrast. \\
+BT team strengths \(q_i,\alpha\) & (vector) & Fitted & L2-logistic MLE on all prior games before date \(d\), \(C=C_{\mathrm{BT}}\). Refit when history grows. Feature \(x^{\mathrm{BT}}=\hat\alpha+\hat q_h-\hat q_a\). \\
+EWMA base \(1/2\) & \(0.5\) & Fixed & Half-life definition: weight \(2^{-\Delta/\tau_{1/2}}=(1/2)^{\Delta/\tau_{1/2}}\). \\
+Beta prior \((\alpha,\beta)\) & \((4,4)\) & Fixed & Comment in code: ``eight games of neutral information.'' Smoothed win rate \((W+4)/(G+8)\). Used for \code{record\_logit} (ablation feature; not in champion \(X\)). \\
+Rest cap & \(7\) days & Fixed & Rest days clipped to \([0,7]\). Schedule features only (ablation path). \\
+B2B threshold & \(1\) day & Fixed & \code{back\_to\_back = (rest <= 1)}. Ablation path. \\
+Density windows & \(4\), \(6\) days & Fixed & Games-in-window counts. Ablation path. \\
+\bottomrule
+\end{longtable}
+
+\subsection{F. Calendar / selection policy (\cls{Fixed} policy)}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.5in}
+>{\raggedright\arraybackslash}p{1.35in}
+>{\raggedright\arraybackslash}p{0.72in}
+>{\raggedright\arraybackslash}p{2.55in}@{}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Class} & \textbf{Provenance} \\
+\midrule
+\endhead
+Train-through (base, March scoring) & 2026-02-28 & Fixed policy & \code{selection\_policy.json} / selection code. \\
+Selection window & 2026-03-01--03-31 & Fixed policy & Same. \\
+April holdout start & 2026-04-01 & Fixed policy & Contract: selection raises if April present. \\
+Accuracy cutoff & \(0.5\) & Fixed & \code{p >= 0.5} in metrics. Not optimized. \\
+Primary metric & log loss & Fixed policy & Selection rule text. \\
+\# architectures raced & \(5\) & Fixed design & Length of candidate list. \\
+\bottomrule
+\end{longtable}
+
+\subsection{G. Derived quantities (\cls{Derived})}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.2in}
+>{\raggedright\arraybackslash}p{0.85in}
+>{\raggedright\arraybackslash}p{4.1in}@{}}
+\toprule
+\textbf{Quantity} & \textbf{Value} & \textbf{Calculation} \\
+\midrule
+\endhead
+\(w=a/(a+b)\) (raw) & \(0.3593\) & \(0.56960354/(0.56960354+1.01591864)\); preserved by the floor \\
+\(\tau=1/(a+b)\) (raw) & \(0.6307\) & \(1/(0.56960354+1.01591864)<1\Rightarrow\) floor applied \\
+\(\tau\) (deploy) & \(1.0000\) & \(1/(0.35925296+0.64074704)\) after projection onto \(a+b=1\) \\
+\(s=c\) (deploy) & \(0.3254\) & Intercept refit after flooring \\
+Equal-team home \(p\) & \(\approx 0.606\) & \(1/(1+10^{-H/400})\) with \(H=75\) \\
+Fair home odds & \(1/p_g\) & Definition \\
+Fair away odds & \(1/(1-p_g)\) & Definition \\
+\bottomrule
+\end{longtable}
+
+\subsection{H. Numerical / solver settings (\cls{Numerical})}
+
+\begin{longtable}{@{}lll@{}}
+\toprule
+\textbf{Setting} & \textbf{Value} & \textbf{Where} \\
+\midrule
+\endhead
+\code{max\_iter} & \(10000\) & all logistics \\
+\code{tol} & \(10^{-12}\) & all logistics \\
+\code{random\_state} & \(0\) & reproducibility \\
+\code{solver} & \code{lbfgs} & all logistics \\
+probability clip (logit) & \([10^{-12},1-10^{-12}]\) or \([10^{-9},1-10^{-9}]\) & \code{model.py}/\code{features.py} \\
+\bottomrule
+\end{longtable}
+
+%==============================================================================
+\section{Target and information}
+%==============================================================================
+
+\[
+Y_g=
+\begin{cases}
+1,&\text{home points}_g>\text{away points}_g,\\
+0,&\text{otherwise.}
+\end{cases}
+\qquad
+X_g=f(\mathcal{H}_{<d}).
+\]
+Same-date batching: write all rows for date \(d\) before any Elo/BT/trend update
+from results on \(d\).
+
+%==============================================================================
+\section{Elo mathematics}
+%==============================================================================
+
+\subsection{Raw probability and feature}
+\[
+p_g^{\mathrm{Elo,raw}}
+=
+\frac{1}{1+10^{-(R_h-R_a+H)/400}},
+\qquad
+x_g^{E}
+=
+\frac{R_h-R_a+H}{400}.
+\]
+Constants: \(R_i(0)=1500\) (Fixed), \(400\) (Fixed), \(H=75\) (Selected).
+
+\subsection{Update with MOV}
+\[
+R_h' = R_h + K M_g (Y_g-p_g^{\mathrm{Elo,raw}}),\qquad
+R_a' = R_a - K M_g (Y_g-p_g^{\mathrm{Elo,raw}}),
+\]
+\[
+M_g
+=
+\ln(|m_g|+1)
+\cdot
+\frac{2.2}{\max\bigl(0.25,\,0.001(R_{\mathrm{win}}-R_{\mathrm{lose}})+2.2\bigr)},
+\]
+where \(R_{\mathrm{win}},R_{\mathrm{lose}}\) are the pregame ratings of the
+\emph{winning} and \emph{losing} team (\S\ref{sec:movsign}). Constants:
+\(K=10\) (Selected); \(2.2\), \(0.001\), \(0.25\) (Fixed).
+
+\subsection{MOV rating-difference sign (winner \(-\) loser)}
+\label{sec:movsign}
+The rating difference inside the MOV denominator is the \emph{winner minus
+loser} rating, not a fixed \emph{home minus away} rating. This matches the
+published FTE form \((\mathrm{ELO}_W-\mathrm{ELO}_L)\) and has two correct
+consequences: (i) an \textbf{upset} (a lower-rated team winning) gives a
+smaller denominator and hence a \emph{larger} rating update than an expected
+result, and (ii) with zero home advantage the update is exactly team-swap
+symmetric. Using a fixed home\(-\)away difference instead would make the
+autocorrelation correction depend on venue rather than on who actually won,
+under-updating home upsets and over-updating home favorites. This behaviour is
+pinned by \code{tests/test\_elo\_mov\_winner\_diff.py}.
+
+\subsection{The constant \(2.2\): source, case for use, and how to optimize it}
+\label{sec:mov}
+
+\paragraph{Disclosure (external source).}
+The value \(2.2\) was \textbf{not estimated from this project's NBA dataset}.
+It was adopted from a published, widely cited sports-rating specification:
+Nate Silver / FiveThirtyEight,
+\textit{Introducing NFL Elo Ratings}
+(archived:
+\url{https://web.archive.org/web/20171004105151/https://fivethirtyeight.com/features/introducing-nfl-elo-ratings/}),
+which defines
+\[
+M
+=
+\ln(|PD|+1)
+\cdot
+\frac{2.2}{(\mathrm{ELO}_W-\mathrm{ELO}_L)\cdot 0.001 + 2.2}.
+\]
+This submission copies that functional form into
+\code{nba\_wp/features.py::\_elo\_multiplier}
+when \code{elo\_mov="log"}. Transparency on this point is intentional:
+industry models routinely reuse validated structural constants when the
+\emph{form} is what matters and the local sample is too short to re-estimate
+every shape parameter cleanly.
+
+\paragraph{Professional case for using \(2.2\) here (best case, optimal or not).}
+Even though \(2.2\) is external, using this specific published constant is a
+defensible engineering choice for a leakage-audited pricing model:
+
+\begin{enumerate}
+\item \textbf{Correct economic shape, not an arbitrary fudge.}
+The log term gives diminishing returns to blowouts (a 30-point win should not
+update ratings like three independent 10-point wins). The fraction involving
+\(2.2\) implements the standard underdog/favorite correction so favorites that
+``run up the score'' do not inflate permanently. That is precisely the
+behavior a book wants in a strength tracker feeding probabilities.
+\item \textbf{Stability and reproducibility.}
+A public constant with a fixed formula is auditable: two reviewers regenerating
+features get the same Elo path. Replacing it with an in-sample tuned value on
+one partial season would add a free parameter, widen the selection surface, and
+invite overfit to March noise.
+\item \textbf{Separation of concerns in the validation design.}
+This project deliberately concentrates selection effort on quantities that move
+prices most (home advantage \(H\), step size \(K\), BT/trend regularization)
+under a March log-loss rule, while holding the MOV \emph{shape} at a known
+industry default. That is a standard bias--variance trade: fix low-sensitivity
+shape parameters; select high-sensitivity ones.
+\item \textbf{Empirical support that the choice is not fragile.}
+On this repository's champion architecture, disabling MOV entirely worsens
+March log loss (\(\approx 0.4893\) vs \(\approx 0.4880\) with the log-MOV form).
+Varying the constant in a neighborhood of \(2.2\) changes March LL only in the
+fourth decimal place (flat likelihood). So the \emph{presence} of this MOV
+correction is beneficial; the exact published \(2.2\) is a stable operating
+point, not a knife-edge claim of global optimality.
+\item \textbf{Interpretability for stakeholders.}
+\(2.2\) has a clear reading in the literature as the baseline expected
+\(\ln(|PD|+1)\) scale in the autocorrelation correction (see Morse's
+derivation of \(d=2200=2.2/0.001\)). That is preferable to an opaque
+tuned scalar with no external meaning.
+\end{enumerate}
+
+\paragraph{How to calculate the value that would have been most optimal.}
+If the goal is a \emph{data-optimal} MOV constant \(b^\star\) for this pipeline
+(rather than the published \(2.2\)), compute it by the same selection principle
+already used for architectures---minimize March sequential log loss---while
+holding the champion architecture fixed:
+
+\begin{enumerate}
+\item Fix architecture \texttt{hfa\_75} except replace the literal \(2.2\) by a
+candidate \(b>0\) in
+\[
+M_g(b)
+=
+\ln(|m_g|+1)
+\cdot
+\frac{b}{\max\bigl(0.25,\,0.001(R_h-R_a)+b\bigr)}.
+\]
+(Optionally keep the literature ratio by setting the slope to \(b/2200\) instead
+of \(0.001\); the one-parameter profile below is the minimal change.)
+\item For each candidate \(b\) on a grid
+(e.g.\ \(b\in\{1.0,1.5,\ldots,4.0\}\)) or by continuous search:
+build features \(\rightarrow\) fit base models on games before 2026-03-01
+\(\rightarrow\) fit the March stacker \(\rightarrow\) record March log loss
+\(\mathrm{LL}(b)\).
+\item Set the optimal replacement
+\begin{center}
+\fbox{\parbox{0.88\linewidth}{\centering\vspace{0.55em}
+\(
+\displaystyle
+b^{\star}
+\;=\;
+\operatorname*{arg\,min}_{b}\;
+\mathrm{LL}_{\mathrm{March}}(b)
+\)
+\vspace{0.55em}}}
+\end{center}
+That is: choose the MOV constant \(b\) that minimizes March sequential log loss.
+This \(b^{\star}\) is the March-optimal MOV constant for this model and metric.
+On a quick profile of the current code path, \(\mathrm{LL}(b)\) was
+minimized toward the high end of the tested grid (near \(b=4\)), with only a
+tiny improvement over \(2.2\) (\(\Delta\mathrm{LL}\sim 4\times 10^{-5}\)).
+Hence \(2.2\) is not claimed as \(b^{\star}\); it is claimed as a published,
+stable default whose March performance is essentially tied with nearby
+optima.
+\item \textbf{Stronger production estimator (multi-season).}
+On a longer NBA history, estimate the literature intercept directly:
+regress bin-wise
+\(\widehat{\mathbb{E}}[\ln(|PD|+1)\mid\mathrm{win},\,x]\)
+on Elo gap \(x\) and take the intercept \(\hat b_0\) (and slope \(\hat a_0\))
+as in the Morse/FTE construction, then set \(b\leftarrow\hat b_0\).
+Alternatively, nest \(b\) inside the architecture search and select by
+prequential log loss with a locked final holdout.
+\end{enumerate}
+
+\paragraph{One-sentence position for reviewers.}
+\textit{I used the published FiveThirtyEight log-MOV constant \(2.2\) as a fixed,
+auditable shape parameter because it encodes a validated blowout/underdog
+correction, keeps the Elo path reproducible, and sits on a flat region of the
+March likelihood; a March (or multi-season) profile of \(\mathrm{LL}(b)\) is the
+correct way to replace it with a data-optimal \(b^\star\) if that becomes a
+production requirement.}
+
+\subsection{Calibrated Elo probability}
+\[
+p_g^{E}
+=
+\sigma(\beta_0^{E}+\beta_1^{E}\tilde x_g^{E}),
+\quad C_E=100\ \text{(Selected)}.
+\]
+
+%==============================================================================
+\section{Bradley--Terry + trend}
+%==============================================================================
+
+\subsection{Bradley--Terry}
+Prior games before date \(d\):
+\[
+P(Y=1)=\sigma(\alpha+q_h-q_a),
+\quad C_{\mathrm{BT}}=0.15\ \text{(Selected)}.
+\]
+Feature: \(x_g^{\mathrm{BT}}=\hat\alpha+\hat q_h-\hat q_a\) (\cls{Fitted} each day).
+
+\subsection{Trend}
+\[
+L_{i,d}
+=
+\frac{\sum_{k<d} 2^{-\Delta_{kd}/45} m_{ik}}{\sum_{k<d} 2^{-\Delta_{kd}/45}},
+\qquad
+S_{i,d}
+=
+\frac{1}{n_i^{\mathrm{short}}}\sum_{\mathrm{last}\,n_i^{\mathrm{short}}} m_{ik},
+\]
+\[
+n_i^{\mathrm{short}}=\min(10,n_i),
+\quad
+T_{i,d}=S_{i,d}-L_{i,d},
+\quad
+x_g^{\mathrm{trend}}=T_{h,d}-T_{a,d}.
+\]
+Constants \(45\) and \(10\): \cls{Selected} with \texttt{hfa\_75}.
+Base \(2\) in \(2^{-\cdot}\): \cls{Fixed} half-life algebra.
+
+\subsection{Rank component}
+\[
+p_g^{R}
+=
+\sigma(
+\beta_0^{R}
++\beta_{\mathrm{BT}}\tilde x_g^{\mathrm{BT}}
++\beta_{\mathrm{tr}}\tilde x_g^{\mathrm{trend}}
+),
+\quad C_R=0.1\ \text{(Selected)}.
+\]
+
+%==============================================================================
+\section{Selection proof for architecture constants}
+\label{tab:march}
+
+March sequential metrics from
+\code{artifacts/march\_architecture\_results.csv}
+(lower LL wins):
+
+\begin{center}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Architecture & \(K\) & \(H\) & March LL & Winner \\
+\midrule
+\textbf{hfa\_75} & \(10\) & \(75\) & \(\mathbf{0.48802866}\) & yes \\
+balanced & \(10\) & \(65\) & \(0.48805432\) & \\
+lower\_bt\_shrinkage & \(10\) & \(65\) & \(0.48816185\) & \\
+conservative & \(7.5\) & \(55\) & \(0.48871458\) & \\
+responsive & \(15\) & \(65\) & \(0.49037595\) & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent This is the \textbf{entire calculation} behind calling \(K=10\),
+\(H=75\), \(C_{\mathrm{BT}}=0.15\), \(\tau_{1/2}=45\), \(n_S=10\),
+\(C_E=100\), \(C_R=0.1\) ``selected'': they are the coordinate values of the
+bundle with minimal March LL. They are not independently profiled.
+
+%==============================================================================
+\section{Metrics (definitions; cutoffs Fixed)}
+%==============================================================================
+
+\[
+\mathrm{LL}
+=
+-\frac1N\sum_g
+\big[Y_g\log p_g+(1-Y_g)\log(1-p_g)\big],
+\quad
+\mathrm{BS}
+=
+\frac1N\sum_g(p_g-Y_g)^2.
+\]
+Accuracy uses Fixed cutoff \(p_g\ge 0.5\).
+
+Champion results (artifacts). \textbf{Primary April holdout (frozen
+pre-April)}: LL \(0.484432\), Brier \(0.155823\), AUC \(0.862798\),
+accuracy \(81.25\%\) (\(N=96\)). March selection surface (unconstrained
+stacker, \(N=239\)): LL \(0.48802866\); the deployed (floored) stacker scores
+March LL \(0.508373\). Optional April sequential backtest (live-update
+simulation): LL \(0.474545\).
+
+%==============================================================================
+\section{End-to-end constant flow}
+%==============================================================================
+
+\[
+\underbrace{1500,400,2.2,0.001}_{\text{Fixed Elo}}
+\;+\;
+\underbrace{K,H,C_{\mathrm{BT}},45,10,C_E,C_R}_{\text{Selected bundle}}
+\;\xrightarrow{\text{features}}\;
+(x^{E},x^{\mathrm{BT}},x^{\mathrm{trend}})
+\;\xrightarrow[\text{Fitted }]{\beta's}\;
+(p^{E},p^{R})
+\;\xrightarrow[\text{Fitted }]{a,b,c}\;
+p.
+\]
+
+\noindent\textbf{Code map.}
+\code{nba\_wp/features.py} (Fixed Elo/MOV/Beta; Selected architecture fields),
+\code{nba\_wp/model.py} (Fitted \(\beta\), \(a,b,c\)),
+\code{nba\_wp/selection.py} (Selected bundle via March LL),
+\code{artifacts/selected\_spec.json} (persisted winner + \(a,b,c\)).
+
+\end{document}

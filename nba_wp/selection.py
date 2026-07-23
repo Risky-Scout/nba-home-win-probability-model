@@ -57,18 +57,34 @@ def run_selection(
         models = fit_base_models(train, architecture)
         elo_probability, rank_probability = component_probabilities(models, march)
         march_home_win = march["home_win"].to_numpy(dtype=int)
-        stacker = fit_logit_stacker(
+        # Rank architectures with the unconstrained stacker (original selection
+        # surface). Deploy with temperature floor T>=1 to block sharpening.
+        stacker_select = fit_logit_stacker(
             march_home_win,
             elo_probability,
             rank_probability,
+            min_temperature=None,
         )
-        march_probability = apply_logit_stacker(
-            stacker,
+        select_probability = apply_logit_stacker(
+            stacker_select,
             elo_probability,
             rank_probability,
         )
-        metrics = evaluate(march_home_win, march_probability)
-        calibration = stacker_calibration_dict(stacker)
+        select_metrics = evaluate(march_home_win, select_probability)
+
+        stacker_deploy = fit_logit_stacker(
+            march_home_win,
+            elo_probability,
+            rank_probability,
+            min_temperature=1.0,
+        )
+        deploy_probability = apply_logit_stacker(
+            stacker_deploy,
+            elo_probability,
+            rank_probability,
+        )
+        deploy_metrics = evaluate(march_home_win, deploy_probability)
+        calibration = stacker_calibration_dict(stacker_deploy)
 
         architecture_rows.append(
             {
@@ -84,28 +100,34 @@ def run_selection(
                 "coef_elo_logit": calibration["coef_elo_logit"],
                 "coef_rank_logit": calibration["coef_rank_logit"],
                 "intercept": calibration["intercept"],
-                "log_loss": metrics["log_loss"],
-                "brier": metrics["brier"],
-                "auc": metrics["auc"],
-                "accuracy": metrics["accuracy"],
+                "log_loss": select_metrics["log_loss"],
+                "log_loss_deploy_temperature_floor": deploy_metrics["log_loss"],
+                "brier": deploy_metrics["brier"],
+                "auc": deploy_metrics["auc"],
+                "accuracy": deploy_metrics["accuracy"],
             }
         )
         selected_candidates.append(
             {
                 "architecture": architecture,
                 "calibration": calibration,
+                "select_metrics": {
+                    key: select_metrics[key]
+                    for key in ["log_loss", "brier", "auc", "accuracy"]
+                },
                 "metrics": {
-                    key: metrics[key]
+                    key: deploy_metrics[key]
                     for key in ["log_loss", "brier", "auc", "accuracy"]
                 },
             }
         )
 
-    # Selection rule: minimize March log loss. Architecture name only breaks
-    # exact ties deterministically.
+    # Selection rule: minimize unconstrained March log loss. Architecture name
+    # only breaks exact ties deterministically. Stored calibration / March
+    # validation metrics use the temperature-floored (T>=1) deploy stacker.
     selected_candidates.sort(
         key=lambda item: (
-            item["metrics"]["log_loss"],
+            item["select_metrics"]["log_loss"],
             item["architecture"].name,
         )
     )
@@ -117,19 +139,36 @@ def run_selection(
         "april_rows_loaded_during_selection": int(
             (games["game_date"] >= "2026-04-01").sum()
         ),
-        "selection_rule": "Minimize March log loss.",
+        "selection_rule": (
+            "Minimize unconstrained March log loss; deploy stacker with "
+            "temperature floor T>=1 (no sharpening)."
+        ),
         "primary_metric": "log_loss",
         "secondary_metrics": ["brier", "auc", "accuracy"],
         "information_policy": "sequential_daily",
         "architecture": winner["architecture"].to_dict(),
         "calibration": winner["calibration"],
         "march_validation_metrics": winner["metrics"],
+        "march_selection_metrics_unconstrained_stacker": winner["select_metrics"],
         "architecture_count": len(architecture_config["architectures"]),
         "notes": [
             "Base model coefficients use games through February.",
             "March state features update only after each completed game date.",
             "No April row is loaded by model selection.",
-            "The final April model refits base coefficients through March.",
+            (
+                "March is the stacker training set AND the architecture-selection "
+                "set. Reported March metrics are therefore in-sample for the blend "
+                "and must not be treated as a pristine holdout score."
+            ),
+            (
+                "Unconstrained logistic stacking can learn T=1/(a+b)<1 and "
+                "over-sharpen prices; deploy coefficients enforce T>=1 (convex "
+                "logit blend weight with temperature floor)."
+            ),
+            (
+                "Primary April deliverable is frozen pre-April state with the "
+                "through-February base-model generator (calibrator contract match)."
+            ),
         ],
     }
 

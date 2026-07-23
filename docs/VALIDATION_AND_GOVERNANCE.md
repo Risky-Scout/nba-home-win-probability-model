@@ -63,6 +63,15 @@ The three coefficients \((a, b, c)\) are estimated by a single
 equivalent to the \((w, \tau, s)\) parameterization via \(w = a/(a+b)\),
 \(\tau = 1/(a+b)\), \(s = c\).
 
+Because the Elo and rank component logits are near-duplicates
+(\(\rho\approx 0.97\)), the unconstrained fit learns \(a+b>1\) (temperature
+\(\tau<1\)), which sharpens the blend. The model is deployed with a
+**temperature floor** \(\tau \ge 1\): when the fit would sharpen, the weight
+\(w\) is preserved, the coefficients are projected onto \(a+b=1\), and the
+intercept is refit. Architecture selection still ranks on the unconstrained
+March log loss; only the deployed coefficients carry the floor. Both sets are
+recorded in `artifacts/selected_spec.json`.
+
 ## Selection rule
 
 Minimize March log loss. Architecture name is used only for deterministic
@@ -72,31 +81,35 @@ The selected coefficients are not copied into scoring source code. They are
 written by selection to `artifacts/selected_spec.json`, and the scorer refits
 the stacker the same way before applying it to April.
 
-## Operational versus frozen state
+## Primary (frozen) versus sequential state
 
-### `sequential_daily`
+### `frozen_pre_april` — primary deliverable
+
+Performance state is fixed at the last day before April, and the base-model
+generator is trained through February to match the March stacker fit. No April
+result updates any April performance state, so April outcomes cannot influence
+April prices. This is the headline `outputs/april_predictions.csv` and is
+pinned by `tests/test_primary_april_frozen.py`.
+
+It answers:
+
+> Using only October-March information, what price is issued for each April
+> game?
+
+### `sequential_daily_backtest` — diagnostic only
 
 This is a rolling one-step-ahead backtest. Model coefficients remain frozen
-during the target month, but results after each completed date update team
-state for later dates.
+during April, but results after each completed date update team state for later
+dates. It is exported to
+`outputs/april_predictions_sequential_backtest.csv`.
 
 It answers:
 
 > What probability would the system have issued each day using all information
 > available before that day?
 
-### `frozen_snapshot`
-
-Performance state is fixed at the last day before the target month. Schedule
-dates continue updating so rest remains meaningful.
-
-It answers:
-
-> What probabilities would be issued for the entire month from one month-start
-> performance snapshot?
-
-Both are exported. Reviewers can choose the information policy that matches
-their interpretation of the assignment.
+Both are exported, but the frozen version is the primary submission; the
+sequential file is clearly labelled as a live-update simulation.
 
 ## Metric uncertainty and selection bias
 

@@ -3,7 +3,7 @@
   "selected_using": "March 2026 operational one-step-ahead validation",
   "selection_data_max_date": "2026-03-31",
   "april_rows_loaded_during_selection": 0,
-  "selection_rule": "Minimize March log loss.",
+  "selection_rule": "Minimize unconstrained March log loss; deploy stacker with temperature floor T>=1 (no sharpening).",
   "primary_metric": "log_loss",
   "secondary_metrics": [
     "brier",
@@ -24,15 +24,28 @@
   },
   "calibration": {
     "method": "logistic_stack",
-    "coef_elo_logit": 0.5795901348781234,
-    "coef_rank_logit": 0.9837561206667516,
-    "intercept": 0.31535451800901687,
-    "note": "blend fitted by penalized maximum likelihood (logistic stacking); equivalent to the (w, T, s) parameterization via w=a/(a+b), T=1/(a+b), s=c"
+    "coef_elo_logit": 0.35925296071565577,
+    "coef_rank_logit": 0.6407470392843442,
+    "intercept": 0.32536299895224763,
+    "temperature": 1.0,
+    "elo_weight": 0.35925296071565577,
+    "temperature_floor": 1.0,
+    "temperature_floor_applied": true,
+    "note": "blend fitted by penalized maximum likelihood (logistic stacking); equivalent to (w, T, s) via w=a/(a+b), T=1/(a+b), s=c. If the unconstrained fit had T < temperature_floor, coefficients were projected to T = temperature_floor (no sharpening) and the intercept was refit.",
+    "unconstrained_coef_elo_logit": 0.5696035387238357,
+    "unconstrained_coef_rank_logit": 1.0159186448349236,
+    "unconstrained_intercept": 0.31321089628395066
   },
   "march_validation_metrics": {
-    "log_loss": 0.48802866204106454,
-    "brier": 0.15714820753837705,
-    "auc": 0.8303362573099415,
+    "log_loss": 0.5083729200619467,
+    "brier": 0.16485364885586673,
+    "auc": 0.8300438596491228,
+    "accuracy": 0.7698744769874477
+  },
+  "march_selection_metrics_unconstrained_stacker": {
+    "log_loss": 0.4880258253508303,
+    "brier": 0.1570175117655963,
+    "auc": 0.8300438596491228,
     "accuracy": 0.7866108786610879
   },
   "architecture_count": 5,
@@ -40,6 +53,8 @@
     "Base model coefficients use games through February.",
     "March state features update only after each completed game date.",
     "No April row is loaded by model selection.",
-    "The final April model refits base coefficients through March."
+    "March is the stacker training set AND the architecture-selection set. Reported March metrics are therefore in-sample for the blend and must not be treated as a pristine holdout score.",
+    "Unconstrained logistic stacking can learn T=1/(a+b)<1 and over-sharpen prices; deploy coefficients enforce T>=1 (convex logit blend weight with temperature floor).",
+    "Primary April deliverable is frozen pre-April state with the through-February base-model generator (calibrator contract match)."
   ]
 }

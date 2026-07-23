@@ -279,21 +279,31 @@ def build_features(
             home = str(row.home)
             away = str(row.away)
             margin = float(row.home_points - row.away_points)
+            pregame_home_elo = ratings[home]
+            pregame_away_elo = ratings[away]
             expected_home = 1.0 / (
                 1.0
                 + 10.0
                 ** (
                     -(
-                        ratings[home]
-                        - ratings[away]
+                        pregame_home_elo
+                        - pregame_away_elo
                         + architecture.elo_hfa
                     )
                     / 400.0
                 )
             )
+            # MOV autocorrelation term must use winner Elo − loser Elo
+            # (FiveThirtyEight form). Using home − away for every game
+            # suppresses upset adjustments when the favorite is home.
+            home_won = int(row.home_win) == 1
+            if home_won:
+                winner_rating_diff = pregame_home_elo - pregame_away_elo
+            else:
+                winner_rating_diff = pregame_away_elo - pregame_home_elo
             multiplier = _elo_multiplier(
-                margin,
-                ratings[home] - ratings[away],
+                abs(margin),
+                winner_rating_diff,
                 architecture.elo_mov,
             )
             delta = (
