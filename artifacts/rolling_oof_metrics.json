@@ -1,0 +1,81 @@
+{
+  "design": "expanding-window one-step-ahead; weekly folds from 2026-03-01; base models and deploy stacker (T>=1) fit strictly before each fold",
+  "folds": 7,
+  "pooled_games": 335,
+  "pooled": {
+    "log_loss": 0.5049840201960399,
+    "brier": 0.16554577180801544,
+    "auc": 0.834521422737061,
+    "accuracy": 0.7820895522388059,
+    "games": 335,
+    "home_win_rate": 0.6,
+    "mean_probability": 0.5359387096865794
+  },
+  "expected_calibration_error": 0.11828315807347647,
+  "maximum_calibration_error": 0.2516528362423067,
+  "per_fold": [
+    {
+      "origin": "2026-03-01",
+      "train_games": 895,
+      "fold_games": 53,
+      "log_loss": 0.5159729491419053,
+      "brier": 0.1667591202452564,
+      "auc": 0.8475783475783476,
+      "accuracy": 0.8113207547169812
+    },
+    {
+      "origin": "2026-03-08",
+      "train_games": 948,
+      "fold_games": 56,
+      "log_loss": 0.5794898339563171,
+      "brier": 0.19999229497178497,
+      "auc": 0.7734375,
+      "accuracy": 0.6785714285714286
+    },
+    {
+      "origin": "2026-03-15",
+      "train_games": 1004,
+      "fold_games": 56,
+      "log_loss": 0.4851262678603789,
+      "brier": 0.1569571000013911,
+      "auc": 0.8748403575989783,
+      "accuracy": 0.8214285714285714
+    },
+    {
+      "origin": "2026-03-22",
+      "train_games": 1060,
+      "fold_games": 50,
+      "log_loss": 0.4993168423313252,
+      "brier": 0.1643726473477235,
+      "auc": 0.795138888888889,
+      "accuracy": 0.78
+    },
+    {
+      "origin": "2026-03-29",
+      "train_games": 1110,
+      "fold_games": 51,
+      "log_loss": 0.4661883250970736,
+      "brier": 0.1474665945517875,
+      "auc": 0.8866459627329193,
+      "accuracy": 0.803921568627451
+    },
+    {
+      "origin": "2026-04-05",
+      "train_games": 1161,
+      "fold_games": 54,
+      "log_loss": 0.477657633366395,
+      "brier": 0.15359422233366402,
+      "auc": 0.8705882352941177,
+      "accuracy": 0.8148148148148148
+    },
+    {
+      "origin": "2026-04-12",
+      "train_games": 1215,
+      "fold_games": 15,
+      "log_loss": 0.5113079907410056,
+      "brier": 0.17312782457623493,
+      "auc": 0.7272727272727273,
+      "accuracy": 0.7333333333333333
+    }
+  ]
+}

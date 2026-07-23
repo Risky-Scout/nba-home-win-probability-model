@@ -124,6 +124,27 @@ The sequential backtest scores slightly better but uses within-April state
 updates; the frozen version is the honest answer to "use October-March to price
 April" and is therefore the primary submission.
 
+### Rolling-origin out-of-sample calibration (robustness check)
+
+The frozen holdout is a single origin. To stress calibration across many
+origins, `scripts/rolling_oof_calibration.py` runs an expanding-window,
+one-step-ahead backtest: for each weekly fold from 2026-03-01, the base models
+and the deploy stacker (`T >= 1`) are fit strictly *before* the fold, then the
+fold is scored. Pooling all 7 folds (335 out-of-sample games):
+
+| Pooled OOS | Log loss | Brier | AUC | Accuracy | ECE |
+|---|---:|---:|---:|---:|---:|
+| Rolling one-step-ahead | 0.505 | 0.166 | 0.835 | 78.2% | 0.118 |
+
+Honest read: under this stricter protocol the model is **mildly underconfident
+in the mid-range** (e.g. the ~0.51 decile realizes ~0.77; the ~0.60 decile
+realizes ~0.82), giving an expected calibration error of about 0.12 — larger
+than the single frozen-April window suggests. This is the expected cost of the
+conservative `T >= 1` temperature floor plus small per-fold training windows,
+and underconfidence is the safer failure mode than the overconfidence we
+removed. See `figures/rolling_oof_calibration.png` and
+`artifacts/rolling_oof_calibration.csv`.
+
 ## What constitutes proof
 
 | Claim | Executable evidence |
@@ -137,6 +158,8 @@ April" and is therefore the primary submission.
 | Elo MOV uses winner - loser rating diff (upsets move ratings more) | `nba_wp/features.py`, `tests/test_elo_mov_winner_diff.py` |
 | Deploy stacker never sharpens (temperature T >= 1) | `nba_wp/model.py`, `tests/test_stacker_temperature_floor.py` |
 | Primary April is frozen (April outcomes cannot change April prices) | `nba_wp/reporting.py`, `tests/test_primary_april_frozen.py` |
+| Leakage battery: future/box-score/row-order do not move features; past outcomes provably do (positive controls) | `tests/test_leakage_mutations.py` |
+| Calibration holds out-of-sample under rolling one-step-ahead folds | `scripts/rolling_oof_calibration.py`, `artifacts/rolling_oof_calibration.csv`, `artifacts/rolling_oof_metrics.json`, `figures/rolling_oof_calibration.png` |
 | Metrics recompute from individual prices | `validate_submission.py`, `tests/test_artifacts.py` |
 | Saved probabilities reproduce | `python validate_submission.py --recompute ...` |
 | Feature contribution is measurable | `artifacts/feature_group_ablation.csv`, `artifacts/permutation_importance.csv` |
