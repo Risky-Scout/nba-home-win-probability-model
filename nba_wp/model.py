@@ -1,7 +1,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -12,24 +12,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from .features import Architecture
-
-
-@dataclass(frozen=True)
-class Calibration:
-    elo_weight: float
-    temperature: float
-    shift: float
-
-    @classmethod
-    def from_dict(cls, values: dict[str, Any]) -> "Calibration":
-        return cls(
-            elo_weight=float(values["elo_weight"]),
-            temperature=float(values["temperature"]),
-            shift=float(values["shift"]),
-        )
-
-    def to_dict(self) -> dict[str, float]:
-        return asdict(self)
 
 
 @dataclass
@@ -200,32 +182,6 @@ def component_probabilities(
     return elo_probability, rank_probability
 
 
-def blend_probabilities(
-    elo_probability: np.ndarray,
-    rank_probability: np.ndarray,
-    calibration: Calibration,
-) -> np.ndarray:
-    blended_logit = (
-        calibration.elo_weight * logit(elo_probability)
-        + (1.0 - calibration.elo_weight) * logit(rank_probability)
-    )
-    return sigmoid(blended_logit / calibration.temperature + calibration.shift)
-
-
-def predict(
-    models: BaseModels,
-    frame: pd.DataFrame,
-    calibration: Calibration,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    elo_probability, rank_probability = component_probabilities(models, frame)
-    final_probability = blend_probabilities(
-        elo_probability,
-        rank_probability,
-        calibration,
-    )
-    return final_probability, elo_probability, rank_probability
-
-
 def _refit_stacker_intercept(
     y_true: np.ndarray,
     blended_logit: np.ndarray,
@@ -390,23 +346,6 @@ def stacker_calibration_dict(stacker: LogisticRegression) -> dict[str, Any]:
     if unc_c is not None:
         payload["unconstrained_intercept"] = float(unc_c)
     return payload
-
-
-def stacker_from_calibration_dict(values: dict[str, Any]) -> LogisticRegression:
-    """Rebuild a fitted stacker from its persisted coefficients."""
-    stacker = LogisticRegression(
-        C=1.0,
-        max_iter=10_000,
-        tol=1e-12,
-        random_state=0,
-    )
-    stacker.classes_ = np.array([0, 1])
-    stacker.coef_ = np.array(
-        [[float(values["coef_elo_logit"]), float(values["coef_rank_logit"])]]
-    )
-    stacker.intercept_ = np.array([float(values["intercept"])])
-    stacker.n_features_in_ = 2
-    return stacker
 
 
 def standardized_coefficient_rows(

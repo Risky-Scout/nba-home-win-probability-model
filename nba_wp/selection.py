@@ -207,7 +207,7 @@ def run_selection(
     architecture_config: dict[str, Any],
     selection_policy: dict[str, Any],
     periods: Periods | None = None,
-) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame]:
+) -> tuple[dict[str, Any], pd.DataFrame]:
     """Select the deployed champion, April-blind, per procedure.
 
     For every candidate architecture we fit base models on games before March,
@@ -343,9 +343,6 @@ def run_selection(
     # eligible rows (through the selection cutoff); no stacker is deployed.
     champion_features = build_features(games, champion_arch)
     final_elo_model = fit_elo_model(champion_features, champion_arch)
-    final_elo_probability = elo_probability(final_elo_model, champion_features)
-    del final_elo_probability  # coefficients captured below; scoring recomputes
-
     selected_spec = {
         "model_family": "elo_only",
         "champion": "elo_only",
@@ -465,6 +462,5 @@ def run_selection(
         "elo_log_loss",
         ascending=True,
     ).reset_index(drop=True)
-    top_table = architecture_table.copy()
 
-    return selected_spec, architecture_table, top_table
+    return selected_spec, architecture_table

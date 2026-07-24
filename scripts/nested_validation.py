@@ -59,7 +59,6 @@ from nba_wp.model import (
     fit_schedule_model,
     logit,
     schedule_probability,
-    sigmoid,
 )
 
 EPS = 1e-12

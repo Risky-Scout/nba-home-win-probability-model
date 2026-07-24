@@ -24,7 +24,6 @@ from .model import (
     fit_base_models,
     fit_logit_stacker,
     stacker_calibration_dict,
-    standardized_coefficient_rows,
 )
 
 

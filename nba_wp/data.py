@@ -5,7 +5,6 @@ import hashlib
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 EXPECTED_COLUMNS = [
@@ -201,23 +200,3 @@ def audit_games(frame: pd.DataFrame, source_path: str | Path | None = None) -> d
         "postgame_columns_excluded_from_same_game_model": POSTGAME_COLUMNS,
     }
     return audit
-
-
-def split_dates(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
-    """Return the chronological periods used throughout the project.
-
-    Boundaries are derived from the data (last month = holdout, prior month =
-    selection); the dict keys keep their historical names for compatibility.
-    """
-    from .periods import derive_periods
-
-    p = derive_periods(frame)
-    sel, hold = p.selection_start, p.holdout_start
-    return {
-        "train_through_february": frame[frame["game_date"] < sel].copy(),
-        "march": frame[
-            (frame["game_date"] >= sel) & (frame["game_date"] < hold)
-        ].copy(),
-        "through_march": frame[frame["game_date"] < hold].copy(),
-        "april": frame[frame["game_date"] >= hold].copy(),
-    }

@@ -27,7 +27,7 @@ def main() -> None:
     periods = derive_periods(games)
     selection_games = games[games["game_date"] < periods.holdout_start].copy()
 
-    selected_spec, architecture_table, top_table = run_selection(
+    selected_spec, architecture_table = run_selection(
         selection_games,
         load_json(config_dir / "architecture_candidates.json"),
         load_json(config_dir / "selection_policy.json"),
@@ -39,10 +39,6 @@ def main() -> None:
     )
     architecture_table.to_csv(
         artifact_dir / "march_architecture_results.csv",
-        index=False,
-    )
-    top_table.to_csv(
-        artifact_dir / "march_tuning_top_candidates.csv",
         index=False,
     )
     proof = {
