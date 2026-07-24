@@ -1,60 +1,107 @@
 {
-  "model_family": "logistic-stacked blend: Elo + Bradley-Terry/recent-trend",
-  "selected_using": "March 2026 operational one-step-ahead validation",
+  "model_family": "elo_only",
+  "champion": "elo_only",
+  "selected_using": "March 2026 one-step-ahead validation (Elo-only log loss)",
   "selection_data_max_date": "2026-03-31",
   "april_rows_loaded_during_selection": 0,
-  "selection_rule": "Minimize unconstrained March log loss; deploy stacker with temperature floor T>=1 (no sharpening).",
+  "selection_rule": "Each procedure (Elo-only, rank-only, blend) selects its own architecture by its own March log loss (Brier tie-break). Champion is Elo-only: the nested rolling-origin audit shows the blend does not beat Elo-only out-of-sample on log loss or Brier, so the simpler model is deployed. The blend is retained as a rejected challenger.",
   "primary_metric": "log_loss",
   "secondary_metrics": [
     "brier",
     "auc",
     "accuracy"
   ],
-  "information_policy": "sequential_daily",
   "architecture": {
-    "name": "hfa_75",
-    "elo_k": 10.0,
-    "elo_hfa": 75.0,
+    "name": "conservative",
+    "elo_k": 7.5,
+    "elo_hfa": 55.0,
     "elo_mov": "log",
-    "bt_c": 0.15,
-    "trend_half_life_days": 45.0,
-    "trend_short_games": 10,
-    "elo_model_c": 100.0,
+    "bt_c": 0.1,
+    "trend_half_life_days": 60.0,
+    "trend_short_games": 12,
+    "elo_model_c": 10.0,
     "rank_model_c": 0.1
   },
-  "calibration": {
-    "method": "logistic_stack",
-    "coef_elo_logit": 0.35925296071565577,
-    "coef_rank_logit": 0.6407470392843442,
-    "intercept": 0.32536299895224763,
-    "temperature": 1.0,
-    "elo_weight": 0.35925296071565577,
-    "temperature_floor": 1.0,
-    "temperature_floor_applied": true,
-    "note": "blend fitted by penalized maximum likelihood (logistic stacking); equivalent to (w, T, s) via w=a/(a+b), T=1/(a+b), s=c. If the unconstrained fit had T < temperature_floor, coefficients were projected to T = temperature_floor (no sharpening) and the intercept was refit.",
-    "unconstrained_coef_elo_logit": 0.5696035387238357,
-    "unconstrained_coef_rank_logit": 1.0159186448349236,
-    "unconstrained_intercept": 0.31321089628395066
+  "elo_model": {
+    "method": "logistic_on_elo_diff",
+    "feature": "elo_diff",
+    "standardized_coefficient": 0.9271823509706777,
+    "intercept": 0.24154288785472908,
+    "training_mean": 0.14081468771906555,
+    "training_scale": 0.2690252333909796,
+    "raw_unit_coefficient": 3.4464512465385932,
+    "C": 10.0,
+    "note": "Deployed champion is Elo-only: p = sigmoid(intercept + coef * z(elo_diff)) where z standardizes elo_diff by the training mean/scale. The Elo + rank blend was rejected by the nested rolling-origin audit (worse out-of-sample log loss and Brier)."
   },
   "march_validation_metrics": {
-    "log_loss": 0.5083729200619467,
-    "brier": 0.16485364885586673,
-    "auc": 0.8300438596491228,
+    "log_loss": 0.5065900312308793,
+    "brier": 0.16588048136759967,
+    "auc": 0.8233918128654971,
     "accuracy": 0.7698744769874477
   },
-  "march_selection_metrics_unconstrained_stacker": {
-    "log_loss": 0.4880258253508303,
-    "brier": 0.1570175117655963,
-    "auc": 0.8300438596491228,
-    "accuracy": 0.7866108786610879
+  "challenger": {
+    "model_family": "logistic-stacked blend: Elo + Bradley-Terry/recent-trend",
+    "status": "rejected",
+    "reason": "Nested rolling-origin validation: blend worse than Elo-only on both log loss and Brier (block-bootstrap CIs entirely above zero; blend worse in 10 of 11 outer folds). See artifacts/nested_frozen_block_summary.json and artifacts/nested_daily_sequential_summary.json.",
+    "architecture": {
+      "name": "conservative",
+      "elo_k": 7.5,
+      "elo_hfa": 55.0,
+      "elo_mov": "log",
+      "bt_c": 0.1,
+      "trend_half_life_days": 60.0,
+      "trend_short_games": 12,
+      "elo_model_c": 10.0,
+      "rank_model_c": 0.1
+    },
+    "calibration": {
+      "method": "logistic_stack",
+      "coef_elo_logit": 0.39765587062352586,
+      "coef_rank_logit": 0.6023441293764742,
+      "intercept": 0.3347604843419738,
+      "temperature": 1.0,
+      "elo_weight": 0.39765587062352586,
+      "rank_weight": 0.6023441293764742,
+      "temperature_floor": 1.0,
+      "temperature_floor_applied": true,
+      "note": "blend fitted by penalized maximum likelihood (logistic stacking); equivalent to (w, T, s) via w=a/(a+b), T=1/(a+b), s=c. If the unconstrained fit had T < temperature_floor, coefficients were projected to T = temperature_floor (no sharpening) and the intercept was refit.",
+      "unconstrained_coef_elo_logit": 0.6076317564287658,
+      "unconstrained_coef_rank_logit": 0.9204024090822248,
+      "unconstrained_intercept": 0.3279170537046888
+    },
+    "march_metrics": {
+      "log_loss": 0.5061862421611626,
+      "brier": 0.16410380984803405,
+      "auc": 0.8292397660818713,
+      "accuracy": 0.7615062761506276
+    }
+  },
+  "rank_only_reference": {
+    "architecture": {
+      "name": "balanced",
+      "elo_k": 10.0,
+      "elo_hfa": 65.0,
+      "elo_mov": "log",
+      "bt_c": 0.15,
+      "trend_half_life_days": 45.0,
+      "trend_short_games": 10,
+      "elo_model_c": 100.0,
+      "rank_model_c": 0.1
+    },
+    "march_metrics": {
+      "log_loss": 0.5291287695685651,
+      "brier": 0.17418630570066843,
+      "auc": 0.8323830409356725,
+      "accuracy": 0.7656903765690377
+    }
   },
   "architecture_count": 5,
   "notes": [
-    "Base model coefficients use games through February.",
+    "Elo architecture selected by Elo-only March log loss (base fit through February).",
+    "Deployed Elo-only probability map is refit on all rows through March 31.",
     "March state features update only after each completed game date.",
     "No April row is loaded by model selection.",
-    "March is the stacker training set AND the architecture-selection set. Reported March metrics are therefore in-sample for the blend and must not be treated as a pristine holdout score.",
-    "Unconstrained logistic stacking can learn T=1/(a+b)<1 and over-sharpen prices; deploy coefficients enforce T>=1 (convex logit blend weight with temperature floor).",
-    "Primary April deliverable is frozen pre-April state with the through-February base-model generator (calibrator contract match)."
+    "March is used for both architecture selection and reported March metrics, so March is in-sample for selection and is not a pristine holdout. The out-of-sample evidence is the nested audit.",
+    "The Elo + rank blend was implemented, validated, and REJECTED: it does not beat Elo-only out-of-sample. Deploying the simpler model is the honest, defensible choice."
   ]
 }

@@ -47,7 +47,9 @@ def main() -> None:
         "selection_input_max_date": selection_games["game_date"].max().strftime("%Y-%m-%d"),
         "april_rows_loaded": int((selection_games["game_date"] >= "2026-04-01").sum()),
         "selected_architecture": selected_spec["architecture"]["name"],
-        "selected_calibration": selected_spec["calibration"],
+        "model_family": selected_spec["model_family"],
+        "deployed_elo_model": selected_spec["elo_model"],
+        "rejected_challenger": selected_spec["challenger"]["model_family"],
         "selection_rule": selected_spec["selection_rule"],
     }
     (artifact_dir / "selection_proof.json").write_text(

@@ -41,7 +41,8 @@ p^{Elo}_g =
 }.
 \]
 
-The selected architecture uses \(H=75\) Elo points. After the date is complete,
+The deployed (`conservative`) architecture uses \(H=55\) Elo points. After the
+date is complete,
 
 \[
 R_h' = R_h + K M_g (Y_g-p^{Elo}_g),
@@ -51,7 +52,7 @@ R_h' = R_h + K M_g (Y_g-p^{Elo}_g),
 R_a' = R_a - K M_g (Y_g-p^{Elo}_g),
 \]
 
-where \(K=10\) and the margin-of-victory multiplier follows the
+where \(K=7.5\) and the margin-of-victory multiplier follows the
 FiveThirtyEight log form, evaluated on the **winner-minus-loser** rating
 difference:
 
@@ -71,17 +72,53 @@ than an expected result, and keeps the update team-swap symmetric at zero home
 advantage. The denominator is guarded in code against pathological values, and
 the behaviour is pinned by `tests/test_elo_mov_winner_diff.py`.
 
-The raw Elo feature is
+The raw Elo feature (called `elo_diff`) is
 
 \[
-x^{Elo}_g = \frac{R_h-R_a+H}{400}.
+\text{elo\_diff}_g = \frac{R_h-R_a+H}{400}.
 \]
 
-An L2-logistic calibration model is fitted to historical \(x^{Elo}\).
+## 4. Deployed champion — Elo-only logistic
 
-## 4. Bradley-Terry component
+**The deployed model is Elo-only.** It is a single logistic map on the
+standardized Elo rating differential — there is no Bradley-Terry component, no
+recent-trend component, and no stacker or temperature floor in the deployed
+price:
 
-For each date, team strengths are fitted from earlier game outcomes:
+\[
+p^{home}_g = \sigma\!\bigl(c + w\, z(\text{elo\_diff}_g)\bigr),
+\qquad
+z(\text{elo\_diff}) = \frac{\text{elo\_diff} - \mu}{s},
+\]
+
+where \(z\) standardizes `elo_diff` by the training mean \(\mu\) and scale \(s\).
+The coefficients are fitted by an L2-logistic model (\(C=10\)) on **all games
+through March 31**; the April performance state is then frozen at March 31. The
+deployed values are
+
+\[
+w = 0.9271823510,\quad
+c = 0.2415428879,\quad
+\mu = 0.1408146877,\quad
+s = 0.2690252334,
+\]
+
+equivalent to a raw-unit weight of \(3.4464512465\) per unit of `elo_diff`
+(\(w/s\)). All five values are stored in `artifacts/selected_spec.json` under
+`elo_model`, and the primary April prices recompute from them (pinned by
+`tests/test_champion_promotion.py`).
+
+Elo-only is the champion because the nested rolling-origin audit (see
+`docs/VALIDATION_AND_GOVERNANCE.md`) rejects the Elo + rank blend: the blend
+does not beat Elo-only out-of-sample on either log loss or Brier. The blend is
+retained only as a clearly-labelled **rejected challenger**, described in
+Sections 5–7 below.
+
+## 5. Rejected challenger — Bradley-Terry component
+
+The following three sections describe the **rejected challenger blend**, which
+is implemented and validated but is *not* deployed. For each date, team
+strengths are fitted from earlier game outcomes:
 
 \[
 P(h \text{ beats } a)
@@ -92,8 +129,8 @@ P(h \text{ beats } a)
 \]
 
 where \(\alpha\) is the home intercept and \(q_i\) is team \(i\)'s fitted
-strength. L2 regularization controls the 30 team coefficients. The selected
-regularization is `C = 0.15`.
+strength. L2 regularization controls the 30 team coefficients. The challenger
+architecture uses `C = 0.1`.
 
 The model feature is the Bradley-Terry decision value:
 
@@ -101,7 +138,7 @@ The model feature is the Bradley-Terry decision value:
 x^{BT}_g = \hat \alpha + \hat q_h-\hat q_a.
 \]
 
-## 5. Recent trend
+## 6. Rejected challenger — recent trend
 
 For team \(i\), define point margin \(m_{ik}\) in each prior game from the
 team's perspective. Long-form margin is exponentially weighted:
@@ -142,7 +179,11 @@ x^{trend}_g=T_{h,d}-T_{a,d}.
 A second L2-logistic model maps
 \((x^{BT}_g, x^{trend}_g)\) to a rank-component probability.
 
-## 6. Log-odds blend (logistic stacking)
+## 7. Rejected challenger — log-odds blend (logistic stacking)
+
+The stacker and temperature floor below belong **only to the rejected
+challenger blend**. They are *not* part of the deployed champion (Section 4),
+which is Elo-only and applies no stacking or temperature floor.
 
 Let \(p_E\) and \(p_R\) be the two component probabilities. The blend is a
 logistic regression on their logits, fitted by penalized maximum likelihood:
@@ -158,37 +199,42 @@ c
 \bigr).
 \]
 
-The unconstrained March fit produced:
+The unconstrained March fit for the challenger produced:
 
 \[
-a=0.5696,\qquad
-b=1.0159,\qquad
-c=0.3132,
+a=0.6076,\qquad
+b=0.9204,\qquad
+c=0.3279,
 \]
 
-equivalent to \((w, \tau, s)\) via \(w=a/(a+b)=0.359\),
-\(\tau=1/(a+b)=0.631\), \(s=c=0.313\). Because the two component logits are
-near-duplicates (\(\rho\approx 0.97\)), the unconstrained fit learns
-\(a+b>1\), i.e. temperature \(\tau<1\), which **sharpens** the blend and
-produced extreme (99%+) prices out of sample.
+equivalent to \((w, \tau, s)\) via \(w=a/(a+b)\), \(\tau=1/(a+b)\),
+\(s=c\). Because the two component logits are near-duplicates
+(\(\rho\approx 0.97\)), the unconstrained fit learns \(a+b>1\), i.e. temperature
+\(\tau<1\), which **sharpens** the blend and produced extreme prices out of
+sample.
 
-The model is therefore deployed with a **temperature floor** \(\tau\ge 1\).
-When the unconstrained fit sharpens, the Elo/rank weight \(w\) is preserved but
-the coefficients are projected onto \(a+b=1\) (a convex logit blend, no
-sharpening) and the intercept is refit:
+The challenger is therefore built with a **temperature floor** \(\tau\ge 1\)
+(a genuine convex logit blend: \(0\le a,b\le 1\), \(a+b=1\), \(\tau\ge 1\),
+pinned by
+`tests/test_stacker_temperature_floor.py::test_stacker_weights_are_convex_when_stacker_is_used`).
+When the unconstrained fit sharpens, the Elo/rank weight \(w\) is preserved, the
+coefficients are projected onto \(a+b=1\), and the intercept is refit:
 
 \[
-a=0.3593,\qquad
-b=0.6407,\qquad
-c=0.3254,\qquad
+a=0.3977,\qquad
+b=0.6023,\qquad
+c=0.3348,\qquad
 \tau=1.0.
 \]
 
-These deploy coefficients are what score April. The floor is enforced in code
-and pinned by `tests/test_stacker_temperature_floor.py`; both the unconstrained
-and deployed coefficients are stored in `artifacts/selected_spec.json`.
+These are the challenger's deploy-form coefficients, stored under the
+`challenger` block of `artifacts/selected_spec.json` (`status: "rejected"`).
+They score `outputs/challenger_blend_april_predictions.csv`, which is a
+reference only — the challenger is **not** the deployed model. On the frozen
+April window the blend scores log loss 0.468725 / Brier 0.150465, worse than
+Elo-only on both proper scores.
 
-## 7. Metrics
+## 8. Metrics
 
 Log loss:
 
@@ -215,7 +261,7 @@ BS =
 AUC measures ranking. Accuracy uses the fixed threshold \(p_g \ge 0.5\). Log
 loss and Brier are primary because the deliverable is a probability price.
 
-## 8. Fair odds
+## 9. Fair odds
 
 The output also reports zero-margin decimal odds:
 

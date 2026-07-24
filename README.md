@@ -1,9 +1,14 @@
 # NBA Home-Win Probability Model
 
-A leakage-audited, reproducible implementation of the **Elo +
-Bradley-Terry/recent-trend logit blend**. This repository is designed for a
-technical interview: every material claim maps to executable code, a generated
-artifact, or an automated test.
+A leakage-audited, reproducible NBA home-win probability model. The **deployed
+champion is Elo-only** — a logistic map on a margin-of-victory Elo rating
+differential. An Elo + Bradley-Terry/recent-trend logit blend was implemented,
+validated, and **rejected**: under honest nested rolling-origin validation it
+does not beat Elo-only out-of-sample on either proper score, and it is worse
+calibrated. This repository is designed for a technical interview: every
+material claim maps to executable code, a generated artifact, or an automated
+test, and the headline decision (reject the more complex model) is itself
+backed by evidence.
 
 ## Start here
 
@@ -28,160 +33,166 @@ row created.
 
 ## Model
 
-The champion has two transparent components:
+### Deployed champion: Elo-only
 
-1. **Margin-of-victory Elo** - sequential team ratings with a home adjustment.
-2. **Bradley-Terry + recent trend** - regularized paired-comparison strength
-   plus the difference between short and long point-margin form.
-
-Each component is calibrated by an L2-logistic model. Their probabilities are
-blended by a **fitted logistic stacker** (penalized maximum likelihood):
+A single, transparent component: **margin-of-victory Elo** — sequential team
+ratings with a home adjustment — mapped to a probability by an L2-logistic
+model on the pregame Elo rating differential:
 
 ```text
-p_home = sigmoid(a * logit(p_elo) + b * logit(p_rank) + c)
+p_home = sigmoid( c + w * z(elo_diff) )
 ```
 
-The coefficients (a, b, c) are estimated by logistic regression on March
-component logits — no grid search — and then **deployed with a temperature
-floor T >= 1**. An unconstrained stacker on two highly correlated component
-logits (rho approx 0.97) learns a + b > 1, i.e. temperature T = 1/(a+b) < 1,
-which sharpens duplicate information and produced extreme (99%+) prices. The
-deploy blend keeps the same Elo/rank weight but sets a + b = 1 (convex logit
-blend, no sharpening) and refits only the intercept.
+where `z(elo_diff)` standardizes the Elo differential by the training
+mean/scale. The probability map is fit on **all eligible games through
+March 31**; April performance state is frozen at March 31.
 
-The selected March-only specification is stored in
-`artifacts/selected_spec.json`:
+The selected specification is stored in `artifacts/selected_spec.json`:
 
 ```text
-architecture            hfa_75
-Elo K                   10
-Elo home adjustment     75 rating points
+model_family            elo_only
+architecture            conservative
+Elo K                   7.5
+Elo home adjustment     55 rating points
 Elo MOV multiplier      winner Elo - loser Elo (FiveThirtyEight log form)
-Bradley-Terry C         0.15
-trend half-life         45 days
-short trend window      10 games
-deploy stacker a        0.3593   (elo logit weight)
-deploy stacker b        0.6407   (rank logit weight, a + b = 1, T = 1)
-deploy stacker c        0.3254   (intercept)
-unconstrained a, b, c   0.5696, 1.0159, 0.3132  (stored for audit only)
+logistic C              10
+standardized weight w    0.9272
+intercept c              0.2415
+training mean/scale      0.1408 / 0.2690  (raw-unit weight 3.446 per elo_diff)
 ```
+
+### Rejected challenger: Elo + Bradley-Terry/recent-trend blend
+
+The blend adds a second component (regularized Bradley-Terry strength plus a
+short-minus-long point-margin trend) and combines the two component
+probabilities with a **convex logistic stacker** deployed under a temperature
+floor `T >= 1`:
+
+```text
+p_blend = sigmoid(a * logit(p_elo) + b * logit(p_rank) + c),  a,b >= 0, a+b <= 1
+```
+
+The stacker is a genuine convex logit blend: `fit_logit_stacker` clips negative
+weights to zero and enforces `T = 1/(a+b) >= 1` (no sharpening), so
+`0 <= w <= 1` for both components (`tests/test_stacker_temperature_floor.py`).
+This blend is **retained only as a rejected challenger** — see the nested audit
+below. Its coefficients and per-period metrics live in the `challenger` block
+of `artifacts/selected_spec.json`.
 
 ## Evaluation protocol and information policy
 
-### Selection
+### Selection (model-specific, April-blind)
 
-- Base model coefficients for March are fitted through February.
-- March is an **operational one-step-ahead validation**: after all games on a
-  date are priced, that date's results may update state for later dates.
 - `scripts/select_model.py` truncates the input at March 31 before feature
-  construction. It cannot read an April row.
-- Five declared architectures are evaluated. For each, the blend is fitted by
-  penalized maximum likelihood (logistic stacking) on March component logits.
-- The selection rule is: **minimize March log loss**. Nothing else.
+  construction. It cannot read an April row (`artifacts/selection_proof.json`
+  records `april_rows_loaded = 0`).
+- Each procedure selects its **own** architecture by its **own** March log
+  loss (Brier tie-break): Elo-only by Elo-only log loss, rank-only by rank
+  log loss, blend by blend log loss. No procedure is represented by an
+  architecture chosen for a different procedure.
+- Base coefficients for the March comparison are fitted through February; March
+  is an operational one-step-ahead validation window.
+- The **champion is Elo-only**: the nested audit (below) shows the blend does
+  not beat Elo-only out-of-sample, so the simpler model is deployed. The
+  deployed Elo probability map is then refit on all rows through March 31.
 
 ### April
 
-- Architecture and calibration are frozen from March selection.
 - **Primary deliverable** `outputs/april_predictions.csv` is the
-  **frozen pre-April** file: no April result updates any April performance
-  state, and the base-model generator matches the March stacker fit (trained
-  through February) so the calibrator inputs mean the same thing at fit and
-  deploy time.
+  **frozen pre-April** file: performance state is frozen at March 31 and the
+  Elo probability map is fit through March 31, so no April result can change any
+  April price.
 - `outputs/april_predictions_sequential_backtest.csv` is an optional
   live-update simulation only (earlier April dates may update team state for
   later April dates). It is clearly labelled and is not the headline result.
+- `outputs/challenger_blend_april_predictions.csv` holds the rejected blend's
+  frozen April prices for transparency.
 
 ## Results
 
-### Primary April holdout (frozen pre-April)
+### Primary April holdout (frozen pre-April, Elo-only champion)
 
 | Period | Log loss | Brier | AUC | Accuracy |
 |---|---:|---:|---:|---:|
-| **April frozen (primary)** | 0.484432 | 0.155823 | 0.862798 | 81.2500% |
+| **April frozen (primary)** | 0.464369 | 0.149770 | 0.866847 | 78.1250% |
 
-Frozen April price distribution: maximum `home_win_probability` approx 0.948;
-4 of 96 games priced at or above 0.90; none at or above 0.95.
+Frozen April price distribution: min `home_win_probability` ≈ 0.069, max ≈ 0.970;
+9 of 96 games priced at or above 0.90. Mean forecast 0.549 vs. observed home rate
+0.594 — the champion is if anything mildly **under**-forecasting on this window
+(consistent with the nested calibration slope > 1 below), not overconfident. The
+high prices come from large Elo rating gaps (elite home team vs. weak visitor),
+and the leakage battery + frozen policy rule out same-game/future leakage.
 
-### March (selection / stacker-training period — in-sample)
+For reference, the **rejected blend** on the same frozen April window scores
+log loss 0.4687 / Brier 0.1505 — worse than Elo-only on both proper scores.
 
-| Stacker | Log loss | Brier | AUC | Accuracy |
+### March (selection period — Elo-only, in-sample for selection)
+
+| Model | Log loss | Brier | AUC | Accuracy |
 |---|---:|---:|---:|---:|
-| Deploy (T >= 1) | 0.508373 | 0.164854 | 0.830044 | 76.9874% |
-| Unconstrained (selection surface only) | 0.488026 | 0.157018 | 0.830044 | 78.6611% |
+| Elo-only (fit through Feb, one-step March) | 0.506590 | 0.165880 | 0.823392 | 76.9874% |
 
-March is simultaneously the architecture-selection set and the stacker-training
-set, so March numbers are **in-sample for the blend** and are not an unbiased
-out-of-sample score. The architecture is chosen on the unconstrained March log
-loss; the deployed model then applies the T >= 1 floor.
+March is used to select architectures, so it is in-sample for selection and is
+not a pristine holdout. The honest out-of-sample evidence is the nested audit.
 
 ### Optional April sequential backtest (live-update simulation)
 
 | Period | Log loss | Brier | AUC | Accuracy |
 |---|---:|---:|---:|---:|
-| April sequential | 0.474545 | 0.152112 | 0.852901 | 82.2917% |
+| April sequential (Elo-only) | 0.464648 | 0.149914 | 0.866397 | 78.1250% |
 
-The sequential backtest scores slightly better but uses within-April state
-updates; the frozen version is the honest answer to "use October-March to price
-April" and is therefore the primary submission.
-
-### Rolling-origin out-of-sample calibration (robustness check)
-
-The frozen holdout is a single origin. To stress calibration across many
-origins, `scripts/rolling_oof_calibration.py` runs an expanding-window,
-one-step-ahead backtest: for each weekly fold from 2026-03-01, the base models
-and the deploy stacker (`T >= 1`) are fit strictly *before* the fold, then the
-fold is scored. Pooling all 7 folds (335 out-of-sample games):
-
-| Pooled OOS | Log loss | Brier | AUC | Accuracy | ECE |
-|---|---:|---:|---:|---:|---:|
-| Rolling one-step-ahead | 0.505 | 0.166 | 0.835 | 78.2% | 0.118 |
-
-Honest read: under this stricter protocol the model is **underconfident in the
-mid-range** (e.g. the ~0.51 decile realizes ~0.77; the ~0.60 decile realizes
-~0.82), giving an expected calibration error of about 0.12 — larger than the
-single frozen-April window suggests. An ECE near 0.12 is **material** for
-pricing, not negligible. This rolling audit has fold-level outcome holdouts but
-is *not* a fully nested model-selection backtest (the architecture came from
-full-March selection), so it is a robustness diagnostic, not definitive proof.
-See `figures/rolling_oof_calibration.png` and the fully nested audit below.
+The sequential backtest lets earlier April dates update team state for later
+April dates; the frozen version is the honest answer to "use October-March to
+price April" and is the primary submission.
 
 ### Nested rolling-origin validation (the honest verdict)
 
-`scripts/nested_validation.py` removes the two weaknesses above. For each outer
-weekly fold (Feb–Apr, 11 folds, **501 out-of-sample games**): the architecture
-is selected by an *inner* rolling-origin search on data strictly before the
-fold; the constrained stacker is trained on inner **out-of-fold** component
-predictions (matching deployment); base models are refit on all pre-fold data;
-and the untouched outer fold is scored. No architecture chosen on a period is
-ever scored on that period. Four candidate procedures are priced on identical
-outer-fold rows:
+`scripts/nested_validation.py` validates the whole model-building **procedure**
+under two clearly separated information policies, never mixed into one metric:
 
-| Candidate (nested OOS, 501 games) | Log loss | Brier | AUC |
-|---|---:|---:|---:|
-| Constant home rate | 0.688 | 0.247 | — |
-| **Elo-only** | **0.527** | **0.175** | 0.813 |
-| Rank-only (BT + trend) | 0.544 | 0.181 | 0.811 |
-| Constrained blend | 0.561 | 0.189 | 0.805 |
+- **Frozen-block**: for each outer weekly origin O, performance state is frozen
+  at O−1 (`build_features(freeze_date=O)`); every price in the block `[O, O+7)`
+  uses only information available before O. Mutating any outcome inside the
+  block cannot change any price in the block (verified in-script:
+  `frozen_block_leakage_guarantee_verified = true`, and
+  `tests/test_information_policies.py`).
+- **Daily-sequential**: a price for date t uses results strictly before t
+  (base models refit through t−1) — a live one-step-ahead simulation.
 
-Week-block bootstrap, blend − Elo-only: **ΔlogLoss = +0.034** (95% CI
-`[+0.027, +0.042]`), **ΔBrier = +0.014** (95% CI `[+0.011, +0.017]`);
-P(blend better) = 0 on both metrics.
+For every outer fold, each procedure **independently** selects its own
+architecture by its own inner out-of-fold score; the convex stacker is trained
+on inner **out-of-fold** component predictions. Four procedures are priced on
+identical outer-fold rows (501 out-of-sample games, 11 weekly folds):
 
-**Finding: under honest nested validation the blend is significantly *worse*
-than Elo-only** — not merely tied. The convex-logit blend with the `T >= 1`
-floor is underconfident: the calibration regression `logit(y) = α + β logit(p̂)`
-gives **β ≈ 2.0** (95% CI `[1.73, 2.41]`; β = 1 is perfect), i.e. the blend's
-prices are compressed toward 0.5. It also places ~64% of its weight on the
-weaker rank component. Nested architecture selection prefers `conservative`
-(10 of 11 folds), not the deployed `hfa_75`.
+| Candidate (nested OOS, 501 games) | LL (frozen) | Brier (frozen) | LL (daily) | Brier (daily) | Cal. slope β |
+|---|---:|---:|---:|---:|---:|
+| Constant home rate | 0.688 | 0.247 | 0.688 | 0.247 | — |
+| **Elo-only (champion)** | **0.532** | **0.177** | **0.532** | **0.177** | 1.32–1.37 |
+| Rank-only (BT + trend) | 0.550 | 0.184 | 0.549 | 0.184 | 1.64–1.70 |
+| Convex blend | 0.548 | 0.183 | 0.547 | 0.182 | 1.75–1.80 |
 
-**Champion–challenger decision (`decision: keep_elo_only`).** With Elo-only as
-champion and the blend as challenger, the rule "promote only if the blend beats
-Elo-only on both log loss and Brier with stable evidence" is **not** met. On the
-current evidence the defensible deployed model is **Elo-only**; the blend is a
-well-audited prototype that does not earn its added complexity. See
-`artifacts/nested_backtest_summary.json` and
-`figures/nested_backtest_reliability.png`.
+Week-block bootstrap, blend − Elo-only (frozen-block): **ΔlogLoss = +0.017**
+(95% CI `[+0.010, +0.023]`), **ΔBrier = +0.006** (95% CI `[+0.004, +0.009]`).
+**0 of 4,000** week-block bootstrap replicates favored the blend on either
+metric (with only ~11 weekly blocks, treat this as strong directional evidence,
+not production-grade certainty from a large independent sample).
+
+**Calibration is now reported for every candidate**, not just the loser. On the
+frozen-block policy the Elo-only champion is the best-calibrated candidate:
+intercept α = −0.05 (95% CI `[−0.32, +0.22]`), slope β = 1.37 (95% CI
+`[1.22, 1.57]`), ECE ≈ 0.059, mean forecast 0.554 vs. observed 0.557. The blend
+is worse: β ≈ 1.80 and ECE ≈ 0.092–0.115 (more compressed toward 0.5). β > 1
+means the Elo-only champion is *mildly under*confident (it could be sharpened
+~1.3×), which is a much safer failure mode for pricing than overconfidence.
+
+**Champion–challenger decision (`decision: keep_elo_only` under both policies).**
+The rule "promote the blend only if it beats Elo-only on **both** log loss and
+Brier with a block-bootstrap upper CI below zero" is **not** met. Elo-only wins
+on discrimination, proper scores, and calibration. See
+`artifacts/nested_frozen_block_summary.json`,
+`artifacts/nested_daily_sequential_summary.json`,
+`figures/nested_frozen_block_reliability.png`, and
+`figures/nested_daily_sequential_reliability.png`.
 
 ## What constitutes proof
 
@@ -192,13 +203,16 @@ well-audited prototype that does not earn its added complexity. See
 | Same-game box scores are excluded | `nba_wp/features.py`, `tests/test_feature_timing.py` |
 | Same-date games are batched | `tests/test_feature_timing.py::test_same_day_games_are_batched` |
 | April was absent from selection | `scripts/select_model.py`, `artifacts/selection_proof.json` |
-| The stacker coefficients were fitted, not typed into scoring code | `artifacts/march_architecture_results.csv`, `artifacts/selected_spec.json` |
+| Deployed model is Elo-only and matches the champion decision | `artifacts/selected_spec.json`, `tests/test_champion_promotion.py` |
+| Elo architecture was selected on Elo-only out-of-fold loss | `nba_wp/selection.py`, `tests/test_champion_promotion.py::test_elo_architecture_is_selected_on_elo_oof_loss` |
+| Deployed spec, final metrics, and prices all describe the same champion | `tests/test_champion_promotion.py` |
+| Primary April prices recompute from the deployed Elo coefficients | `tests/test_champion_promotion.py::test_primary_april_probabilities_recompute_from_deployed_elo` |
 | Elo MOV uses winner - loser rating diff (upsets move ratings more) | `nba_wp/features.py`, `tests/test_elo_mov_winner_diff.py` |
-| Deploy stacker never sharpens (temperature T >= 1) | `nba_wp/model.py`, `tests/test_stacker_temperature_floor.py` |
-| Primary April is frozen (April outcomes cannot change April prices) | `nba_wp/reporting.py`, `tests/test_primary_april_frozen.py` |
+| Challenger stacker is a genuine convex blend (0<=w<=1, T>=1) | `nba_wp/model.py`, `tests/test_stacker_temperature_floor.py::test_stacker_weights_are_convex_when_stacker_is_used` |
+| Primary April is frozen (April outcomes cannot change April prices) | `nba_wp/reporting.py`, `tests/test_primary_april_frozen.py`, `tests/test_information_policies.py` |
+| Frozen outer block ignores all in-block outcomes; daily uses only prior dates | `tests/test_information_policies.py` |
 | Leakage battery: future/box-score/row-order do not move features; past outcomes provably do (positive controls) | `tests/test_leakage_mutations.py` |
-| Calibration holds out-of-sample under rolling one-step-ahead folds | `scripts/rolling_oof_calibration.py`, `artifacts/rolling_oof_calibration.csv`, `artifacts/rolling_oof_metrics.json`, `figures/rolling_oof_calibration.png` |
-| Nested rolling-origin validation of the whole procedure (inner architecture selection + OOF stacker), candidate comparison, block-bootstrap, calibration regression, champion-challenger | `scripts/nested_validation.py`, `artifacts/nested_backtest_summary.json`, `artifacts/nested_backtest_folds.csv`, `figures/nested_backtest_reliability.png` |
+| Nested rolling-origin validation under two policies (frozen-block + daily-sequential), model-specific inner selection + OOF stacker, candidate comparison, block-bootstrap, calibration for every candidate, champion-challenger | `scripts/nested_validation.py`, `artifacts/nested_frozen_block_summary.json`, `artifacts/nested_daily_sequential_summary.json`, `artifacts/nested_frozen_block_folds.csv`, `figures/nested_frozen_block_reliability.png`, `figures/nested_daily_sequential_reliability.png` |
 | Metrics recompute from individual prices | `validate_submission.py`, `tests/test_artifacts.py` |
 | Saved probabilities reproduce | `python validate_submission.py --recompute ...` |
 | Feature contribution is measurable | `artifacts/feature_group_ablation.csv`, `artifacts/permutation_importance.csv` |
@@ -277,18 +291,20 @@ python validate_submission.py   --root .   --data "/absolute/path/to/nba-win-pro
 This is a one-season, team-level technical-task model, not a complete
 sportsbook production price. The data omit player availability, lineups,
 minutes, possession inputs, travel distance, market prices, and multiple
-seasons. The calibration search uses March for both selection and reported
-selection performance, so March is not an unbiased final estimate. April has
-also been viewed during the broader project; the repository reconstructs a
-machine-enforced pre-April selection path and reports that limitation rather
+seasons. March is used for both selection and reported selection performance,
+so March is not an unbiased final estimate. April has also been viewed during
+the broader project (multiple model revisions, an interview review, and
+diagnostic procedures chosen after observing failures), so February–April is no
+longer a pristine holdout; a strong sportsbook-calibration claim would require a
+future untouched period or a separate season. The repository reconstructs a
+machine-enforced pre-April selection path and reports these limitations rather
 than claiming perfect historical blindness.
 
-Honest verdict on the blend: the fully nested rolling-origin audit
-(`scripts/nested_validation.py`) shows the constrained Elo + rank blend does
-**not** beat Elo-only out-of-sample (it is significantly worse on log loss and
-Brier) and is underconfident (calibration slope β ≈ 2.0). The blend is
-therefore presented as a rigorously validated *prototype*, and the evidence
-recommends **Elo-only as the deployed champion**. The value of this project is
-the reproducible, leakage-controlled pipeline and the validation that is honest
-enough to reject its own added complexity — not a claim that the blend is
-superior.
+Honest verdict: the fully nested rolling-origin audit
+(`scripts/nested_validation.py`) shows the Elo + rank blend does **not** beat
+Elo-only out-of-sample — it is worse on log loss and Brier under both
+information policies and worse calibrated (blend β ≈ 1.8 vs. Elo-only β ≈ 1.35).
+The repository therefore **deploys Elo-only as the champion** and keeps the
+blend only as a clearly labelled, rigorously validated rejected challenger. The
+value of this project is the reproducible, leakage-controlled pipeline and a
+validation honest enough to reject its own added complexity.

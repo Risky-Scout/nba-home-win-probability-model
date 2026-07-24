@@ -34,40 +34,52 @@ python -m pytest tests/test_feature_timing.py -q
 
 ## 4. Model
 
-`docs/METHODOLOGY.md` — margin-of-victory Elo (MOV multiplier on the
-winner − loser rating difference) and a regularized Bradley–Terry model with a
-recent-form trend, each calibrated by a small logistic model, combined by a
-logistic stacker fitted by penalized maximum likelihood on March component
-logits and then deployed with a temperature floor (T >= 1, no sharpening).
-Both the unconstrained and deployed coefficients are in
-`artifacts/selected_spec.json`, with the (w, τ, s) equivalence note.
+`docs/METHODOLOGY.md` — the **deployed champion is Elo-only**: a logistic map
+on the standardized margin-of-victory Elo rating differential (MOV multiplier
+on the winner − loser rating difference), `p = sigmoid(c + w·z(elo_diff))`, fit
+on all games through March 31 with the April state frozen at March 31. It has
+**no stacker and no temperature floor**. The deployed Elo coefficients are in
+`artifacts/selected_spec.json` under `elo_model`. A regularized Bradley–Terry +
+recent-trend logistic-stacked **blend** was implemented and validated but
+**rejected** — it lives under the `challenger` block (`status: "rejected"`),
+where the temperature floor / convex-stacker note belongs.
 
 ## 5. Selection provenance
 
 - Declared candidates: `configs/architecture_candidates.json` (all five)
 - All five scored: `artifacts/march_architecture_results.csv`
-- Rule: minimize March log loss (verbatim in `selected_spec.json`)
-- April exclusion proof: `artifacts/selection_proof.json` (max input date
-  2026-03-31, zero April rows; the selection function raises otherwise)
+- Rule: model-specific — each procedure (Elo-only, rank-only, blend) selects its
+  own architecture by its own March log loss (Brier tie-break); champion is
+  Elo-only because the nested audit rejects the blend
+  (`selected_spec.json`: `model_family = "elo_only"`, `champion = "elo_only"`)
+- April exclusion proof: `artifacts/selection_proof.json`
+  (`selection_input_max_date = 2026-03-31`, zero April rows; the selection
+  function raises otherwise)
+- Pinned by `tests/test_champion_promotion.py` and
+  `tests/test_information_policies.py`
 
 ## 6. Baselines and feature evidence
 
 `artifacts/feature_group_ablation.csv` — constant prior through record-only,
-Elo-only, BT+trend, a rich linear challenger, and the selected blend, all on
-the same protocol. `artifacts/permutation_importance.csv` and
-`artifacts/paired_bootstrap_vs_*.json` quantify component contributions with
-paired uncertainty; the blend-versus-Elo-alone interval crosses zero and is
-reported as such.
+Elo-only, BT+trend, a rich linear challenger, and the blend, all on the same
+protocol. The decisive out-of-sample comparison is the **nested rolling-origin
+audit** (`scripts/nested_validation.py`): pooled Elo-only 0.532 log loss /
+0.177 Brier versus blend 0.548 / 0.183, with block-bootstrap blend − Elo-only
+CIs entirely above zero on both metrics (0 of 4,000 replicates favored the
+blend). See `artifacts/nested_frozen_block_summary.json` and
+`artifacts/nested_daily_sequential_summary.json`.
 
 ## 7. Results
 
-`artifacts/final_metrics.json` — the **primary April holdout** (frozen
-pre-April: LL 0.4844, Brier 0.1558, AUC 0.8628, accuracy 81.25%), the March
-selection surface (in-sample for the stacker; unconstrained LL 0.4880, deployed
-floored LL 0.5084), and an optional April sequential backtest (live-update
-simulation, LL 0.4745). Reliability diagrams in `figures/`, bin tables in
-`artifacts/*_calibration_bins.csv`. Fair decimal odds in the prediction CSVs
-are zero-margin transforms of the probabilities.
+`artifacts/final_metrics.json` — the **primary April holdout** (Elo-only
+champion, frozen: LL 0.464369, Brier 0.149770, AUC 0.866847, accuracy 78.125%),
+the March one-step-ahead surface (Elo-only, in-sample for selection: LL
+0.506590), and an optional April sequential backtest (live-update simulation,
+LL 0.464648). For reference the rejected blend scores LL 0.468725 / Brier
+0.150465 on the same frozen April window (worse on both proper scores).
+Reliability diagrams in `figures/nested_frozen_block_reliability.png` and
+`figures/nested_daily_sequential_reliability.png`. Fair decimal odds in the
+prediction CSVs are zero-margin transforms of the probabilities.
 
 ## 8. Known limitations
 

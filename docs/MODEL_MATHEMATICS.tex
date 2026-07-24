@@ -12,7 +12,7 @@
 
 \title{\textbf{NBA Home-Win Probability Model}\\[0.25em]
 \large Mathematics \& Full Constant Provenance\\[0.15em]
-\normalsize Champion architecture \texttt{hfa\_75} --- technical briefing}
+\normalsize Deployed champion: Elo-only (architecture \texttt{conservative}) --- technical briefing}
 \author{Joseph Shackelford\\[0.15em]
 \small Prepared for recruiter / technical review.\\
 \small Every number below is classified
@@ -35,41 +35,36 @@ as an unexplained ``magic number.''
 
 \section{Champion model (one equation)}
 
+The \textbf{deployed champion is Elo-only}: an L2-logistic map on the
+standardized margin-of-victory Elo rating differential,
 \[
 \boxed{
 p_g
 =
-\sigma\!\Bigl(
-a\,\operatorname{logit}(p_g^{E})
-+
-b\,\operatorname{logit}(p_g^{R})
-+
-c
-\Bigr)
-}
+\sigma\!\bigl(c + w\,\tilde x_g^{E}\bigr)
+},
+\qquad
+\tilde x_g^{E}=\frac{x_g^{E}-\mu}{s},
 \]
-with \textbf{deployed} stacker coefficients
-\(a=0.3592529607156558\),
-\(b=0.6407470392843442\),
-\(c=0.3253629989522476\),
+with \textbf{deployed} coefficients (fit on all games through 2026-03-31)
+\(w=0.9271823510\),
+\(c=0.2415428879\),
+\(\mu=0.1408146877\),
+\(s=0.2690252334\)
+(raw-unit weight \(w/s\approx 3.4464512\)),
 and
 \(\sigma(z)=1/(1+e^{-z})\),
-\(\operatorname{logit}(p)=\log(p/(1-p))\).
+\(\operatorname{logit}(p)=\log(p/(1-p))\). This is exactly the calibrated Elo
+component of \S\ref{sec:elo}; April performance state is frozen at 2026-03-31.
 
-These deploy coefficients satisfy \(a+b=1\) (temperature \(\tau=1\)): the model
-is fitted by penalized maximum likelihood and then \textbf{projected onto a
-temperature floor} \(\tau\ge 1\) so it never sharpens duplicate component
-information. The raw unconstrained MLE fit was
-\(a=0.5696035387238357\),
-\(b=1.0159186448349236\),
-\(c=0.3132108962839507\)
-(\(\tau=1/(a+b)\approx 0.63<1\)); both sets are stored in
-\code{artifacts/selected\_spec.json}. See \S\ref{sec:stacker} for the
-derivation and rationale.
-
-Component probabilities \(p_g^{E}\) and \(p_g^{R}\) are themselves L2-logistic
-calibrations of Elo and (Bradley--Terry + trend) features built with
-architecture \texttt{hfa\_75}.
+\paragraph{Rejected challenger.} An Elo \(+\) Bradley--Terry/recent-trend
+convex logistic stacker,
+\(p_g^{\mathrm{blend}}=\sigma(a\operatorname{logit}(p_g^{E})+b\operatorname{logit}(p_g^{R})+c)\)
+with \(a,b\ge0,\ a+b\le1\), was implemented and \textbf{rejected}: under nested
+rolling-origin validation (\S\ref{sec:nested}) it is worse than Elo-only on both
+log loss and Brier and is worse calibrated. It is retained only in the
+\code{challenger} block of \code{artifacts/selected\_spec.json}; see
+\S\ref{sec:stacker}.
 
 \section{How to read every constant}
 
@@ -118,12 +113,15 @@ MOV denom floor & \(0.25\) & Fixed & Code guard \code{max(0.25, denom)} against 
 \end{longtable}
 {\footnotesize $^\star$Selected only in the weak sense that the winning architecture kept \texttt{log}; no candidate used \texttt{none}.}
 
-\subsection{B. Architecture hyperparameters for champion \texttt{hfa\_75}}
+\subsection{B. Architecture hyperparameters for champion \texttt{conservative}}
 
 These appear in \code{configs/architecture\_candidates.json} and the winner in
 \code{artifacts/selected\_spec.json}.
-\textbf{Selection rule:} minimize March sequential log loss
-(\code{nba\_wp/selection.py}). April rows loaded during selection: \(0\).
+\textbf{Selection rule:} each procedure (Elo-only, rank-only, blend) minimizes
+its own March sequential log loss (\code{nba\_wp/selection.py}); the champion is
+Elo-only. April rows loaded during selection: \(0\). The champion Elo-only model
+depends only on the Elo fields \(K,H,\text{MOV},C_E\); the remaining fields
+govern the rejected challenger.
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.35in}
 >{\raggedright\arraybackslash}p{0.55in}
@@ -133,99 +131,57 @@ These appear in \code{configs/architecture\_candidates.json} and the winner in
 \textbf{Constant} & \textbf{Value} & \textbf{Class} & \textbf{Provenance / calculation} \\
 \midrule
 \endhead
-\(K\) (Elo step) & \(10\) & Selected & Member of \texttt{hfa\_75} candidate. Chosen because that architecture had lowest March LL among 5 candidates (Table~\ref{tab:march}). Not a continuous MLE. \\
-\(H\) (home Elo pts) & \(75\) & Selected & Same: \texttt{hfa\_75} beat \(H\in\{55,65\}\) variants on March LL. Equal-team home edge \(\Rightarrow 1/(1+10^{-75/400})\approx 0.606\). \\
-\(C_{\mathrm{BT}}\) & \(0.15\) & Selected & sklearn \code{LogisticRegression(C=0.15)} for Bradley--Terry. Value from winning architecture. \\
-Trend half-life \(\tau_{1/2}\) & \(45\) days & Selected & EWMA weight \(2^{-\Delta\mathrm{days}/45}\). From \texttt{hfa\_75}. \\
-Trend short window \(n_S\) & \(10\) games & Selected & Mean of last \(\min(10,n_i)\) margins. From \texttt{hfa\_75}. \\
-Elo logistic \(C_E\) & \(100\) & Selected & Regularization for Elo calibrator. From \texttt{hfa\_75}. \\
-Rank logistic \(C_R\) & \(0.1\) & Selected & Regularization for BT+trend calibrator. From \texttt{hfa\_75}. \\
-Architecture name & \texttt{hfa\_75} & Selected & Argmin of March LL over 5 named bundles (not independent continuous search over each coordinate). \\
+\(K\) (Elo step) & \(7.5\) & Selected & Member of \texttt{conservative} candidate. Chosen because it had lowest Elo-only March LL among 5 candidates (Table~\ref{tab:march}). Not a continuous MLE. \\
+\(H\) (home Elo pts) & \(55\) & Selected & Same bundle. Equal-team home edge \(\Rightarrow 1/(1+10^{-55/400})\approx 0.578\). \\
+Elo logistic \(C_E\) & \(10\) & Selected & Regularization for the deployed Elo calibrator. From \texttt{conservative}. \\
+\(C_{\mathrm{BT}}\) & \(0.1\) & Selected$^\dagger$ & Bradley--Terry regularization (challenger only). \\
+Trend half-life \(\tau_{1/2}\) & \(60\) days & Selected$^\dagger$ & EWMA weight \(2^{-\Delta\mathrm{days}/60}\) (challenger only). \\
+Trend short window \(n_S\) & \(12\) games & Selected$^\dagger$ & Mean of last \(\min(12,n_i)\) margins (challenger only). \\
+Rank logistic \(C_R\) & \(0.1\) & Selected$^\dagger$ & BT+trend calibrator regularization (challenger only). \\
+Architecture name & \texttt{conservative} & Selected & Argmin of Elo-only March LL over 5 named bundles. \\
 \bottomrule
 \end{longtable}
+{\footnotesize $^\dagger$These fields do not enter the deployed Elo-only champion; they parameterize the rejected challenger blend.}
 
-\subsection{C. Stacker coefficients \(a,b,c\) (\cls{Fitted}, then floored)}
+\subsection{C. Deployed Elo-only coefficients (\cls{Fitted})}
 \label{sec:stacker}
 
-\begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.0in}
->{\raggedright\arraybackslash}p{1.5in}
->{\raggedright\arraybackslash}p{0.6in}
->{\raggedright\arraybackslash}p{3.05in}@{}}
-\toprule
-\textbf{Constant} & \textbf{Value} & \textbf{Class} & \textbf{How calculated} \\
-\midrule
-\endhead
-\(a\) (deploy) & \(0.3592529607156558\) & Derived & Floored coef on \(\operatorname{logit}(p^{E})\): \(a=w/\tau_{\mathrm{floor}}\). Scores April. \\
-\(b\) (deploy) & \(0.6407470392843442\) & Derived & Floored coef on \(\operatorname{logit}(p^{R})\): \(b=(1-w)/\tau_{\mathrm{floor}}\). \\
-\(c\) (deploy) & \(0.3253629989522476\) & Fitted & Intercept refit after flooring, given \(a,b\) fixed. \\
-\(a\) (raw MLE) & \(0.5696035387238357\) & Fitted & Unconstrained MLE coef on \(\operatorname{logit}(p^{E})\). Selection surface only. \\
-\(b\) (raw MLE) & \(1.0159186448349236\) & Fitted & Unconstrained MLE coef on \(\operatorname{logit}(p^{R})\). \\
-\(c\) (raw MLE) & \(0.3132108962839507\) & Fitted & Unconstrained MLE intercept. \\
-\(\tau_{\mathrm{floor}}\) & \(1.0\) & Fixed & Temperature floor: deploy blend may not sharpen (\(a+b\le 1\)). \\
-Stacker \(C\) & \(1.0\) & Fixed & \code{LogisticRegression(C=1.0)} in \code{fit\_logit\_stacker}. Penalty strength not selected on March. \\
-\bottomrule
-\end{longtable}
-
-\noindent\textbf{Step 1 --- unconstrained MLE} (no closed form). Let March games
-be \(g=1,\ldots,239\). After fitting base models on dates \(<\) 2026-03-01 and
-scoring March component probs \(p_g^{E},p_g^{R}\),
-\begin{align*}
-\hat a,\hat b,\hat c
-&=
-\arg\max_{a,b,c}
-\sum_{g\in\mathrm{Mar}}
-\Big[
-Y_g\log p_g
-+(1-Y_g)\log(1-p_g)
-\Big]
--\tfrac12(a^2+b^2),
-\\
-p_g
-&=
-\sigma\!\big(
-a\operatorname{logit}(p_g^{E})
-+b\operatorname{logit}(p_g^{R})
-+c
-\big).
-\end{align*}
-Solved by \code{lbfgs} (\code{sklearn}), giving the raw MLE
-\((0.5696,1.0159,0.3132)\).
-
-\noindent\textbf{Step 2 --- temperature floor.} The two component logits are
-near-duplicates (\(\rho\approx 0.97\)), so the unconstrained fit yields
-\(a+b=1.586>1\), i.e.\ temperature \(\tau=1/(a+b)\approx 0.63<1\). A temperature
-below one \emph{sharpens} the blend and produced extreme (99\%+) out-of-sample
-prices --- a leakage/overfit red flag. The model is therefore deployed with a
-floor \(\tau\ge 1\). Preserving the Elo weight \(w=a/(a+b)=0.3593\) and setting
-\(a+b=1\):
-\[
-a \leftarrow \frac{w}{\tau_{\mathrm{floor}}}=0.3593,\qquad
-b \leftarrow \frac{1-w}{\tau_{\mathrm{floor}}}=0.6407,
-\]
-then \(c\) is refit by one-dimensional MLE with \(a,b\) fixed, giving
-\(c=0.3254\). The floor is enforced in \code{fit\_logit\_stacker} and pinned by
-\code{tests/test\_stacker\_temperature\_floor.py}. Architecture selection still
-ranks candidates on the \emph{unconstrained} March log loss; only the deployed
-model carries the floor.
-
-\subsection{D. Base-component logistic coefficients (\cls{Fitted})}
-
-From \code{artifacts/coefficient\_table.csv} (April-scoring fit; base models
-refit through March for final April prices). Features are standardized
-inside the pipeline; both standardized and raw-unit coefficients are stored.
+The deployed champion has \textbf{no stacker}: it is the calibrated Elo logistic
+(\S\ref{sec:elo}), fit on all rows through 2026-03-31. From
+\code{artifacts/coefficient\_table.csv}:
 
 \begin{longtable}{@{}llll@{}}
 \toprule
 \textbf{Component} & \textbf{Feature} & \textbf{Std.\ coef} & \textbf{Raw-unit coef} \\
 \midrule
 \endhead
-Elo & \(x^{E}=\mathrm{elo\_diff}\) & \(0.92651570\) & \(2.71292059\) \\
-Elo & intercept & \(0.24151143\) & --- \\
-Rank & \(x^{\mathrm{BT}}=\mathrm{bt\_logit}\) & \(0.80373649\) & \(1.50990421\) \\
-Rank & \(x^{\mathrm{trend}}=\mathrm{trend\_diff}\) & \(0.14417900\) & \(0.02999535\) \\
-Rank & intercept & \(0.23352102\) & --- \\
+Elo & \(x^{E}=\mathrm{elo\_diff}\) & \(0.92718235\) & \(3.44645125\) \\
+Elo & intercept & \(0.24154289\) & --- \\
 \bottomrule
 \end{longtable}
+Raw-unit coef \(=\) standardized coef \(/\) training scale
+(\(s=0.26902523\), \(\mu=0.14081469\)). Fitted by penalized MLE (\code{lbfgs},
+\(C_E=10\)).
+
+\paragraph{Rejected challenger stacker.}
+For completeness, the challenger blend's convex stacker (architecture
+\texttt{conservative}) has \textbf{deploy} coefficients
+\(a=0.3976558706\), \(b=0.6023441294\), \(c=0.3347604843\)
+(\(a+b=1\), temperature \(\tau=1\)), from an unconstrained MLE fit
+\(a=0.6076317564\), \(b=0.9204024091\), \(c=0.3279170537\)
+(\(\tau=1/(a+b)\approx 0.655<1\)). \code{fit\_logit\_stacker} enforces a genuine
+convex blend --- it clips any negative weight to zero and applies the
+temperature floor \(\tau\ge1\), so \(0\le w\le1\) for both components (pinned by
+\code{tests/test\_stacker\_temperature\_floor.py::\allowbreak test\_stacker\_weights\_are\_convex\_when\_stacker\_is\_used}).
+This blend is not deployed; it loses to Elo-only out-of-sample
+(\S\ref{sec:nested}). The full challenger coefficients live in the
+\code{challenger} block of \code{artifacts/selected\_spec.json}.
+
+\subsection{D. Challenger base-component coefficients (\cls{Fitted}, reference)}
+
+The rejected challenger's rank component (Bradley--Terry \(+\) trend) is an
+L2-logistic calibrator; its coefficients are archived with the challenger. They
+are not part of the deployed champion, which uses only the Elo row in \S C.
 
 \noindent\textbf{How calculated.} For training rows available at that stage,
 \[
@@ -291,11 +247,11 @@ Primary metric & log loss & Fixed policy & Selection rule text. \\
 \textbf{Quantity} & \textbf{Value} & \textbf{Calculation} \\
 \midrule
 \endhead
-\(w=a/(a+b)\) (raw) & \(0.3593\) & \(0.56960354/(0.56960354+1.01591864)\); preserved by the floor \\
-\(\tau=1/(a+b)\) (raw) & \(0.6307\) & \(1/(0.56960354+1.01591864)<1\Rightarrow\) floor applied \\
-\(\tau\) (deploy) & \(1.0000\) & \(1/(0.35925296+0.64074704)\) after projection onto \(a+b=1\) \\
-\(s=c\) (deploy) & \(0.3254\) & Intercept refit after flooring \\
-Equal-team home \(p\) & \(\approx 0.606\) & \(1/(1+10^{-H/400})\) with \(H=75\) \\
+Elo raw-unit weight & \(3.4465\) & \(w/s=0.92718235/0.26902523\) (deployed champion) \\
+Challenger \(w=a/(a+b)\) (raw) & \(0.3977\) & \(0.60763176/(0.60763176+0.92040241)\); preserved by the floor \\
+Challenger \(\tau\) (raw) & \(0.6551\) & \(1/(0.60763176+0.92040241)<1\Rightarrow\) floor applied \\
+Challenger \(\tau\) (deploy) & \(1.0000\) & \(1/(0.39765587+0.60234413)\) after projection onto \(a+b=1\) \\
+Equal-team home \(p\) & \(\approx 0.578\) & \(1/(1+10^{-H/400})\) with \(H=55\) \\
 Fair home odds & \(1/p_g\) & Definition \\
 Fair away odds & \(1/(1-p_g)\) & Definition \\
 \bottomrule
@@ -333,7 +289,8 @@ Same-date batching: write all rows for date \(d\) before any Elo/BT/trend update
 from results on \(d\).
 
 %==============================================================================
-\section{Elo mathematics}
+\section{Elo mathematics (the deployed champion)}
+\label{sec:elo}
 %==============================================================================
 
 \subsection{Raw probability and feature}
@@ -346,7 +303,7 @@ x_g^{E}
 =
 \frac{R_h-R_a+H}{400}.
 \]
-Constants: \(R_i(0)=1500\) (Fixed), \(400\) (Fixed), \(H=75\) (Selected).
+Constants: \(R_i(0)=1500\) (Fixed), \(400\) (Fixed), \(H=55\) (Selected).
 
 \subsection{Update with MOV}
 \[
@@ -362,7 +319,7 @@ M_g
 \]
 where \(R_{\mathrm{win}},R_{\mathrm{lose}}\) are the pregame ratings of the
 \emph{winning} and \emph{losing} team (\S\ref{sec:movsign}). Constants:
-\(K=10\) (Selected); \(2.2\), \(0.001\), \(0.25\) (Fixed).
+\(K=7.5\) (Selected); \(2.2\), \(0.001\), \(0.25\) (Fixed).
 
 \subsection{MOV rating-difference sign (winner \(-\) loser)}
 \label{sec:movsign}
@@ -425,12 +382,10 @@ under a March log-loss rule, while holding the MOV \emph{shape} at a known
 industry default. That is a standard bias--variance trade: fix low-sensitivity
 shape parameters; select high-sensitivity ones.
 \item \textbf{Empirical support that the choice is not fragile.}
-On this repository's champion architecture, disabling MOV entirely worsens
-March log loss (\(\approx 0.4893\) vs \(\approx 0.4880\) with the log-MOV form).
-Varying the constant in a neighborhood of \(2.2\) changes March LL only in the
-fourth decimal place (flat likelihood). So the \emph{presence} of this MOV
-correction is beneficial; the exact published \(2.2\) is a stable operating
-point, not a knife-edge claim of global optimality.
+Varying the constant in a neighborhood of \(2.2\) changes the Elo-only March log
+loss only in the fourth decimal place (flat likelihood). So the \emph{presence}
+of this MOV correction is beneficial; the exact published \(2.2\) is a stable
+operating point, not a knife-edge claim of global optimality.
 \item \textbf{Interpretability for stakeholders.}
 \(2.2\) has a clear reading in the literature as the baseline expected
 \(\ln(|PD|+1)\) scale in the autocorrelation correction (see Morse's
@@ -445,7 +400,7 @@ already used for architectures---minimize March sequential log loss---while
 holding the champion architecture fixed:
 
 \begin{enumerate}
-\item Fix architecture \texttt{hfa\_75} except replace the literal \(2.2\) by a
+\item Fix architecture \texttt{conservative} except replace the literal \(2.2\) by a
 candidate \(b>0\) in
 \[
 M_g(b)
@@ -499,23 +454,29 @@ March likelihood; a March (or multi-season) profile of \(\mathrm{LL}(b)\) is the
 correct way to replace it with a data-optimal \(b^\star\) if that becomes a
 production requirement.}
 
-\subsection{Calibrated Elo probability}
+\subsection{Calibrated Elo probability (the deployed price)}
 \[
 p_g^{E}
 =
-\sigma(\beta_0^{E}+\beta_1^{E}\tilde x_g^{E}),
-\quad C_E=100\ \text{(Selected)}.
+\sigma(\beta_0^{E}+\beta_1^{E}\tilde x_g^{E})
+= p_g,
+\quad C_E=10\ \text{(Selected)},
 \]
+with deployed \(\beta_0^{E}=0.2415428879\), \(\beta_1^{E}=0.9271823510\)
+(standardized). This \emph{is} the champion of \S1.
 
 %==============================================================================
-\section{Bradley--Terry + trend}
+\section{Bradley--Terry + trend (rejected challenger only)}
 %==============================================================================
+
+The following components feed only the rejected challenger blend, not the
+deployed Elo-only champion.
 
 \subsection{Bradley--Terry}
 Prior games before date \(d\):
 \[
 P(Y=1)=\sigma(\alpha+q_h-q_a),
-\quad C_{\mathrm{BT}}=0.15\ \text{(Selected)}.
+\quad C_{\mathrm{BT}}=0.1\ \text{(Selected)}.
 \]
 Feature: \(x_g^{\mathrm{BT}}=\hat\alpha+\hat q_h-\hat q_a\) (\cls{Fitted} each day).
 
@@ -523,20 +484,20 @@ Feature: \(x_g^{\mathrm{BT}}=\hat\alpha+\hat q_h-\hat q_a\) (\cls{Fitted} each d
 \[
 L_{i,d}
 =
-\frac{\sum_{k<d} 2^{-\Delta_{kd}/45} m_{ik}}{\sum_{k<d} 2^{-\Delta_{kd}/45}},
+\frac{\sum_{k<d} 2^{-\Delta_{kd}/60} m_{ik}}{\sum_{k<d} 2^{-\Delta_{kd}/60}},
 \qquad
 S_{i,d}
 =
 \frac{1}{n_i^{\mathrm{short}}}\sum_{\mathrm{last}\,n_i^{\mathrm{short}}} m_{ik},
 \]
 \[
-n_i^{\mathrm{short}}=\min(10,n_i),
+n_i^{\mathrm{short}}=\min(12,n_i),
 \quad
 T_{i,d}=S_{i,d}-L_{i,d},
 \quad
 x_g^{\mathrm{trend}}=T_{h,d}-T_{a,d}.
 \]
-Constants \(45\) and \(10\): \cls{Selected} with \texttt{hfa\_75}.
+Constants \(60\) and \(12\): \cls{Selected} with \texttt{conservative}.
 Base \(2\) in \(2^{-\cdot}\): \cls{Fixed} half-life algebra.
 
 \subsection{Rank component}
@@ -555,28 +516,29 @@ p_g^{R}
 \section{Selection proof for architecture constants}
 \label{tab:march}
 
-March sequential metrics from
-\code{artifacts/march\_architecture\_results.csv}
-(lower LL wins):
+\textbf{Elo-only} March sequential log loss (base fit through February) from
+\code{artifacts/march\_architecture\_results.csv} (lower LL wins). The champion
+is chosen by this Elo-only surface:
 
 \begin{center}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
-Architecture & \(K\) & \(H\) & March LL & Winner \\
+Architecture & \(K\) & \(H\) & Elo-only March LL & Winner \\
 \midrule
-\textbf{hfa\_75} & \(10\) & \(75\) & \(\mathbf{0.48802866}\) & yes \\
-balanced & \(10\) & \(65\) & \(0.48805432\) & \\
-lower\_bt\_shrinkage & \(10\) & \(65\) & \(0.48816185\) & \\
-conservative & \(7.5\) & \(55\) & \(0.48871458\) & \\
-responsive & \(15\) & \(65\) & \(0.49037595\) & \\
+\textbf{conservative} & \(7.5\) & \(55\) & \(\mathbf{0.50659003}\) & yes \\
+hfa\_75 & \(10\) & \(75\) & \(0.50909006\) & \\
+balanced & \(10\) & \(65\) & \(0.50913895\) & \\
+lower\_bt\_shrinkage & \(10\) & \(65\) & \(0.50913895\) & \\
+responsive & \(15\) & \(65\) & \(0.51470876\) & \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\noindent This is the \textbf{entire calculation} behind calling \(K=10\),
-\(H=75\), \(C_{\mathrm{BT}}=0.15\), \(\tau_{1/2}=45\), \(n_S=10\),
-\(C_E=100\), \(C_R=0.1\) ``selected'': they are the coordinate values of the
-bundle with minimal March LL. They are not independently profiled.
+\noindent This is the \textbf{entire calculation} behind calling \(K=7.5\),
+\(H=55\), \(C_E=10\) ``selected'' for the deployed Elo-only champion: they are
+the coordinate values of the bundle with minimal Elo-only March LL. They are not
+independently profiled. (Each other procedure selects its own architecture by
+its own March LL; see \code{march\_architecture\_results.csv}.)
 
 %==============================================================================
 \section{Metrics (definitions; cutoffs Fixed)}
@@ -594,33 +556,53 @@ bundle with minimal March LL. They are not independently profiled.
 \]
 Accuracy uses Fixed cutoff \(p_g\ge 0.5\).
 
-Champion results (artifacts). \textbf{Primary April holdout (frozen
-pre-April)}: LL \(0.484432\), Brier \(0.155823\), AUC \(0.862798\),
-accuracy \(81.25\%\) (\(N=96\)). March selection surface (unconstrained
-stacker, \(N=239\)): LL \(0.48802866\); the deployed (floored) stacker scores
-March LL \(0.508373\). Optional April sequential backtest (live-update
-simulation): LL \(0.474545\).
+Champion results (Elo-only, artifacts). \textbf{Primary April holdout (frozen
+pre-April)}: LL \(0.464369\), Brier \(0.149770\), AUC \(0.866847\),
+accuracy \(78.13\%\) (\(N=96\)). March selection period (Elo-only, base fit
+through February, \(N=239\)): LL \(0.506590\). Optional April sequential
+backtest (live-update simulation): LL \(0.464648\). Rejected blend on the same
+frozen April window: LL \(0.468725\), Brier \(0.150465\) --- worse on both.
+
+%==============================================================================
+\section{Nested rolling-origin validation (why Elo-only)}
+\label{sec:nested}
+%==============================================================================
+
+\code{scripts/nested\_validation.py} validates the whole procedure under two
+information policies (frozen-block and daily-sequential; never mixed), 11 weekly
+outer folds, 501 out-of-sample games. Each procedure independently selects its
+own architecture by its own inner out-of-fold score; the challenger stacker
+trains on inner out-of-fold predictions. Pooled out-of-sample (frozen-block):
+Elo-only LL \(0.532\)/Brier \(0.177\); rank-only \(0.550\)/\(0.184\); blend
+\(0.548\)/\(0.183\); constant \(0.688\)/\(0.247\). Block-bootstrap
+blend\(-\)Elo: \(\Delta\mathrm{LL}=+0.017\) (95\% CI \([+0.010,+0.023]\)),
+\(\Delta\mathrm{Brier}=+0.006\) (95\% CI \([+0.004,+0.009]\)); \textbf{0 of
+4{,}000} week-block replicates favored the blend. Calibration (frozen-block):
+Elo-only slope \(\beta\approx1.37\) (95\% CI \([1.22,1.57]\)), ECE \(\approx
+0.059\) --- better calibrated than the blend (\(\beta\approx1.80\)). Decision
+under both policies: \textbf{keep Elo-only}. Artifacts:
+\code{nested\_frozen\_block\_summary.json},
+\code{nested\_daily\_sequential\_summary.json}.
 
 %==============================================================================
 \section{End-to-end constant flow}
 %==============================================================================
 
+Deployed champion (Elo-only):
 \[
 \underbrace{1500,400,2.2,0.001}_{\text{Fixed Elo}}
 \;+\;
-\underbrace{K,H,C_{\mathrm{BT}},45,10,C_E,C_R}_{\text{Selected bundle}}
+\underbrace{K,H,C_E}_{\text{Selected}}
 \;\xrightarrow{\text{features}}\;
-(x^{E},x^{\mathrm{BT}},x^{\mathrm{trend}})
-\;\xrightarrow[\text{Fitted }]{\beta's}\;
-(p^{E},p^{R})
-\;\xrightarrow[\text{Fitted }]{a,b,c}\;
-p.
+x^{E}
+\;\xrightarrow[\text{Fitted }]{c,\,w}\;
+p^{E}=p.
 \]
 
 \noindent\textbf{Code map.}
-\code{nba\_wp/features.py} (Fixed Elo/MOV/Beta; Selected architecture fields),
-\code{nba\_wp/model.py} (Fitted \(\beta\), \(a,b,c\)),
-\code{nba\_wp/selection.py} (Selected bundle via March LL),
-\code{artifacts/selected\_spec.json} (persisted winner + \(a,b,c\)).
+\code{nba\_wp/features.py} (Fixed Elo/MOV; Selected architecture fields),
+\code{nba\_wp/model.py} (Fitted Elo \(c,w\); challenger \(a,b,c\)),
+\code{nba\_wp/selection.py} (model-specific selection via March LL),
+\code{artifacts/selected\_spec.json} (persisted Elo-only champion + rejected challenger).
 
 \end{document}

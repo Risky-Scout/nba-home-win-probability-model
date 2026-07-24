@@ -1,6 +1,6 @@
 ---
 title: "NBA Home-Win Probability Model — Mathematics"
-subtitle: "Champion architecture `hfa_75` (GitHub main)"
+subtitle: "Deployed champion: Elo-only (architecture `conservative`)"
 author: "Joseph Shackelford"
 geometry: margin=0.85in
 fontsize: 11pt
@@ -20,33 +20,36 @@ p_g \;=\; P(Y_g = 1 \mid \text{pregame information}),
 \]
 where $Y_g = 1$ if the home team wins and $0$ otherwise.
 
-**Champion form.** Two calibrated component probabilities (Elo and Bradley–Terry + recent trend) are combined by a logistic stacker:
+**Champion form (deployed).** The deployed champion is **Elo-only**: a single
+L2-logistic map on the standardized margin-of-victory Elo rating differential,
 \[
 \boxed{
 p_g
 =
-\sigma\!\Bigl(
-a\,\operatorname{logit}(p_g^{E})
-+
-b\,\operatorname{logit}(p_g^{R})
-+
-c
-\Bigr)
-}
+\sigma\!\bigl(c + w\,\tilde x_g^{E}\bigr)
+},
+\qquad
+\tilde x_g^{E} = \frac{x_g^{E}-\mu}{s},
 \]
-with **deployed** stacker coefficients (temperature-floored to $\tau\ge 1$)
+with **deployed** coefficients (fit on all games through March 31)
 \[
-a = 0.3593,\qquad
-b = 0.6407,\qquad
-c = 0.3254,
+w = 0.9272,\qquad
+c = 0.2415,\qquad
+\mu = 0.1408,\quad s = 0.2690
 \]
-where $a+b=1$. The unconstrained MLE fit was $a=0.5696$, $b=1.0159$,
-$c=0.3132$ ($\tau=1/(a+b)\approx 0.63<1$); it is kept for audit only. See §7.
+(raw-unit weight $w/s \approx 3.446$ per unit of $x^{E}$). This is the model in
+§3.
 
-**Selected hyperparameters** (`hfa_75`):
-$K=10$, $H=75$, MOV $=$ log, BT regularization $C_{\mathrm{BT}}=0.15$,
-trend half-life $45$ days, short window $10$ games,
-Elo-logistic $C_E=100$, rank-logistic $C_R=0.1$.
+**Rejected challenger.** An Elo $+$ Bradley–Terry/recent-trend **logistic
+stacker** (§7) was implemented and then rejected: under honest nested
+rolling-origin validation it does not beat Elo-only out-of-sample on log loss or
+Brier, and it is worse calibrated. It is retained only as a challenger in the
+`challenger` block of `artifacts/selected_spec.json`. See §7–§9.
+
+**Selected hyperparameters** (`conservative`, Elo-only):
+$K=7.5$, $H=55$, MOV $=$ log (winner$-$loser), Elo-logistic $C_E=10$.
+The challenger additionally uses BT regularization $C_{\mathrm{BT}}=0.1$,
+trend half-life $60$ days, short window $12$ games, rank-logistic $C_R=0.1$.
 
 **Notation.**
 $\sigma(z)=1/(1+e^{-z})$,
@@ -88,14 +91,14 @@ Each team starts at $R_i = 1500$. For home $h$ and away $a$,
 p_g^{\mathrm{Elo,raw}}
 =
 \frac{1}{1 + 10^{-(R_h - R_a + H)/400}},
-\qquad H = 75.
+\qquad H = 55.
 \]
 Equal teams ($R_h=R_a$) imply
 \[
 p^{\mathrm{home}}
 =
-\frac{1}{1+10^{-75/400}}
-\approx 0.606.
+\frac{1}{1+10^{-55/400}}
+\approx 0.578.
 \]
 
 The Elo feature used by the calibrated logistic is the scaled rating gap:
@@ -108,7 +111,7 @@ x_g^{E}
 ## 3.2 Margin-of-victory update
 
 After date $d$ is complete, with home margin $m_g$ (home points $-$ away points)
-and $K=10$:
+and $K=7.5$:
 \[
 R_h' = R_h + K\, M_g\, (Y_g - p_g^{\mathrm{Elo,raw}}),
 \qquad
@@ -136,7 +139,10 @@ p_g^{E}
 \sigma\!\bigl(\beta_0^{E} + \beta_1^{E}\, \tilde x_g^{E}\bigr),
 \]
 where $\tilde x$ is the standardized feature and regularization uses
-$C_E = 100$.
+$C_E = 10$. **This is the deployed champion**: fit on all games through
+March 31, $\beta_0^{E}=c=0.2415$ and $\beta_1^{E}=w=0.9272$ (standardized;
+raw-unit $w/s\approx 3.446$), so $p_g = p_g^{E}$. April performance state is
+frozen at March 31.
 
 ---
 
@@ -219,14 +225,14 @@ p_g^{R}
 
 ---
 
-# 7. Logistic stack (final price)
+# 7. Logistic stack (rejected challenger)
 
-Component logits are blended by a third logistic regression fitted on **March**
-one-step-ahead component probabilities (penalized MLE, $C=1$), then projected
-onto a **temperature floor** $\tau\ge 1$ so the deployed blend never sharpens:
+The challenger combines the two component logits with a convex logistic stacker,
+fit on **inner out-of-fold** component probabilities and deployed under a
+**temperature floor** $\tau\ge 1$ (a genuine convex blend: $a,b\ge 0$,
+$a+b\le 1$, so it never sharpens):
 \[
-\boxed{
-p_g
+p_g^{\mathrm{blend}}
 =
 \sigma\!\Bigl(
 a\,\operatorname{logit}(p_g^{E})
@@ -234,54 +240,52 @@ a\,\operatorname{logit}(p_g^{E})
 b\,\operatorname{logit}(p_g^{R})
 +
 c
-\Bigr)
-}
+\Bigr),
+\qquad a,b\ge 0,\; a+b\le 1.
 \]
-\[
-a = 0.3593,\quad
-b = 0.6407,\quad
-c = 0.3254 \qquad (\text{deploy}, \; a+b=1).
-\]
+For architecture `conservative` the challenger weights are $a\approx0.398$,
+$b\approx0.602$ ($a+b=1$, $\tau=1$); exact coefficients are in the `challenger`
+block of `artifacts/selected_spec.json`. Convexity is pinned by
+`tests/test_stacker_temperature_floor.py::test_stacker_weights_are_convex_when_stacker_is_used`.
 
-The two component logits are near-duplicates ($\rho\approx 0.97$), so the
-unconstrained MLE learns $a+b=1.586>1$, i.e. $\tau=1/(a+b)\approx 0.63<1$, which
-sharpens the blend toward $0$/$1$ and produced extreme out-of-sample prices.
-Deployment preserves the Elo weight $w=a/(a+b)=0.3593$, sets $a+b=1$
-($a=w$, $b=1-w$), and refits the intercept to $c=0.3254$. Both sets of
-coefficients are stored in `artifacts/selected_spec.json`; the floor is pinned
-by `tests/test_stacker_temperature_floor.py`.
-
-**Equivalent $(w,\tau,s)$ form** (same mapping, deploy values):
-\[
-w = \frac{a}{a+b} = 0.3593,\qquad
-\tau = \frac{1}{a+b} = 1.000,\qquad
-s = c = 0.3254,
-\]
-\[
-p_g
-=
-\sigma\!\Biggl(
-\frac{
-w\,\operatorname{logit}(p_g^{E})
-+
-(1-w)\,\operatorname{logit}(p_g^{R})
-}{\tau}
-+
-s
-\Biggr).
-\]
+**This blend is not deployed.** Under nested rolling-origin validation (§8) it is
+worse than Elo-only on both proper scores and worse calibrated
+(slope $\beta\approx1.8$ vs. Elo-only $\beta\approx1.35$), so the champion is the
+Elo-only model of §3.
 
 ---
 
-# 8. Selection rule
+# 8. Selection and honest validation
 
-Architectures are scored by **March** sequential (daily) log loss using the
-**unconstrained** stacker fit. April rows are **not** used in selection
-($N_{\mathrm{April}}^{\mathrm{selection}}=0$, max selection date $2026$-$03$-$31$).
-Chosen architecture: **`hfa_75`**. The temperature floor is applied only to the
-deployed model, after selection. Because March is used both to pick the
-architecture and to fit the stacker, March metrics are **in-sample for the
-blend** and are not an unbiased holdout.
+**Deployed selection (April-blind).** Each procedure (Elo-only, rank-only,
+blend) selects its **own** architecture by its **own** March log loss (Brier
+tie-break). April rows are **not** used
+($N_{\mathrm{April}}^{\mathrm{selection}}=0$, max selection date
+$2026$-$03$-$31$). The Elo-only winner is **`conservative`**; its probability map
+is then refit on all rows through March 31. Because March is used to select, it
+is in-sample for selection and is not a pristine holdout.
+
+**Nested rolling-origin audit** (`scripts/nested_validation.py`, 11 weekly outer
+folds, 501 out-of-sample games) validates the whole procedure under two
+information policies — *frozen-block* (state frozen at each outer origin) and
+*daily-sequential* (results strictly before date $t$). Each procedure picks its
+own architecture by its own inner OOF score; the stacker trains on inner
+out-of-fold predictions. Pooled out-of-sample:
+\[
+\begin{array}{lcc}
+\text{candidate} & \mathrm{LL} & \mathrm{Brier}\\\hline
+\text{Elo-only (champion)} & 0.532 & 0.177\\
+\text{rank-only} & 0.550 & 0.184\\
+\text{blend} & 0.548 & 0.183\\
+\text{constant} & 0.688 & 0.247
+\end{array}
+\]
+Block-bootstrap blend$-$Elo: $\Delta\mathrm{LL}=+0.017$ (95% CI
+$[+0.010,+0.023]$), $\Delta\mathrm{Brier}=+0.006$ (95% CI $[+0.004,+0.009]$);
+**0 of 4{,}000** week-block replicates favored the blend. Champion–challenger
+decision under both policies: **keep Elo-only**. Elo-only calibration:
+$\alpha\approx-0.05$, $\beta\approx1.37$ (95% CI $[1.22,1.57]$), ECE $\approx
+0.059$.
 
 ---
 
@@ -308,11 +312,13 @@ Y_g\log p_g
 
 **Accuracy** uses the fixed cutoff $p_g \ge 1/2$. AUC ranks games by $p_g$.
 
-Champion results. **Primary April holdout (frozen pre-April):**
-$\mathrm{LL}=0.4844$, Brier $=0.1558$, AUC $=0.8628$, accuracy $81.25\%$
-($78/96$). March selection surface (unconstrained stacker): $\mathrm{LL}=0.4880$;
-the deployed (floored) stacker scores March $\mathrm{LL}=0.5084$. Optional April
-sequential backtest (live-update simulation): $\mathrm{LL}=0.4745$.
+Champion results (Elo-only). **Primary April holdout (frozen pre-April):**
+$\mathrm{LL}=0.4644$, Brier $=0.1498$, AUC $=0.8668$, accuracy $78.13\%$
+($75/96$). March selection period (Elo-only, base fit through February):
+$\mathrm{LL}=0.5066$. Optional April sequential backtest (live-update
+simulation): $\mathrm{LL}=0.4646$. The rejected blend on the same frozen April
+window scores $\mathrm{LL}=0.4687$, Brier $=0.1505$ — worse on both proper
+scores.
 
 ---
 
@@ -329,29 +335,30 @@ These are mathematical fair decimal odds (no overround).
 
 # 11. End-to-end map
 
+Deployed champion path (Elo-only):
 \[
-\begin{aligned}
-&(R_h,R_a,H)
+(R_h,R_a,H)
 \;\rightarrow\;
 x^{E}
-\;\rightarrow\;
-p^{E}
-\\
+\;\xrightarrow{\;c,\,w\;}\;
+p^{E} = p_g .
+\]
+Rejected challenger path (blend), for reference:
+\[
+\begin{aligned}
 &(q,\alpha)
 \;\rightarrow\;
-x^{\mathrm{BT}}
-\\
-&(S,L)
+x^{\mathrm{BT}},\quad
+(S,L)
 \;\rightarrow\;
 x^{\mathrm{trend}}
 \\
 &(x^{\mathrm{BT}},x^{\mathrm{trend}})
 \;\rightarrow\;
-p^{R}
-\\
-&(p^{E},p^{R})
+p^{R},\quad
+(p^{E},p^{R})
 \;\xrightarrow{\;a,\,b,\,c\;}
-p
+p^{\mathrm{blend}} .
 \end{aligned}
 \]
 

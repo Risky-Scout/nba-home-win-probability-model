@@ -11,16 +11,20 @@ has a corresponding code path, generated artifact, or automated test.
 | Current-game box scores do not enter current features | `nba_wp/features.py::build_features` | `outputs/engineered_features.csv` | `test_current_game_postgame_values_do_not_change_current_features` |
 | Same-date games are batched | `nba_wp/features.py::build_features` | feature `performance_cutoff` | `test_same_day_games_are_batched` |
 | Frozen snapshot stops target-month performance updates | `build_features(..., freeze_date=...)` | frozen prediction CSVs | `test_frozen_snapshot_stops_performance_updates` |
-| April cannot enter model selection | `scripts/select_model.py`; `nba_wp/selection.py` | `artifacts/selection_proof.json` | validator selection assertions |
-| The stacker coefficients were fitted, not typed | `nba_wp/model.py::fit_logit_stacker` | `march_architecture_results.csv`; `selected_spec.json` | full reproduction |
+| April cannot enter model selection | `scripts/select_model.py`; `nba_wp/selection.py` | `artifacts/selection_proof.json` | `tests/test_information_policies.py`; validator |
+| The deployed model is Elo-only (champion decision) | `nba_wp/selection.py` | `selected_spec.json` (`model_family`/`champion` = `elo_only`) | `tests/test_champion_promotion.py` |
+| Primary April prices recompute from the deployed Elo coefficients | `nba_wp/reporting.py::score_and_write` | `selected_spec.json` `elo_model`; `outputs/april_predictions.csv` | `tests/test_champion_promotion.py` |
+| Elo architecture is selected on the Elo-only OOF loss | `nba_wp/selection.py` | `march_architecture_results.csv`; `selected_spec.json` | `tests/test_champion_promotion.py` |
 | Elo MOV uses winner − loser rating difference | `nba_wp/features.py::build_features` | `outputs/engineered_features.csv` | `tests/test_elo_mov_winner_diff.py` |
-| Deploy stacker never sharpens (temperature T >= 1) | `nba_wp/model.py::fit_logit_stacker` | `selected_spec.json` (floored + unconstrained coeffs) | `tests/test_stacker_temperature_floor.py` |
+| Rejected challenger blend is a genuine convex stack (0<=w<=1, sum 1, T>=1) | `nba_wp/model.py::fit_logit_stacker` | `selected_spec.json` `challenger` block | `tests/test_stacker_temperature_floor.py::test_stacker_weights_are_convex_when_stacker_is_used` |
+| Nested audit rejects the blend (worse OOS log loss and Brier) | `scripts/nested_validation.py` | `artifacts/nested_frozen_block_summary.json`; `artifacts/nested_daily_sequential_summary.json` | `tests/test_champion_promotion.py` |
+| Frozen outer block ignores all in-block outcomes; daily uses only prior dates | `scripts/nested_validation.py` | nested `*_summary.json` (`frozen_block_leakage_guarantee_verified`) | `tests/test_information_policies.py`; `tests/test_leakage_mutations.py` |
+| Calibration report contains every candidate | `scripts/nested_validation.py` | nested `*_summary.json`; reliability figures | `tests/test_champion_promotion.py` |
 | Primary April is frozen (April outcomes cannot change April prices) | `nba_wp/reporting.py::score_and_write` | `outputs/april_predictions.csv` | `tests/test_primary_april_frozen.py` |
 | March probabilities use coefficients fitted through February | `scripts/score_final.py`; `nba_wp/reporting.py::score_and_write` | `outputs/march_predictions.csv` | validator |
-| April coefficients are refitted through March | `score_and_write` | `artifacts/trained_model.joblib`; April output | full recomputation |
+| Deployed Elo-only coefficients are refit through March 31 | `score_and_write` | `artifacts/trained_model.joblib`; April output | full recomputation |
 | Metrics equal the game-level probabilities | `nba_wp/model.py::evaluate` | `artifacts/final_metrics.json` | `tests/test_artifacts.py`; `validate_submission.py` |
-| The final model improves the constant baseline | `ablation_table` | `feature_group_ablation.csv`; bootstrap JSON | artifact test plus direct recomputation |
-| Bradley-Terry is the largest selected contribution | `permutation_importance` | `permutation_importance.csv` | deterministic seed and rerun |
+| The Elo-only champion improves the constant baseline | `ablation_table` | `feature_group_ablation.csv`; bootstrap JSON | artifact test plus direct recomputation |
 | Saved output is reproducible | `score_and_write` | prediction CSVs and manifest | `validate_submission.py --recompute` |
 
 ## Manual spot check
@@ -30,8 +34,9 @@ For any row in `outputs/april_predictions.csv`:
 1. identify the game and prediction;
 2. inspect the same `game_id` in `outputs/engineered_features.csv`;
 3. confirm the listed `performance_cutoff`;
-4. inspect component probabilities;
-5. recompute the final probability from `artifacts/selected_spec.json`;
+4. read the `elo_diff` feature for the game;
+5. recompute the final probability from the `elo_model` coefficients in
+   `artifacts/selected_spec.json`: `p = sigmoid(intercept + coef · z(elo_diff))`;
 6. recompute its log-loss and Brier contribution.
 
 The prediction files contain every quantity required for that calculation.

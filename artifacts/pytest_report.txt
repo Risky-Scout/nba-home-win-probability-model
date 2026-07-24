@@ -1,13 +1,21 @@
-................                                                         [100%]
+.........................                                                [100%]
 ==================================== PASSES ====================================
 =========================== short test summary info ============================
 PASSED tests/test_artifacts.py::test_selection_proof_excludes_april
 PASSED tests/test_artifacts.py::test_saved_metrics_recompute_from_predictions
+PASSED tests/test_champion_promotion.py::test_selected_spec_is_elo_only_after_promotion
+PASSED tests/test_champion_promotion.py::test_final_metrics_model_family_matches_selected_spec
+PASSED tests/test_champion_promotion.py::test_deployed_model_matches_champion_decision
+PASSED tests/test_champion_promotion.py::test_calibration_report_contains_every_candidate
+PASSED tests/test_champion_promotion.py::test_primary_april_probabilities_recompute_from_deployed_elo
+PASSED tests/test_champion_promotion.py::test_elo_architecture_is_selected_on_elo_oof_loss
 PASSED tests/test_elo_mov_winner_diff.py::test_mov_multiplier_is_larger_for_upset
 PASSED tests/test_elo_mov_winner_diff.py::test_elo_update_is_team_swap_symmetric_with_zero_hfa
 PASSED tests/test_feature_timing.py::test_current_game_postgame_values_do_not_change_current_features
 PASSED tests/test_feature_timing.py::test_same_day_games_are_batched
 PASSED tests/test_feature_timing.py::test_frozen_snapshot_stops_performance_updates
+PASSED tests/test_information_policies.py::test_frozen_outer_block_ignores_all_outer_block_outcomes
+PASSED tests/test_information_policies.py::test_daily_sequential_uses_only_strictly_prior_dates
 PASSED tests/test_leakage_mutations.py::test_future_april_outcomes_do_not_change_march_features
 PASSED tests/test_leakage_mutations.py::test_april_boxscore_stats_do_not_leak_into_frozen_april_features
 PASSED tests/test_leakage_mutations.py::test_input_row_order_does_not_change_features
@@ -17,4 +25,5 @@ PASSED tests/test_primary_april_frozen.py::test_primary_april_probabilities_igno
 PASSED tests/test_real_data_contract.py::test_real_data_audit
 PASSED tests/test_real_data_contract.py::test_april_mutation_cannot_change_march_features
 PASSED tests/test_stacker_temperature_floor.py::test_stacker_temperature_floor_removes_sharpening
-16 passed in 7.71s
+PASSED tests/test_stacker_temperature_floor.py::test_stacker_weights_are_convex_when_stacker_is_used
+25 passed in 13.52s

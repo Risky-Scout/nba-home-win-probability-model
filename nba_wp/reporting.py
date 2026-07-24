@@ -18,6 +18,7 @@ from .model import (
     BaseModels,
     apply_logit_stacker,
     component_probabilities,
+    elo_model_rows,
     evaluate,
     fit_base_models,
     fit_logit_stacker,
@@ -372,35 +373,28 @@ def score_and_write(
         sequential_features["game_date"] >= "2026-04-01"
     ].copy()
 
+    # --- Base models. March validation uses the through-February generator;
+    # the deployed champion is refit on all rows through March 31. ---
     march_models = fit_base_models(train_feb, architecture)
     march_elo, march_rank = component_probabilities(march_models, march)
-    # Refit the stacker the same way as selection: on March component
-    # probabilities from base models trained through February.
-    stacker = fit_logit_stacker(
-        march["home_win"].to_numpy(dtype=int),
-        march_elo,
-        march_rank,
-    )
-    march_probability = apply_logit_stacker(stacker, march_elo, march_rank)
-
-    # Sequential April backtest may refit base models through March (live sim).
-    # Primary April holdout keeps the same base-model generator used to build
-    # March stacker inputs (trained through February) on frozen pre-April state.
     final_models = fit_base_models(through_march, architecture)
+
+    # === Deployed CHAMPION: Elo-only ===
+    # March report: Elo-only fit through February, scored on March (one-step).
+    champion_march_probability = march_elo
+    # Sequential April backtest: Elo-only fit through March, live-updating state.
     april_elo_seq, april_rank_seq = component_probabilities(final_models, april)
-    april_probability_seq = apply_logit_stacker(
-        stacker, april_elo_seq, april_rank_seq
-    )
+    champion_april_seq_probability = april_elo_seq
 
     march_output = prediction_frame(
         march,
-        march_probability,
+        champion_march_probability,
         march_elo,
         march_rank,
     )
     april_sequential_output = prediction_frame(
         april,
-        april_probability_seq,
+        champion_april_seq_probability,
         april_elo_seq,
         april_rank_seq,
     )
@@ -420,32 +414,29 @@ def score_and_write(
     frozen_april = frozen_april_features[
         frozen_april_features["game_date"] >= "2026-04-01"
     ].copy()
+    # PRIMARY April deliverable: Elo-only fit through March 31, applied to
+    # April features whose performance state is frozen at March 31.
     frozen_march_elo, frozen_march_rank = component_probabilities(
         march_models, frozen_march
     )
-    frozen_march_probability = apply_logit_stacker(
-        stacker, frozen_march_elo, frozen_march_rank
-    )
-    # Same generator as March stacker training (through February).
+    champion_frozen_march_probability = frozen_march_elo
     frozen_april_elo, frozen_april_rank = component_probabilities(
-        march_models, frozen_april
+        final_models, frozen_april
     )
-    frozen_april_probability = apply_logit_stacker(
-        stacker, frozen_april_elo, frozen_april_rank
-    )
+    champion_frozen_april_probability = frozen_april_elo
+
     frozen_march_output = prediction_frame(
         frozen_march,
-        frozen_march_probability,
+        champion_frozen_march_probability,
         frozen_march_elo,
         frozen_march_rank,
     )
     frozen_april_output = prediction_frame(
         frozen_april,
-        frozen_april_probability,
+        champion_frozen_april_probability,
         frozen_april_elo,
         frozen_april_rank,
     )
-    # Primary assignment deliverable: no April outcomes in feature state.
     frozen_april_output.to_csv(output_path / "april_predictions.csv", index=False)
     frozen_march_output.to_csv(
         output_path / "march_predictions_frozen_snapshot.csv",
@@ -456,49 +447,84 @@ def score_and_write(
         index=False,
     )
 
+    # === Rejected CHALLENGER: Elo + rank blend (retained for transparency) ===
+    stacker = fit_logit_stacker(
+        march["home_win"].to_numpy(dtype=int),
+        march_elo,
+        march_rank,
+        min_temperature=1.0,
+    )
+    challenger_frozen_april_probability = apply_logit_stacker(
+        stacker, frozen_april_elo, frozen_april_rank
+    )
+    challenger_april_output = prediction_frame(
+        frozen_april,
+        challenger_frozen_april_probability,
+        frozen_april_elo,
+        frozen_april_rank,
+    )
+    challenger_april_output.to_csv(
+        output_path / "challenger_blend_april_predictions.csv",
+        index=False,
+    )
+
     primary_april_metrics = evaluate(
         frozen_april["home_win"],
-        frozen_april_probability,
+        champion_frozen_april_probability,
     )
     metrics = {
-        "model": selected_spec["model_family"],
+        "model": "elo_only: logistic on Elo rating differential",
+        "model_family": "elo_only",
+        "champion": "elo_only",
         "selected_spec": {
             "architecture": selected_spec["architecture"],
-            "calibration": stacker_calibration_dict(stacker),
+            "elo_model": selected_spec["elo_model"],
         },
         "primary_april_policy": "frozen_pre_april",
         "primary_holdout": {
             "april": primary_april_metrics,
         },
         # Kept for backward compatibility with validators/scripts that read
-        # sequential_daily.april — that key now mirrors the primary frozen holdout.
+        # sequential_daily.{march,april}. march = Elo-only one-step March;
+        # april = primary frozen Elo-only holdout.
         "sequential_daily": {
-            "march": evaluate(march["home_win"], march_probability),
+            "march": evaluate(march["home_win"], champion_march_probability),
             "april": primary_april_metrics,
         },
         "sequential_daily_backtest": {
-            "march": evaluate(march["home_win"], march_probability),
-            "april": evaluate(april["home_win"], april_probability_seq),
+            "march": evaluate(march["home_win"], champion_march_probability),
+            "april": evaluate(april["home_win"], champion_april_seq_probability),
         },
         "frozen_snapshot_sensitivity": {
             "march": evaluate(
                 frozen_march["home_win"],
-                frozen_march_probability,
+                champion_frozen_march_probability,
             ),
             "april": primary_april_metrics,
         },
+        "rejected_challenger_blend": {
+            "april_frozen": evaluate(
+                frozen_april["home_win"],
+                challenger_frozen_april_probability,
+            ),
+            "note": (
+                "Blend shown for transparency only; rejected by the nested "
+                "rolling-origin audit (worse out-of-sample than Elo-only)."
+            ),
+        },
         "information_policy_note": (
-            "Primary April output is frozen_pre_april: performance state and "
-            "base-model generator stop at 2026-03-31 / through-February fit. "
-            "april_predictions_sequential_backtest.csv is a live-update simulation "
-            "only. March stacker fit and architecture selection reuse March "
-            "outcomes (in-sample for the blend); treat reported March metrics as "
-            "selection-period scores, not pristine holdout."
+            "Champion is Elo-only. Primary April output is frozen_pre_april: "
+            "performance state is frozen at 2026-03-31 and the Elo probability "
+            "map is fit on all rows through March 31. "
+            "april_predictions_sequential_backtest.csv is a live-update "
+            "simulation only. March is used for architecture selection and is "
+            "in-sample for selection; the honest out-of-sample evidence is the "
+            "nested audit (artifacts/nested_*_summary.json)."
         ),
     }
     write_json(artifact_path / "final_metrics.json", metrics)
 
-    coefficients = pd.DataFrame(standardized_coefficient_rows(final_models))
+    coefficients = pd.DataFrame(elo_model_rows(final_models.elo_model))
     coefficients.to_csv(artifact_path / "coefficient_table.csv", index=False)
 
     ablation = ablation_table(
@@ -549,33 +575,35 @@ def score_and_write(
         index=False,
     )
 
+    # March-period diagnostics for the champion (Elo-only). These are in-sample
+    # for architecture selection; the honest out-of-sample evidence is the
+    # nested audit. Champion vs constant / rank / rejected blend.
     constant_probability = np.full(
         len(march),
         train_feb["home_win"].mean(),
     )
-    uncertainty = bootstrap_metric_difference(
-        march["home_win"].to_numpy(),
-        march_probability,
-        constant_probability,
-    )
     write_json(
         artifact_path / "paired_bootstrap_vs_constant.json",
-        uncertainty,
-    )
-    write_json(
-        artifact_path / "paired_bootstrap_vs_elo.json",
         bootstrap_metric_difference(
             march["home_win"].to_numpy(),
-            march_probability,
-            march_elo,
+            champion_march_probability,
+            constant_probability,
         ),
     )
     write_json(
         artifact_path / "paired_bootstrap_vs_rank.json",
         bootstrap_metric_difference(
             march["home_win"].to_numpy(),
-            march_probability,
+            champion_march_probability,
             march_rank,
+        ),
+    )
+    write_json(
+        artifact_path / "paired_bootstrap_champion_vs_blend.json",
+        bootstrap_metric_difference(
+            march["home_win"].to_numpy(),
+            champion_march_probability,
+            apply_logit_stacker(stacker, march_elo, march_rank),
         ),
     )
 
@@ -590,11 +618,16 @@ def score_and_write(
 
     joblib.dump(
         {
+            "model_family": "elo_only",
             "architecture": architecture.to_dict(),
-            "calibration": stacker_calibration_dict(stacker),
-            "stacker": stacker,
             "elo_model": final_models.elo_model,
-            "rank_model": final_models.rank_model,
+            "elo_calibration": selected_spec["elo_model"],
+            "challenger_blend": {
+                "stacker": stacker,
+                "calibration": stacker_calibration_dict(stacker),
+                "rank_model": final_models.rank_model,
+                "status": "rejected",
+            },
         },
         artifact_path / "trained_model.joblib",
     )

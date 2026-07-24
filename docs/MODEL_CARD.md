@@ -18,24 +18,33 @@ Binary home win derived from final points.
 
 ## Inputs
 
-Only leakage-safe team states derived from earlier dates:
+The deployed champion is **Elo-only**. Its single input is a leakage-safe team
+state derived from earlier dates:
 
-- Elo strength;
-- Bradley-Terry paired strength;
-- recent point-margin trend.
+- margin-of-victory Elo rating differential (`elo_diff`).
 
-Candidate record, margin, rest, turnover, rebound, and foul features are
-generated for audit and ablation but are not in the champion.
+Bradley-Terry paired strength and recent point-margin trend, along with
+candidate record, margin, rest, turnover, rebound, and foul features, are
+generated for audit, ablation, and the rejected challenger blend — they are
+**not** in the champion.
 
 ## Training and selection
 
-- March component fit: October-February.
-- March architecture/calibration selection: rolling one-step-ahead March, on
-  the unconstrained stacker log loss. The deployed stacker is then
-  temperature-floored (T >= 1) so it never sharpens duplicate component signal.
-- April primary policy: **frozen pre-April** — base models trained through
-  February, no April result updates any April performance state. This is the
-  headline `outputs/april_predictions.csv`.
+- Deployed champion: **Elo-only**. A logistic map on the standardized Elo
+  differential, \(p = \sigma(c + w\,z(\text{elo\_diff}))\), fitted on all games
+  through March 31 with the April performance state frozen at March 31. The
+  champion has **no stacker and no temperature floor**.
+- Selection is model-specific and April-blind: each procedure (Elo-only,
+  rank-only, blend) picks its own `conservative`/etc. architecture by its own
+  March log loss (Brier tie-break). Selection loads 0 April rows
+  (`selection_input_max_date = 2026-03-31`).
+- Champion = Elo-only because the nested rolling-origin audit rejects the
+  blend (worse out-of-sample log loss and Brier). The blend is retained only as
+  a clearly-labelled **rejected challenger**; the stacker/temperature floor
+  belong to it, not to the champion.
+- April primary policy: **frozen** — the deployed Elo-only model, April
+  performance state frozen at March 31, no April result updating any April
+  price. This is the headline `outputs/april_predictions.csv`.
 - April sequential backtest: a live-update simulation exported separately as a
   diagnostic only.
 
@@ -51,9 +60,13 @@ Secondary diagnostics:
 
 ## Performance
 
-Primary April holdout (frozen pre-April): log loss 0.4844, Brier 0.1558,
-AUC 0.8628, accuracy 81.25% (N=96). See `artifacts/final_metrics.json` for the
-full set (primary holdout, March selection surface, and sequential backtest).
+Primary April holdout (Elo-only champion, frozen): log loss 0.464369,
+Brier 0.149770, AUC 0.866847, accuracy 78.1250% (N=96). Mean forecast 0.549
+versus observed home rate 0.594 — the champion is mildly *under*-forecasting,
+not overconfident. See `artifacts/final_metrics.json` for the full set (primary
+holdout, March selection surface, and sequential backtest). For reference, the
+rejected blend on the same frozen April window scores log loss 0.468725 /
+Brier 0.150465 — worse on both proper scores.
 
 ## Interpretability
 
@@ -71,4 +84,4 @@ full set (primary holdout, March selection surface, and sequential backtest).
 - team-state freshness;
 - missing-player-data alerts;
 - model and data version on every price;
-- rollback to simple Elo baseline.
+- rollback to the constant home-rate baseline.

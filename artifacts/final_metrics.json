@@ -1,103 +1,114 @@
 {
-  "model": "logistic-stacked blend: Elo + Bradley-Terry/recent-trend",
+  "model": "elo_only: logistic on Elo rating differential",
+  "model_family": "elo_only",
+  "champion": "elo_only",
   "selected_spec": {
     "architecture": {
-      "name": "hfa_75",
-      "elo_k": 10.0,
-      "elo_hfa": 75.0,
+      "name": "conservative",
+      "elo_k": 7.5,
+      "elo_hfa": 55.0,
       "elo_mov": "log",
-      "bt_c": 0.15,
-      "trend_half_life_days": 45.0,
-      "trend_short_games": 10,
-      "elo_model_c": 100.0,
+      "bt_c": 0.1,
+      "trend_half_life_days": 60.0,
+      "trend_short_games": 12,
+      "elo_model_c": 10.0,
       "rank_model_c": 0.1
     },
-    "calibration": {
-      "method": "logistic_stack",
-      "coef_elo_logit": 0.35925296071565577,
-      "coef_rank_logit": 0.6407470392843442,
-      "intercept": 0.32536299895224763,
-      "temperature": 1.0,
-      "elo_weight": 0.35925296071565577,
-      "temperature_floor": 1.0,
-      "temperature_floor_applied": true,
-      "note": "blend fitted by penalized maximum likelihood (logistic stacking); equivalent to (w, T, s) via w=a/(a+b), T=1/(a+b), s=c. If the unconstrained fit had T < temperature_floor, coefficients were projected to T = temperature_floor (no sharpening) and the intercept was refit.",
-      "unconstrained_coef_elo_logit": 0.5696035387238357,
-      "unconstrained_coef_rank_logit": 1.0159186448349236,
-      "unconstrained_intercept": 0.31321089628395066
+    "elo_model": {
+      "method": "logistic_on_elo_diff",
+      "feature": "elo_diff",
+      "standardized_coefficient": 0.9271823509706777,
+      "intercept": 0.24154288785472908,
+      "training_mean": 0.14081468771906555,
+      "training_scale": 0.2690252333909796,
+      "raw_unit_coefficient": 3.4464512465385932,
+      "C": 10.0,
+      "note": "Deployed champion is Elo-only: p = sigmoid(intercept + coef * z(elo_diff)) where z standardizes elo_diff by the training mean/scale. The Elo + rank blend was rejected by the nested rolling-origin audit (worse out-of-sample log loss and Brier)."
     }
   },
   "primary_april_policy": "frozen_pre_april",
   "primary_holdout": {
     "april": {
-      "log_loss": 0.48443243638913724,
-      "brier": 0.15582256501695727,
-      "auc": 0.8627980206927575,
-      "accuracy": 0.8125,
+      "log_loss": 0.4643691817614744,
+      "brier": 0.1497704237800124,
+      "auc": 0.8668466036887089,
+      "accuracy": 0.78125,
       "games": 96,
       "home_win_rate": 0.59375,
-      "mean_probability": 0.6017546973126938
+      "mean_probability": 0.5490557344110628
     }
   },
   "sequential_daily": {
     "march": {
-      "log_loss": 0.5083729200619467,
-      "brier": 0.16485364885586673,
-      "auc": 0.8300438596491228,
+      "log_loss": 0.5065900312308793,
+      "brier": 0.16588048136759967,
+      "auc": 0.8233918128654971,
       "accuracy": 0.7698744769874477,
       "games": 239,
       "home_win_rate": 0.602510460251046,
-      "mean_probability": 0.6025104639711694
+      "mean_probability": 0.5505220907760472
     },
     "april": {
-      "log_loss": 0.48443243638913724,
-      "brier": 0.15582256501695727,
-      "auc": 0.8627980206927575,
-      "accuracy": 0.8125,
+      "log_loss": 0.4643691817614744,
+      "brier": 0.1497704237800124,
+      "auc": 0.8668466036887089,
+      "accuracy": 0.78125,
       "games": 96,
       "home_win_rate": 0.59375,
-      "mean_probability": 0.6017546973126938
+      "mean_probability": 0.5490557344110628
     }
   },
   "sequential_daily_backtest": {
     "march": {
-      "log_loss": 0.5083729200619467,
-      "brier": 0.16485364885586673,
-      "auc": 0.8300438596491228,
+      "log_loss": 0.5065900312308793,
+      "brier": 0.16588048136759967,
+      "auc": 0.8233918128654971,
       "accuracy": 0.7698744769874477,
       "games": 239,
       "home_win_rate": 0.602510460251046,
-      "mean_probability": 0.6025104639711694
+      "mean_probability": 0.5505220907760472
     },
     "april": {
-      "log_loss": 0.4745447600668837,
-      "brier": 0.15211188598276146,
-      "auc": 0.8529014844804318,
-      "accuracy": 0.8229166666666666,
+      "log_loss": 0.4646482352319922,
+      "brier": 0.14991370530000617,
+      "auc": 0.8663967611336033,
+      "accuracy": 0.78125,
       "games": 96,
       "home_win_rate": 0.59375,
-      "mean_probability": 0.6102872025026974
+      "mean_probability": 0.552190753974212
     }
   },
   "frozen_snapshot_sensitivity": {
     "march": {
-      "log_loss": 0.5195784039101211,
-      "brier": 0.16977141624514755,
-      "auc": 0.8233187134502923,
-      "accuracy": 0.7656903765690377,
+      "log_loss": 0.515890880059063,
+      "brier": 0.16961565175027593,
+      "auc": 0.820906432748538,
+      "accuracy": 0.7615062761506276,
       "games": 239,
       "home_win_rate": 0.602510460251046,
-      "mean_probability": 0.5989209098380487
+      "mean_probability": 0.548356136462854
     },
     "april": {
-      "log_loss": 0.48443243638913724,
-      "brier": 0.15582256501695727,
-      "auc": 0.8627980206927575,
+      "log_loss": 0.4643691817614744,
+      "brier": 0.1497704237800124,
+      "auc": 0.8668466036887089,
+      "accuracy": 0.78125,
+      "games": 96,
+      "home_win_rate": 0.59375,
+      "mean_probability": 0.5490557344110628
+    }
+  },
+  "rejected_challenger_blend": {
+    "april_frozen": {
+      "log_loss": 0.46872525088743494,
+      "brier": 0.1504654688310412,
+      "auc": 0.8641475483580747,
       "accuracy": 0.8125,
       "games": 96,
       "home_win_rate": 0.59375,
-      "mean_probability": 0.6017546973126938
-    }
+      "mean_probability": 0.609476664686819
+    },
+    "note": "Blend shown for transparency only; rejected by the nested rolling-origin audit (worse out-of-sample than Elo-only)."
   },
-  "information_policy_note": "Primary April output is frozen_pre_april: performance state and base-model generator stop at 2026-03-31 / through-February fit. april_predictions_sequential_backtest.csv is a live-update simulation only. March stacker fit and architecture selection reuse March outcomes (in-sample for the blend); treat reported March metrics as selection-period scores, not pristine holdout."
+  "information_policy_note": "Champion is Elo-only. Primary April output is frozen_pre_april: performance state is frozen at 2026-03-31 and the Elo probability map is fit on all rows through March 31. april_predictions_sequential_backtest.csv is a live-update simulation only. March is used for architecture selection and is in-sample for selection; the honest out-of-sample evidence is the nested audit (artifacts/nested_*_summary.json)."
 }

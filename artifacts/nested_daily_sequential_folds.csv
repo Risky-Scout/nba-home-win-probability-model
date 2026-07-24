@@ -1,0 +1,12 @@
+origin,policy,selected_elo_architecture,selected_rank_architecture,selected_blend_architecture,week_dates
+2026-02-01,daily_sequential,responsive,responsive,conservative,7
+2026-02-08,daily_sequential,responsive,responsive,conservative,5
+2026-02-15,daily_sequential,responsive,responsive,conservative,3
+2026-02-22,daily_sequential,responsive,responsive,conservative,7
+2026-03-01,daily_sequential,responsive,responsive,conservative,7
+2026-03-08,daily_sequential,responsive,responsive,conservative,7
+2026-03-15,daily_sequential,responsive,responsive,conservative,7
+2026-03-22,daily_sequential,responsive,responsive,conservative,7
+2026-03-29,daily_sequential,balanced,responsive,conservative,7
+2026-04-05,daily_sequential,conservative,responsive,conservative,6
+2026-04-12,daily_sequential,conservative,responsive,conservative,1

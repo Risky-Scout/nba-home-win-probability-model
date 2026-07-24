@@ -1,4 +1,4 @@
 Set,Games,Log Loss,Brier,AUC,Accuracy,Home Win Rate,Mean P
-"April (frozen, PRIMARY)",96,0.4844,0.1558,0.863,81.2%,59.4%,0.602
-March (deploy stacker),239,0.5084,0.1649,0.83,77.0%,60.3%,0.603
-April (sequential backtest),96,0.4745,0.1521,0.853,82.3%,59.4%,0.61
+"April (frozen, PRIMARY, Elo-only)",96,0.4644,0.1498,0.867,78.1%,59.4%,0.549
+March (Elo-only selection period),239,0.5066,0.1659,0.823,77.0%,60.3%,0.551
+April (sequential backtest),96,0.4646,0.1499,0.866,78.1%,59.4%,0.552

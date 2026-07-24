@@ -66,8 +66,8 @@ def _summary(root: Path) -> pd.DataFrame:
     metrics = json.loads((root / "artifacts" / "final_metrics.json").read_text())
     rows = []
     mapping = [
-        ("April (frozen, PRIMARY)", metrics["primary_holdout"]["april"]),
-        ("March (deploy stacker)", metrics["sequential_daily"]["march"]),
+        ("April (frozen, PRIMARY, Elo-only)", metrics["primary_holdout"]["april"]),
+        ("March (Elo-only selection period)", metrics["sequential_daily"]["march"]),
         (
             "April (sequential backtest)",
             metrics["sequential_daily_backtest"]["april"],

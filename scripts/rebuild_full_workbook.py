@@ -1,25 +1,22 @@
-"""Rebuild NBA_Model_Fully_Formulated.xlsx to reconcile with the corrected model.
+"""Rebuild NBA_Model_Fully_Formulated.xlsx to reconcile with the Elo-only champion.
 
-The workbook is a fully live-formula "twin" of the Python model: the Elo chain,
-Bradley-Terry gradient proof, trend, the on-sheet Newton fits (base models and
-stacker) and the frozen-April predictions are all computed by cell formulas, and
-every stage reconciles against the committed artifacts.
+The workbook is a fully live-formula "twin" of the model: sheet 2 holds the
+architecture parameters, and every downstream sheet (Elo chain, Bradley-Terry,
+trend, the on-sheet Newton fits, and the frozen-April prices) is computed by cell
+formulas that reference those parameters. Opening the file in Excel recalculates
+the entire chain; the blue reconciliation cells carry the committed artifact
+values so on-sheet == blue.
 
-This transformer updates the committed workbook so it matches the current model:
+This transformer updates the workbook to the promoted model:
 
-  1. Elo MOV multiplier now uses the winner-minus-loser rating difference
-     (FiveThirtyEight form) instead of home-minus-away. This is applied to the
-     live Elo-chain formula (sheet 3, column J), which then cascades through the
-     whole live fit chain automatically.
-  2. Every baked reconciliation reference (blue) value is refreshed from the
-     regenerated artifacts / outputs.
-  3. The logistic stacker is deployed with a temperature floor (T >= 1): the
-     unconstrained Newton fit is kept, and a projection block computes the
-     deployed a, b, c (a + b = 1, intercept refit by a 1-D Newton). The April
-     sheet and the dashboard use the deployed coefficients.
-  4. The primary frozen-April sheet now scores with the February-trained
-     selection base models (sheet 7) and the deployed stacker, matching
-     nba_wp/reporting.py.
+  1. Parameters (sheet 2) switch to the selected architecture ``conservative``
+     (Elo-only champion): K=7.5, home advantage 55, Elo logistic C=10. The
+     margin-of-victory multiplier uses the winner-minus-loser rating difference.
+  2. The DEPLOYED price is Elo-only. Sheet 10's final column is the calibrated
+     Elo probability from the through-March fit (sheet 9), reconciled to
+     ``outputs/april_predictions.csv``.
+  3. The Elo + Bradley-Terry/recent-trend blend is retained only as a clearly
+     labelled REJECTED CHALLENGER (sheet 8); it is not deployed.
 
 Usage (from repo root, venv active):
   python -m scripts.rebuild_full_workbook
@@ -34,6 +31,10 @@ import openpyxl
 import pandas as pd
 from openpyxl.styles import Font
 
+from nba_wp.data import load_games
+from nba_wp.features import Architecture, build_features
+from nba_wp.model import fit_base_models, standardized_coefficient_rows
+
 ROOT = Path(__file__).resolve().parents[1]
 WB_PATH = ROOT / "NBA_Model_Fully_Formulated.xlsx"
 
@@ -41,17 +42,25 @@ BLUE = Font(color="1F4E78")
 BOLD = Font(bold=True)
 
 
-def _num(cell_value: object) -> float:
-    return float(cell_value)
+def _rank_rows(games: pd.DataFrame, arch: Architecture, max_date: str) -> dict[str, pd.Series]:
+    feats = build_features(games[games["game_date"] < "2026-04-01"].copy(), arch)
+    train = feats[feats["game_date"] < max_date].copy()
+    models = fit_base_models(train, arch)
+    rows = pd.DataFrame(standardized_coefficient_rows(models))
+    out = {}
+    for feature in ["bt_logit", "trend_diff", "(intercept)"]:
+        out[feature] = rows[(rows["component"] == "rank") & (rows["feature"] == feature)].iloc[0]
+    return out
 
 
 def main() -> None:
     spec = json.loads((ROOT / "artifacts" / "selected_spec.json").read_text())
-    cal = spec["calibration"]
+    arch = Architecture.from_dict(spec["architecture"])
+    elo = spec["elo_model"]
+    cal = spec["challenger"]["calibration"]  # rejected challenger stacker
     metrics = json.loads((ROOT / "artifacts" / "final_metrics.json").read_text())
     primary = metrics["primary_holdout"]["april"]
 
-    # Deployed (floored) and unconstrained stacker coefficients.
     dep_a = float(cal["coef_elo_logit"])
     dep_b = float(cal["coef_rank_logit"])
     dep_c = float(cal["intercept"])
@@ -59,24 +68,42 @@ def main() -> None:
     unc_b = float(cal["unconstrained_coef_rank_logit"])
     unc_c = float(cal["unconstrained_intercept"])
 
-    # Final (through-March) base-model coefficients for the sheet 9 reconcile.
     coef = pd.read_csv(ROOT / "artifacts" / "coefficient_table.csv")
 
-    def coef_row(component: str, feature: str) -> pd.Series:
-        return coef[(coef["component"] == component) & (coef["feature"] == feature)].iloc[0]
+    def elo_row(feature: str) -> pd.Series:
+        return coef[(coef["component"] == "elo") & (coef["feature"] == feature)].iloc[0]
 
-    elo_std = coef_row("elo", "elo_diff")
-    elo_int = coef_row("elo", "(intercept)")
-    bt_std = coef_row("rank", "bt_logit")
-    tr_std = coef_row("rank", "trend_diff")
-    rank_int = coef_row("rank", "(intercept)")
+    elo_std = elo_row("elo_diff")
+    elo_int = elo_row("(intercept)")
+
+    games = load_games(ROOT / "data" / "nba-win-probability-data.csv")
+    rank_march = _rank_rows(games, arch, "2026-04-01")  # through-March challenger rank
+    bt_std = rank_march["bt_logit"]
+    tr_std = rank_march["trend_diff"]
+    rank_int = rank_march["(intercept)"]
 
     eng = pd.read_csv(ROOT / "outputs" / "engineered_features.csv")
     fa = pd.read_csv(ROOT / "outputs" / "april_predictions_frozen_snapshot.csv")
+    ch = pd.read_csv(ROOT / "outputs" / "challenger_blend_april_predictions.csv")
 
     wb = openpyxl.load_workbook(WB_PATH)
 
-    # ---- Sheet 3: Elo chain MOV fix + refreshed elo_diff references ----------
+    # ---- Sheet 2: architecture parameters -> conservative (Elo-only champion) -
+    s2 = wb["2_Params"]
+    s2["A1"] = (
+        'ARCHITECTURE PARAMETERS — provenance: artifacts/selected_spec.json '
+        '(Elo-only champion, architecture "conservative"). Fields below the Elo '
+        'block parameterize the rejected challenger blend only.'
+    )
+    s2["B5"] = float(arch.elo_k)      # 7.5
+    s2["B6"] = float(arch.elo_hfa)    # 55
+    s2["B11"] = float(arch.bt_c)      # 0.1 (challenger)
+    s2["B12"] = float(arch.trend_half_life_days)  # 60 (challenger)
+    s2["B13"] = int(arch.trend_short_games)       # 12 (challenger)
+    s2["B14"] = float(arch.elo_model_c)           # 10
+    s2["B15"] = float(arch.rank_model_c)          # 0.1 (challenger)
+
+    # ---- Sheet 3: Elo chain MOV fix (winner-loser) + refreshed elo_diff refs --
     s3 = wb["3_Elo_Chain"]
     for r in range(3, 1233):
         s3[f"J{r}"] = (
@@ -84,8 +111,7 @@ def main() -> None:
             f"MAX('2_Params'!$B$10,(IF(L{r}=1,F{r}-G{r},G{r}-F{r}))"
             f"*'2_Params'!$B$9+'2_Params'!$B$8))"
         )
-    elo_diff = eng["elo_diff"].to_numpy()
-    for i, val in enumerate(elo_diff):
+    for i, val in enumerate(eng["elo_diff"].to_numpy()):
         c = s3[f"M{i + 3}"]
         c.value = float(val)
         c.font = BLUE
@@ -95,58 +121,55 @@ def main() -> None:
     bt = eng["bt_logit"].to_numpy()
     td = eng["trend_diff"].to_numpy()
     for i in range(len(eng)):
-        gc = s4[f"G{i + 3}"]
-        hc = s4[f"H{i + 3}"]
-        gc.value = float(bt[i])
-        hc.value = float(td[i])
-        gc.font = BLUE
-        hc.font = BLUE
+        gc, hc = s4[f"G{i + 3}"], s4[f"H{i + 3}"]
+        gc.value, hc.value = float(bt[i]), float(td[i])
+        gc.font = hc.font = BLUE
 
-    # ---- Sheet 8: unconstrained repo refs + deploy (temperature floor) -------
+    # ---- Sheet 8: REJECTED CHALLENGER stacker (not deployed) ------------------
     s8 = wb["8_Fit_Stacker"]
-    s8["H20"] = "RECONCILIATION vs selected_spec.json (unconstrained MLE)"
-    s8["J22"] = unc_a
-    s8["J23"] = unc_b
-    s8["J24"] = unc_c
+    s8["A1"] = (
+        "REJECTED CHALLENGER — Elo + Bradley-Terry/recent-trend logistic stack. "
+        "NOT DEPLOYED: the nested rolling-origin audit shows it is worse than "
+        "Elo-only out-of-sample (see artifacts/nested_*_summary.json). Shown for "
+        "transparency and to demonstrate the convex temperature-floor (T>=1) fit."
+    )
+    s8["H20"] = "RECONCILIATION vs selected_spec.json challenger (unconstrained MLE)"
+    s8["J22"], s8["J23"], s8["J24"] = unc_a, unc_b, unc_c
     for coord in ("J22", "J23", "J24"):
         s8[coord].font = BLUE
 
-    s8["H26"] = "TEMPERATURE FLOOR -> DEPLOY (model.py fit_logit_stacker, T>=1)"
+    s8["H26"] = "CONVEX + TEMPERATURE FLOOR -> DEPLOY-FORM (model.py, T>=1, w in [0,1])"
     s8["H26"].font = BOLD
     s8["H27"], s8["I27"] = "a_unc (=Q5)", "=$Q$5"
     s8["H28"], s8["I28"] = "b_unc (=Q6)", "=$Q$6"
     s8["H29"], s8["I29"] = "c_unc (=Q7)", "=$Q$7"
-    s8["H30"], s8["I30"] = "total = a+b", "=I27+I28"
-    s8["H31"], s8["I31"] = "w = a/total", "=I27/I30"
-    s8["H32"], s8["I32"] = "T = 1/total", "=1/I30"
-    s8["H33"], s8["I33"] = "floor applied?", '=IF(I32<1,"yes","no")'
-    s8["H34"], s8["I34"] = "a deploy", "=IF(I32<1,I31,I27)"
-    s8["H35"], s8["I35"] = "b deploy", "=IF(I32<1,1-I31,I28)"
-    s8["H36"], s8["I36"] = "c deploy", "=IF(I32<1,N40,I29)"
+    s8["H30"], s8["I30"] = "a+ = max(a,0)", "=MAX(I27,0)"
+    s8["H31"], s8["I31"] = "b+ = max(b,0)", "=MAX(I28,0)"
+    s8["H32"], s8["I32"] = "total+ = a+ + b+", "=I30+I31"
+    s8["H33"], s8["I33"] = "w = a+/total+", "=IF(I32>0,I30/I32,0.5)"
+    s8["H34"], s8["I34"] = "T = max(1/total+, 1)", "=MAX(IF(I32>0,1/I32,1),1)"
+    s8["H35"], s8["I35"] = "a deploy = w/T", "=I33/I34"
+    s8["H36"], s8["I36"] = "b deploy = (1-w)/T", "=(1-I33)/I34"
 
-    # 1-D Newton refit of the intercept with a_deploy, b_deploy fixed (col N).
     s8["M26"] = "c refit Newton (a_deploy,b_deploy fixed); start c0=c_unc"
     s8["N27"] = "=I29"
     for r in range(28, 41):
         prev = r - 1
-        sig = (
-            f"(1/(1+EXP(-($I$34*$D$5:$D$243+$I$35*$E$5:$E$243+N{prev}))))"
-        )
+        sig = f"(1/(1+EXP(-($I$35*$D$5:$D$243+$I$36*$E$5:$E$243+N{prev}))))"
         s8[f"N{r}"] = (
-            f"=N{prev}-"
-            f"(SUMPRODUCT({sig}-$C$5:$C$243))/"
-            f"(SUMPRODUCT({sig}*(1-{sig})))"
+            f"=N{prev}-(SUMPRODUCT({sig}-$C$5:$C$243))/(SUMPRODUCT({sig}*(1-{sig})))"
         )
+    s8["H37"], s8["I37"] = "c deploy", "=N40"
 
-    s8["H38"] = "DEPLOY vs selected_spec.json"
+    s8["H38"] = "DEPLOY-FORM vs selected_spec.json challenger"
     s8["H38"].font = BOLD
-    s8["H39"], s8["I39"], s8["J39"], s8["K39"] = "a", "=I34", dep_a, "=ABS(I39-J39)"
-    s8["H40"], s8["I40"], s8["J40"], s8["K40"] = "b", "=I35", dep_b, "=ABS(I40-J40)"
-    s8["H41"], s8["I41"], s8["J41"], s8["K41"] = "c", "=I36", dep_c, "=ABS(I41-J41)"
+    s8["H39"], s8["I39"], s8["J39"], s8["K39"] = "a", "=I35", dep_a, "=ABS(I39-J39)"
+    s8["H40"], s8["I40"], s8["J40"], s8["K40"] = "b", "=I36", dep_b, "=ABS(I40-J40)"
+    s8["H41"], s8["I41"], s8["J41"], s8["K41"] = "c", "=I37", dep_c, "=ABS(I41-J41)"
     for coord in ("J39", "J40", "J41"):
         s8[coord].font = BLUE
 
-    # ---- Sheet 9: refreshed final base-model coefficient references ----------
+    # ---- Sheet 9: refreshed final base-model coefficient references -----------
     s9 = wb["9_Fit_Final_Models"]
     s9["V18"] = float(elo_std["standardized_coefficient"])
     s9["V19"] = float(elo_int["standardized_coefficient"])
@@ -162,35 +185,29 @@ def main() -> None:
     for coord in ("V18", "V19", "V20", "V21", "BE21", "BE22", "BE23", "BE24", "BE25", "BE26", "BE27"):
         s9[coord].font = BLUE
 
-    # ---- Sheet 10: February selection models + deploy stacker + refs ---------
+    # ---- Sheet 10: DEPLOYED Elo-only champion (through-March fit, frozen April)-
     s10 = wb["10_April_Frozen"]
     s10["A1"] = (
-        "APRIL - FROZEN PRE-APRIL (PRIMARY): team state frozen at March 31; "
-        "February-trained selection base models (sheet 7) + deploy (T>=1) "
-        "stacker (sheet 8)"
+        "APRIL - FROZEN PRE-APRIL (PRIMARY, DEPLOYED CHAMPION = ELO-ONLY): team "
+        "state frozen at March 31; price = calibrated Elo probability from the "
+        "through-March fit (sheet 9)."
     )
     s10["A2"] = (
-        "Frozen elo_diff sums ONLY pre-April deltas from sheet 3. bt from sheet "
-        "5 strengths. trend from sheet 6. All reconciliation references (blue) "
-        "from outputs/april_predictions_frozen_snapshot.csv (== april_predictions.csv)."
+        "Frozen elo_diff sums ONLY pre-April deltas from sheet 3. Columns I/J "
+        "(Feb-selection components) and the sheet-8 stacker are the REJECTED "
+        "challenger, shown for transparency. Reconciliation references (blue) "
+        "from outputs/april_predictions.csv (== frozen snapshot)."
     )
+    s10["I4"] = "p_elo (Feb, challenger input)"
+    s10["J4"] = "p_rank (Feb, challenger input)"
+    s10["K4"] = "p_final = Elo-only champion (through-Mar)"
     for r in range(5, 101):
-        s10[f"I{r}"] = (
-            f"=1/(1+EXP(-('7_Fit_Selection_Models'!$AC$12*"
-            f"(F{r}-'7_Fit_Selection_Models'!$U$5)/'7_Fit_Selection_Models'!$U$6"
-            f"+'7_Fit_Selection_Models'!$AC$13)))"
-        )
-        s10[f"J{r}"] = (
-            f"=1/(1+EXP(-('7_Fit_Selection_Models'!$BL$14*"
-            f"(G{r}-'7_Fit_Selection_Models'!$BD$5)/'7_Fit_Selection_Models'!$BD$6"
-            f"+'7_Fit_Selection_Models'!$BL$15*"
-            f"(H{r}-'7_Fit_Selection_Models'!$BD$7)/'7_Fit_Selection_Models'!$BD$8"
-            f"+'7_Fit_Selection_Models'!$BL$16)))"
-        )
+        # Champion deployed price: calibrated Elo (through-March, sheet 9) on the
+        # frozen elo_diff (column F).
         s10[f"K{r}"] = (
-            f"=1/(1+EXP(-('8_Fit_Stacker'!$I$34*LN(I{r}/(1-I{r}))"
-            f"+'8_Fit_Stacker'!$I$35*LN(J{r}/(1-J{r}))"
-            f"+'8_Fit_Stacker'!$I$36)))"
+            f"=1/(1+EXP(-('9_Fit_Final_Models'!$AC$12*"
+            f"(F{r}-'9_Fit_Final_Models'!$U$5)/'9_Fit_Final_Models'!$U$6"
+            f"+'9_Fit_Final_Models'!$AC$13)))"
         )
     for i in range(len(fa)):
         r = i + 5
@@ -199,8 +216,23 @@ def main() -> None:
             c = s10[f"{col}{r}"]
             c.value = float(fa[name].iloc[i])
             c.font = BLUE
+    # Rejected challenger blend display + reconcile (columns V/W/X).
+    s10["V4"], s10["W4"], s10["X4"] = (
+        "p_blend (REJECTED)", "repo p_blend", "|delta|",
+    )
+    for r in range(5, 101):
+        s10[f"V{r}"] = (
+            f"=1/(1+EXP(-('8_Fit_Stacker'!$I$35*LN(I{r}/(1-I{r}))"
+            f"+'8_Fit_Stacker'!$I$36*LN(J{r}/(1-J{r}))+'8_Fit_Stacker'!$I$37)))"
+        )
+        s10[f"X{r}"] = f"=ABS(V{r}-W{r})"
+    for i in range(len(ch)):
+        c = s10[f"W{i + 5}"]
+        c.value = float(ch["home_win_probability"].iloc[i])
+        c.font = BLUE
+
     s10["A102"] = (
-        "METRICS - computed by formula, reconciled vs "
+        "METRICS - Elo-only champion, computed by formula, reconciled vs "
         "artifacts/final_metrics.json (primary_holdout.april)"
     )
     s10["C104"] = float(primary["log_loss"])
@@ -210,49 +242,49 @@ def main() -> None:
     for coord in ("C104", "C105", "C106", "C107"):
         s10[coord].font = BLUE
 
-    # ---- Sheet 11: dashboard points at deploy stacker cells ------------------
+    # ---- Sheet 11: dashboard -> champion Elo-only reconcile -------------------
     s11 = wb["11_Reconcile_Dashboard"]
-    s11["A7"] = "Stacker a (deploy) vs selected_spec.json"
-    s11["B7"], s11["D7"] = "='8_Fit_Stacker'!$I$34", "='8_Fit_Stacker'!K39"
-    s11["A8"] = "Stacker b (deploy) vs selected_spec.json"
-    s11["B8"], s11["D8"] = "='8_Fit_Stacker'!$I$35", "='8_Fit_Stacker'!K40"
-    s11["A9"] = "Stacker c (deploy) vs selected_spec.json"
-    s11["B9"], s11["D9"] = "='8_Fit_Stacker'!$I$36", "='8_Fit_Stacker'!K41"
+    s11["A7"] = "Champion Elo std coef vs coefficient_table.csv"
+    s11["B7"], s11["D7"] = "='9_Fit_Final_Models'!$AC$12", float(elo_std["standardized_coefficient"])
+    s11["A8"] = "Champion Elo intercept vs coefficient_table.csv"
+    s11["B8"], s11["D8"] = "='9_Fit_Final_Models'!$AC$13", float(elo_int["standardized_coefficient"])
+    s11["A9"] = "Challenger stacker a (deploy) vs selected_spec.json [REJECTED]"
+    s11["B9"], s11["D9"] = "='8_Fit_Stacker'!$I$35", "='8_Fit_Stacker'!K39"
+    for coord in ("D7", "D8"):
+        s11[coord].font = BLUE
 
     # ---- Sheet 0: README text refresh ---------------------------------------
     s0 = wb["0_README"]
     s0["B2"] = (
         "Source of truth: github.com/Risky-Scout/nba-home-win-probability-model  "
-        "·  main (corrected model: Elo MOV winner-loser fix + stacker temperature "
-        "floor T>=1 + frozen pre-April primary)"
+        "·  main (DEPLOYED CHAMPION = Elo-only; Elo+rank blend implemented and "
+        "REJECTED by nested rolling-origin validation)"
     )
     s0["B11"] = (
-        "Two base signals are computed for every game strictly from prior "
-        "information: (1) an Elo rating difference (K=10, home advantage 75, log "
-        "margin-of-victory multiplier evaluated on the WINNER-minus-LOSER rating "
-        "difference) and (2) a rank signal combining regularized Bradley-Terry "
-        "strengths with a schedule-weighted momentum trend. Each signal is turned "
-        "into a probability by a standardized, L2-penalized logistic regression "
-        "fitted through February; a logistic stacker is fitted on March component "
-        "log-odds and then DEPLOYED WITH A TEMPERATURE FLOOR (T>=1) so correlated "
-        "signals cannot sharpen into extreme prices. Primary April scoring uses "
-        "the February-trained base models under the frozen pre-April policy: team "
-        "state frozen at March 31, no April outcome leaks into any April "
-        "prediction."
+        "The deployed champion is Elo-only: a margin-of-victory Elo rating "
+        "difference (K=7.5, home advantage 55, log MOV multiplier on the "
+        "WINNER-minus-LOSER rating difference) turned into a probability by a "
+        "standardized, L2-penalized logistic regression fitted on all games "
+        "through March 31. April team state is frozen at March 31, so no April "
+        "outcome leaks into any April prediction. An Elo + Bradley-Terry/recent-"
+        "trend logistic-stack blend was also built and then REJECTED: under "
+        "nested rolling-origin validation it is worse than Elo-only on log loss "
+        "and Brier and is worse calibrated."
     )
     s0["B21"] = (
-        "8_Fit_Stacker - March component log-odds from the selection models; "
-        "3-parameter Newton fit gives the unconstrained a, b, c; a temperature-"
-        "floor block then projects to the deployed a, b, c (a+b=1, intercept "
-        "refit), reconciled to artifacts/selected_spec.json "
-        f"(deploy {dep_a:.5f} / {dep_b:.5f} / {dep_c:.5f})."
+        "8_Fit_Stacker - REJECTED CHALLENGER. March component log-odds from the "
+        "selection models; 3-parameter Newton fit gives the unconstrained a,b,c; "
+        "a convex + temperature-floor block (w in [0,1], T>=1) projects to the "
+        "deploy-form a,b,c, reconciled to the challenger block of "
+        f"selected_spec.json (deploy {dep_a:.5f} / {dep_b:.5f} / {dep_c:.5f}). "
+        "This blend is not deployed."
     )
     s0["B23"] = (
-        "10_April_Frozen - 96 games priced with the February selection base "
-        "models (sheet 7) and the deploy stacker (sheet 8): frozen features on-"
-        "sheet, component probabilities, stacked probability, per-game "
-        "reconciliation vs outputs/april_predictions.csv, and Log Loss / Brier / "
-        "Accuracy / AUC by formula vs artifacts/final_metrics.json."
+        "10_April_Frozen - 96 games priced by the DEPLOYED Elo-only champion "
+        "(through-March Elo fit, sheet 9) on frozen pre-April features, with "
+        "per-game reconciliation vs outputs/april_predictions.csv and Log Loss / "
+        "Brier / Accuracy / AUC by formula vs artifacts/final_metrics.json. "
+        "Columns V-X show the rejected blend for comparison."
     )
 
     wb.save(WB_PATH)

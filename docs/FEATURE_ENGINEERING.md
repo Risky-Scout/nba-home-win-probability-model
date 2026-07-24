@@ -117,11 +117,15 @@ The repository does not create pseudo-possession metrics.
 
 ## Selected features
 
+The deployed champion is **Elo-only**, so its only input is `elo_diff`. The
+`bt_logit` and `trend_diff` features feed the rejected challenger blend, not the
+deployed model.
+
 | Feature | Basketball interpretation | Model role |
 |---|---|---|
-| `elo_diff` | Updated outcome and margin strength | Elo component |
-| `bt_logit` | Regularized paired-comparison team strength | Rank component |
-| `trend_diff` | Short-form change relative to long form | Rank component |
+| `elo_diff` | Updated outcome and margin strength | **Deployed champion (Elo-only)** |
+| `bt_logit` | Regularized paired-comparison team strength | Rejected challenger (rank component) |
+| `trend_diff` | Short-form change relative to long form | Rejected challenger (rank component) |
 
 The complete generated dictionary is
 `artifacts/feature_dictionary.csv`.

@@ -58,8 +58,8 @@ Checks:
 python validate_submission.py   --root .   --data "/absolute/path/to/nba-win-probability-data.csv"   --recompute
 ```
 
-This rebuilds the selected features, refits both components, and compares every
-saved March and April probability within `1e-12`.
+This rebuilds the selected features, refits the deployed Elo-only champion, and
+compares every saved March and April probability within `1e-12`.
 
 ### Level 3 - source-to-selection reproduction
 
