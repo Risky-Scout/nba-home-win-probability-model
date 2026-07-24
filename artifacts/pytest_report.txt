@@ -1,4 +1,4 @@
-.................................................                        [100%]
+.................................................................        [100%]
 ==================================== PASSES ====================================
 =========================== short test summary info ============================
 PASSED tests/test_architecture_selection.py::test_architecture_selection_block_present
@@ -12,6 +12,22 @@ PASSED tests/test_calibration_challenger.py::test_small_sample_falls_back_to_ide
 PASSED tests/test_calibration_challenger.py::test_huge_n0_shrinks_to_identity
 PASSED tests/test_calibration_challenger.py::test_underconfident_base_is_sharpened_between_1_and_mle
 PASSED tests/test_calibration_challenger.py::test_apply_calibrator_identity_is_noop
+PASSED tests/test_calibration_risk.py::test_pooled_calibration_never_deployed
+PASSED tests/test_calibration_risk.py::test_champion_april_prices_have_no_calibration_applied
+PASSED tests/test_calibration_risk.py::test_frozen_calibration_uses_frozen_inner_oof
+PASSED tests/test_calibration_risk.py::test_sequential_calibration_is_strictly_causal
+PASSED tests/test_calibration_risk.py::test_no_outer_outcome_enters_fitting
+PASSED tests/test_calibration_risk.py::test_all_candidates_use_identical_outer_rows
+PASSED tests/test_calibration_risk.py::test_identity_fallback_is_numerical_noop
+PASSED tests/test_calibration_risk.py::test_platt_equation_correctness
+PASSED tests/test_calibration_risk.py::test_beta_equation_correctness
+PASSED tests/test_calibration_risk.py::test_beta_transform_is_monotonic
+PASSED tests/test_calibration_risk.py::test_lambda_selection_excludes_outer_outcomes
+PASSED tests/test_calibration_risk.py::test_challenger_failing_a_proper_score_cannot_promote
+PASSED tests/test_calibration_risk.py::test_promotion_requires_both_policies
+PASSED tests/test_calibration_risk.py::test_fixed_reliability_bins_and_counts_present
+PASSED tests/test_calibration_risk.py::test_lofo_stability_recorded
+PASSED tests/test_calibration_risk.py::test_raw_elo_output_hashes_unchanged
 PASSED tests/test_champion_promotion.py::test_selected_spec_is_elo_only_after_promotion
 PASSED tests/test_champion_promotion.py::test_final_metrics_model_family_matches_selected_spec
 PASSED tests/test_champion_promotion.py::test_deployed_model_matches_champion_decision
@@ -50,4 +66,4 @@ PASSED tests/test_workbook_reconstruction.py::test_standardized_form_reproduces_
 PASSED tests/test_workbook_reconstruction.py::test_raw_form_reproduces_deployed_prices
 PASSED tests/test_workbook_reconstruction.py::test_naive_raw_coef_with_standardized_intercept_is_wrong
 PASSED tests/test_workbook_reconstruction.py::test_workbook_reconciliation_artifact_passes
-49 passed in 38.78s
+65 passed in 51.95s

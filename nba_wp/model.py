@@ -6,12 +6,22 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from scipy.optimize import minimize
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, roc_auc_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from .features import Architecture
+
+# Minimum inner-fold sample size below which every identity-shrunk calibrator
+# refuses to fit and returns the numerical identity (no-op) map instead.
+MIN_CALIB_N = 50
+# Grid of L2 penalty strengths for the identity-shrunk calibrators. Larger
+# lambda == MORE shrinkage toward the identity map (delta parameters -> 0);
+# lambda == 0 would be the unpenalized MLE (not in the grid). Selection over
+# this grid is done ONLY by chronological inner validation, never on outer folds.
+LAM_GRID = [1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0]
 
 
 @dataclass
@@ -312,6 +322,210 @@ def fit_identity_shrunk_calibrator(
 def apply_calibrator(alpha: float, beta: float, p: np.ndarray) -> np.ndarray:
     """Apply a logit-linear calibrator: p_cal = sigmoid(alpha + beta*logit(p))."""
     return sigmoid(alpha + beta * logit(np.asarray(p, dtype=float)))
+
+
+# --------------------------------------------------------------------------- #
+# Identity-shrunk calibration challengers (Platt-on-logit and Beta).
+#
+# Both are penalized toward the IDENTITY (no-op) map: their free "delta"
+# parameters are shrunk toward 0 by an L2 penalty of strength ``lam`` (larger
+# lam => more shrinkage). They are fit ONLY on inner out-of-fold rows, the
+# penalty strength is chosen ONLY by chronological inner validation, and any
+# degeneracy (too few rows, one class, optimizer failure, non-finite params, or
+# a non-monotonic Beta transform) falls back to the numerical identity so the
+# challenger can never do worse than raw Elo by construction on that fold.
+# --------------------------------------------------------------------------- #
+_EPS = 1e-12
+
+
+def _clip01(p: np.ndarray) -> np.ndarray:
+    return np.clip(np.asarray(p, dtype=float), _EPS, 1.0 - _EPS)
+
+
+def _softplus(z: np.ndarray) -> np.ndarray:
+    # log(1 + exp(z)), numerically stable.
+    return np.logaddexp(0.0, z)
+
+
+def _mean_logloss_from_logit(lp: np.ndarray, y: np.ndarray) -> float:
+    # -mean[ y*log(sigmoid(lp)) + (1-y)*log(1-sigmoid(lp)) ] = mean[ softplus(lp) - y*lp ].
+    return float(np.mean(_softplus(lp) - y * lp))
+
+
+def platt_identity_params() -> dict[str, Any]:
+    """The Platt identity (no-op) map: alpha=0, beta=1 (deltas 0)."""
+    return {"delta_intercept": 0.0, "delta_slope": 0.0, "alpha": 0.0, "beta": 1.0, "fallback": True}
+
+
+def fit_platt_identity_shrunk(p_inner: np.ndarray, y_inner: np.ndarray, lam: float) -> dict[str, Any]:
+    """Fit an identity-shrunk Platt-on-logit calibrator.
+
+    With z = logit(p_raw):
+
+        logit(p_cal) = z + delta_intercept + delta_slope * z
+                     = alpha + beta * z,   alpha = delta_intercept, beta = 1 + delta_slope.
+
+    The map is fit by minimizing mean log loss + ``lam`` * (delta_intercept^2 +
+    delta_slope^2), i.e. a MAP / penalized-logistic fit that shrinks toward the
+    identity map (delta = 0). Returns delta_intercept, delta_slope, alpha, beta,
+    and a ``fallback`` flag (True when the identity was returned unchanged).
+    """
+    y = np.asarray(y_inner, dtype=int)
+    p = _clip01(p_inner)
+    if len(y) < MIN_CALIB_N or len(np.unique(y)) < 2:
+        return platt_identity_params()
+    z = logit(p)
+    lam = float(lam)
+
+    def objective(theta: np.ndarray) -> float:
+        di, ds = float(theta[0]), float(theta[1])
+        lp = di + (1.0 + ds) * z
+        return _mean_logloss_from_logit(lp, y) + lam * (di * di + ds * ds)
+
+    try:
+        res = minimize(objective, x0=np.zeros(2), method="L-BFGS-B",
+                       options={"maxiter": 500, "ftol": 1e-12})
+    except Exception:
+        return platt_identity_params()
+    if not res.success and not np.all(np.isfinite(res.x)):
+        return platt_identity_params()
+    di, ds = float(res.x[0]), float(res.x[1])
+    alpha, beta = di, 1.0 + ds
+    if not all(np.isfinite(v) for v in (di, ds, alpha, beta)):
+        return platt_identity_params()
+    return {"delta_intercept": di, "delta_slope": ds, "alpha": alpha, "beta": beta, "fallback": False}
+
+
+def apply_platt(params: dict[str, Any], p: np.ndarray) -> np.ndarray:
+    """Apply an identity-shrunk Platt calibrator: p_cal = sigmoid(alpha + beta*logit(p))."""
+    alpha = float(params["alpha"])
+    beta = float(params["beta"])
+    return sigmoid(alpha + beta * logit(_clip01(p)))
+
+
+def beta_identity_params() -> dict[str, Any]:
+    """The Beta identity (no-op) map: a=1, b=1, c=0 (deltas 0)."""
+    return {"delta_0": 0.0, "delta_a": 0.0, "delta_b": 0.0,
+            "a": 1.0, "b": 1.0, "c": 0.0, "fallback": True, "monotonic": True}
+
+
+def fit_beta_identity_shrunk(p_inner: np.ndarray, y_inner: np.ndarray, lam: float) -> dict[str, Any]:
+    """Fit an identity-shrunk Beta calibrator.
+
+    With l1 = log(p_raw), l0 = log(1 - p_raw):
+
+        logit(p_cal) = logit(p_raw) + delta_0 + delta_a * l1 - delta_b * l0
+                     = c + a * l1 - b * l0,
+        c = delta_0, a = 1 + delta_a, b = 1 + delta_b.
+
+    (Because logit(p_raw) = l1 - l0.) The deltas are shrunk toward 0 with an L2
+    penalty ``lam``. Monotonicity of p_cal in p_raw requires a >= 0 and b >= 0,
+    enforced as box constraints (delta_a >= -1, delta_b >= -1). If the fit is
+    degenerate or the resulting transform is non-monotonic, the identity map is
+    returned. Returns delta_0/delta_a/delta_b, a/b/c, ``fallback`` and
+    ``monotonic`` flags.
+    """
+    y = np.asarray(y_inner, dtype=int)
+    p = _clip01(p_inner)
+    if len(y) < MIN_CALIB_N or len(np.unique(y)) < 2:
+        return beta_identity_params()
+    l1 = np.log(p)
+    l0 = np.log(1.0 - p)
+    lam = float(lam)
+
+    def objective(theta: np.ndarray) -> float:
+        d0, da, db = float(theta[0]), float(theta[1]), float(theta[2])
+        a, b = 1.0 + da, 1.0 + db
+        lp = d0 + a * l1 - b * l0
+        return _mean_logloss_from_logit(lp, y) + lam * (d0 * d0 + da * da + db * db)
+
+    try:
+        res = minimize(objective, x0=np.zeros(3), method="L-BFGS-B",
+                       bounds=[(None, None), (-1.0, None), (-1.0, None)],
+                       options={"maxiter": 500, "ftol": 1e-12})
+    except Exception:
+        return beta_identity_params()
+    if not np.all(np.isfinite(res.x)):
+        return beta_identity_params()
+    d0, da, db = float(res.x[0]), float(res.x[1]), float(res.x[2])
+    a, b, c = 1.0 + da, 1.0 + db, d0
+    if not all(np.isfinite(v) for v in (d0, da, db, a, b, c)):
+        return beta_identity_params()
+    monotonic = bool(a >= 0.0 and b >= 0.0)
+    if not monotonic:
+        # Enforcing monotonicity failed; fall back to identity rather than
+        # emit a non-monotonic price map.
+        return beta_identity_params()
+    return {"delta_0": d0, "delta_a": da, "delta_b": db,
+            "a": a, "b": b, "c": c, "fallback": False, "monotonic": True}
+
+
+def apply_beta(params: dict[str, Any], p: np.ndarray) -> np.ndarray:
+    """Apply an identity-shrunk Beta calibrator: p_cal = sigmoid(c + a*log(p) - b*log(1-p))."""
+    a = float(params["a"])
+    b = float(params["b"])
+    c = float(params["c"])
+    p = _clip01(p)
+    lp = c + a * np.log(p) - b * np.log(1.0 - p)
+    return sigmoid(lp)
+
+
+def select_calibrator_lambda(
+    fit_fn,
+    apply_fn,
+    p_inner: np.ndarray,
+    y_inner: np.ndarray,
+    dates_inner: np.ndarray,
+    lam_grid: list[float] | None = None,
+    val_fraction: float = 0.30,
+) -> dict[str, Any]:
+    """Choose the L2 penalty strength by CHRONOLOGICAL inner validation only.
+
+    ``p_inner``/``y_inner``/``dates_inner`` are inner out-of-fold rows (never
+    outer-fold rows). Rows are ordered by date, split into an earlier fit
+    portion and the last ``val_fraction`` (by date) validation portion; each
+    lambda is fit on the fit portion and scored by validation log loss. The
+    lambda with the lowest validation log loss is returned (ties broken toward
+    MORE shrinkage, i.e. the larger lambda). No outer-fold outcome is ever seen.
+
+    Returns {selected_lambda, val_log_loss_by_lambda, degenerate:bool}. On a
+    degenerate split the largest (most shrinking, safest) lambda is returned.
+    """
+    grid = list(LAM_GRID if lam_grid is None else lam_grid)
+    p = _clip01(p_inner)
+    y = np.asarray(y_inner, dtype=int)
+    d = pd.to_datetime(pd.Series(np.asarray(dates_inner))).to_numpy()
+    order = np.argsort(d, kind="stable")
+    p, y, d = p[order], y[order], d[order]
+
+    safest = max(grid)
+    if len(y) < 2 * MIN_CALIB_N or len(np.unique(y)) < 2:
+        return {"selected_lambda": float(safest), "val_log_loss_by_lambda": {}, "degenerate": True}
+
+    unique_dates = np.unique(d)
+    if len(unique_dates) < 4:
+        return {"selected_lambda": float(safest), "val_log_loss_by_lambda": {}, "degenerate": True}
+    cut_idx = int(np.floor((1.0 - val_fraction) * len(unique_dates)))
+    cut_idx = min(max(cut_idx, 1), len(unique_dates) - 1)
+    cut_date = unique_dates[cut_idx]
+    fit_mask = d < cut_date
+    val_mask = d >= cut_date
+
+    if (fit_mask.sum() < MIN_CALIB_N or val_mask.sum() < 10
+            or len(np.unique(y[fit_mask])) < 2 or len(np.unique(y[val_mask])) < 2):
+        return {"selected_lambda": float(safest), "val_log_loss_by_lambda": {}, "degenerate": True}
+
+    scores: dict[str, float] = {}
+    for lam in grid:
+        params = fit_fn(p[fit_mask], y[fit_mask], lam)
+        p_val = apply_fn(params, p[val_mask])
+        p_val = np.clip(p_val, _EPS, 1.0 - _EPS)
+        scores[str(lam)] = float(log_loss(y[val_mask], p_val, labels=[0, 1]))
+
+    # Lowest validation log loss; tie-break toward larger lambda (more shrinkage).
+    best_lam = min(grid, key=lambda lam: (scores[str(lam)], -lam))
+    return {"selected_lambda": float(best_lam),
+            "val_log_loss_by_lambda": scores, "degenerate": False}
 
 
 def stacker_calibration_dict(stacker: LogisticRegression) -> dict[str, Any]:

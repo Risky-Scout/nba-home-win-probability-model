@@ -83,6 +83,12 @@ def main() -> None:
         # calibration and schedule challengers) is the out-of-sample evidence.
         run([python, "-m", "scripts.nested_validation", "--data", data,
              "--artifact-dir", str(root / "artifacts"), "--figure-dir", str(root / "figures")])
+        # Calibration-risk investigation: raw Elo vs identity-shrunk Platt and
+        # Beta calibrators under both policies with strict promotion gates. Runs
+        # after the nested audit and BEFORE the manifest so its decision artifact
+        # is hashed into the manifest. Writes artifacts/calibration_challenger_decision.json.
+        run([python, "-m", "scripts.calibration_challenger", "--data", data,
+             "--artifact-dir", str(root / "artifacts")])
         # Rebuild the Excel twin and emit the machine-readable reconciliation.
         run([python, "-m", "scripts.rebuild_full_workbook"])
         run([python, "-m", "scripts.workbook_reconciliation"])
