@@ -34,14 +34,23 @@ generated for audit, ablation, and the rejected challenger blend — they are
   differential, \(p = \sigma(c + w\,z(\text{elo\_diff}))\), fitted on all games
   through March 31 with the April performance state frozen at March 31. The
   champion has **no stacker and no temperature floor**.
-- Selection is model-specific and April-blind: each procedure (Elo-only,
-  rank-only, blend) picks its own `conservative`/etc. architecture by its own
-  March log loss (Brier tie-break). Selection loads 0 April rows
+- Selection is April-blind: the deployed Elo architecture is chosen by
+  **aggregate frozen-policy rolling out-of-sample log loss** across pre-holdout
+  weekly origins, with a **one-standard-error stability rule** that prefers the
+  simplest/lowest-K architecture inside the noise band. All five candidates fall
+  within one SE; `conservative` wins on both the lowest mean OOS log loss and the
+  lowest K, and a single March split would have picked the same architecture
+  (`architecture_selection` in `selected_spec.json`). The MOV offset (2.2) and
+  the off cold-start warmup are likewise profiled on that surface
+  (`mov_offset_selection`, `cold_start_selection`). Season boundaries are derived
+  from the data (`nba_wp/periods.py`); selection loads 0 April rows
   (`selection_input_max_date = 2026-03-31`).
 - Champion = Elo-only because the nested rolling-origin audit rejects the
   blend (worse out-of-sample log loss and Brier). The blend is retained only as
   a clearly-labelled **rejected challenger**; the stacker/temperature floor
-  belong to it, not to the champion.
+  belong to it, not to the champion. Two further challengers — a cross-fitted
+  calibrated Elo and an Elo + rest/back-to-back schedule Elo — were added to the
+  audit and are **also rejected** under both policies (`keep_raw_elo`).
 - April primary policy: **frozen** — the deployed Elo-only model, April
   performance state frozen at March 31, no April result updating any April
   price. This is the headline `outputs/april_predictions.csv`.

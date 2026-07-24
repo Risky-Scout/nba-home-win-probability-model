@@ -106,6 +106,22 @@ def elo_probability(model: Pipeline, frame: pd.DataFrame) -> np.ndarray:
     return model.predict_proba(frame[["elo_diff"]])[:, 1]
 
 
+SCHEDULE_FEATURES = ["elo_diff", "rest_advantage", "back_to_back_advantage"]
+
+
+def fit_schedule_model(train: pd.DataFrame, c_value: float = 0.5) -> Pipeline:
+    """Elo + schedule/rest challenger: a strongly-regularized logistic on
+    [elo_diff, rest_advantage, back_to_back_advantage]. Small C forces the
+    schedule terms to earn their weight; evaluated as a nested challenger only."""
+    model = _logistic(c_value)
+    model.fit(train[SCHEDULE_FEATURES], train["home_win"].astype(int))
+    return model
+
+
+def schedule_probability(model: Pipeline, frame: pd.DataFrame) -> np.ndarray:
+    return model.predict_proba(frame[SCHEDULE_FEATURES])[:, 1]
+
+
 def elo_model_rows(model: Pipeline) -> list[dict[str, Any]]:
     """Standardized + raw coefficients for the deployed Elo-only model."""
     scaler: StandardScaler = model.named_steps["scale"]
@@ -138,18 +154,35 @@ def elo_calibration_dict(model: Pipeline, architecture_c: float) -> dict[str, An
     estimator: LogisticRegression = model.named_steps["model"]
     coefficient = float(estimator.coef_[0][0])
     scale = float(scaler.scale_[0])
+    mean = float(scaler.mean_[0])
+    intercept = float(estimator.intercept_[0])
+    # Raw-unit reconstruction. The pipeline standardizes first, so
+    #   p = sigmoid(intercept + coef * (elo_diff - mean) / scale)
+    #     = sigmoid(raw_intercept + raw_unit_coefficient * elo_diff)
+    # where raw_intercept ABSORBS the -coef*mean/scale shift. Using
+    # raw_unit_coefficient with the *standardized* intercept is WRONG; use
+    # raw_intercept with it. Both fields are provided so downstream consumers
+    # (e.g. the Excel workbook) cannot mis-reconstruct the price.
+    raw_unit_coefficient = coefficient / scale
+    raw_intercept = intercept - coefficient * mean / scale
     return {
         "method": "logistic_on_elo_diff",
         "feature": "elo_diff",
         "standardized_coefficient": coefficient,
-        "intercept": float(estimator.intercept_[0]),
-        "training_mean": float(scaler.mean_[0]),
+        "intercept": intercept,
+        "training_mean": mean,
         "training_scale": scale,
-        "raw_unit_coefficient": coefficient / scale,
+        "raw_unit_coefficient": raw_unit_coefficient,
+        "raw_intercept": raw_intercept,
         "C": float(architecture_c),
         "note": (
-            "Deployed champion is Elo-only: p = sigmoid(intercept + coef * "
-            "z(elo_diff)) where z standardizes elo_diff by the training mean/scale. "
+            "Deployed champion is Elo-only. Two EQUIVALENT forms: "
+            "(standardized) p = sigmoid(intercept + standardized_coefficient * "
+            "(elo_diff - training_mean)/training_scale); "
+            "(raw) p = sigmoid(raw_intercept + raw_unit_coefficient * elo_diff). "
+            "Do NOT combine raw_unit_coefficient with the standardized intercept: "
+            "raw_intercept = intercept - standardized_coefficient*training_mean/"
+            "training_scale already absorbs the centering shift. "
             "The Elo + rank blend was rejected by the nested rolling-origin audit "
             "(worse out-of-sample log loss and Brier)."
         ),
@@ -296,6 +329,33 @@ def apply_logit_stacker(
 ) -> np.ndarray:
     x = np.column_stack([logit(elo_probability), logit(rank_probability)])
     return stacker.predict_proba(x)[:, 1]
+
+
+def fit_identity_shrunk_calibrator(
+    p_inner: np.ndarray,
+    y_inner: np.ndarray,
+    n0: float = 200.0,
+) -> tuple[float, float]:
+    """Fit logit(p_cal) = alpha + beta*logit(p) by MLE, then shrink toward the
+    IDENTITY map (alpha=0, beta=1) by an empirical-Bayes weight w = n/(n+n0).
+
+    Shrinking toward (0, 1) rather than (0, 0) is deliberate: an underconfident
+    base (MLE beta > 1) is sharpened toward calibration, while small samples fall
+    back to the identity (no-op) instead of to a constant. Returns (alpha, beta).
+    """
+    y = np.asarray(y_inner, dtype=int)
+    z = logit(np.asarray(p_inner, dtype=float))
+    if len(y) < 20 or len(np.unique(y)) < 2:
+        return 0.0, 1.0
+    model = LogisticRegression(C=1e6, solver="lbfgs", max_iter=10_000).fit(z.reshape(-1, 1), y)
+    a_mle, b_mle = float(model.intercept_[0]), float(model.coef_[0, 0])
+    w = len(y) / (len(y) + float(n0))
+    return a_mle * w, 1.0 + w * (b_mle - 1.0)
+
+
+def apply_calibrator(alpha: float, beta: float, p: np.ndarray) -> np.ndarray:
+    """Apply a logit-linear calibrator: p_cal = sigmoid(alpha + beta*logit(p))."""
+    return sigmoid(alpha + beta * logit(np.asarray(p, dtype=float)))
 
 
 def stacker_calibration_dict(stacker: LogisticRegression) -> dict[str, Any]:

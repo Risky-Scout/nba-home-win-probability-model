@@ -29,11 +29,13 @@ Elo-only on both proper scores (`outputs/challenger_blend_april_predictions.csv`
 |---|---:|---:|---:|---:|
 | March (Elo-only) | 0.506590 | 0.165880 | 0.823392 | 76.9874% |
 
-March is a selection period: each procedure (Elo-only, rank-only, blend)
-selects its own architecture by its own March log loss (Brier tie-break). March
-numbers are therefore in-sample for selection and should not be read as an
-independent test. The honest out-of-sample evidence is the nested
-rolling-origin audit below.
+March is an in-sample diagnostic and a cross-check, **not** the selection
+criterion. The deployed Elo architecture is chosen by aggregate frozen-policy
+rolling out-of-sample log loss with a one-standard-error stability rule (see
+`architecture_selection` in `selected_spec.json`); the single March one-step
+split happens to agree. These March numbers are therefore in-sample and should
+not be read as an independent test. The honest out-of-sample evidence is the
+nested rolling-origin audit below.
 
 ## April sequential backtest (live-update simulation, Elo-only)
 

@@ -11,6 +11,7 @@ import pandas as pd
 
 from nba_wp.data import audit_games, load_games
 from nba_wp.model import evaluate
+from nba_wp.periods import derive_periods
 from nba_wp.reporting import score_and_write
 
 
@@ -47,12 +48,20 @@ def main() -> None:
     if audit["pregame_record_reconciliation"]["mismatch_count"] != 0:
         raise AssertionError("Pregame record reconciliation failed.")
 
+    periods = derive_periods(games)
+    selection_cutoff = periods.s(periods.selection_max_date)
+    march_count = int(((games["game_date"] >= periods.selection_start)
+                       & (games["game_date"] < periods.holdout_start)).sum())
+    april_count = int((games["game_date"] >= periods.holdout_start).sum())
+
     selected = json.loads((root / "artifacts" / "selected_spec.json").read_text())
     proof = json.loads((root / "artifacts" / "selection_proof.json").read_text())
     if proof["april_rows_loaded"] != 0:
         raise AssertionError("Model selection loaded April rows.")
-    if selected["selection_data_max_date"] != "2026-03-31":
-        raise AssertionError("Unexpected selection cutoff.")
+    if selected["selection_data_max_date"] != selection_cutoff:
+        raise AssertionError(
+            f"Unexpected selection cutoff: {selected['selection_data_max_date']} != {selection_cutoff}"
+        )
 
     final_metrics = json.loads(
         (root / "artifacts" / "final_metrics.json").read_text()
@@ -62,7 +71,7 @@ def main() -> None:
             root / "outputs" / f"{period}_predictions.csv",
             dtype={"game_id": "string"},
         )
-        expected_count = 239 if period == "march" else 96
+        expected_count = march_count if period == "march" else april_count
         if len(predictions) != expected_count:
             raise AssertionError(
                 f"{period}: expected {expected_count} predictions, found {len(predictions)}"

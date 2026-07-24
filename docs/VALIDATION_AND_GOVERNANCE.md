@@ -8,19 +8,23 @@ described below belong to that challenger, not to the deployed model.
 
 | Period | Role |
 |---|---|
-| October-February | Base fit for the March one-step-ahead evaluation |
-| March | Per-procedure architecture selection |
+| October-February | Base fit for the March one-step-ahead cross-check |
+| Pre-holdout weekly origins | Aggregate frozen-policy OOS surface used to select the deployed architecture |
+| March | In-sample diagnostic report + rank/blend challenger references |
 | October-March | Refit deployed champion coefficients (through March 31) |
 | April | Final retrospective scoring period (state frozen at March 31) |
 
-No random train/test split is used.
+No random train/test split is used. All period boundaries are **derived from the
+data** (`nba_wp/periods.py`: last calendar month = holdout, prior month =
+selection), not hard-coded, so a different season re-slices automatically.
 
 ## Selection input contract
 
 `scripts/select_model.py` executes:
 
 ```python
-selection_games = games[games["game_date"] < "2026-04-01"].copy()
+periods = derive_periods(games)                 # holdout = last month (April)
+selection_games = games[games["game_date"] < periods.holdout_start].copy()
 ```
 
 `nba_wp.selection.run_selection` then raises an exception if its maximum date
@@ -55,10 +59,25 @@ Five named architectures are declared before execution in
 - component logistic regularization.
 
 This is a small, inspectable structural grid rather than unrestricted automated
-model discovery. Selection is **model-specific**: each procedure (Elo-only,
-rank-only, blend) independently selects its own architecture by its own March
-log loss (Brier tie-break). The deployed champion is the `conservative`
-architecture selected on the Elo-only March log loss.
+model discovery. The **deployed Elo architecture** is chosen by aggregate
+**frozen-policy rolling out-of-sample log loss** over the pre-holdout weekly
+origins, with a **one-standard-error stability rule**: among all architectures
+whose mean OOS log loss lies within one standard error of the best, the simplest
+(lowest `K`) is deployed. For this data every architecture sits within one SE and
+`conservative` wins outright (lowest mean OOS log loss *and* lowest `K`); a single
+March one-step split would pick the same architecture. The full ranking, the
+one-SE band, and the March cross-check are recorded under `architecture_selection`
+in `artifacts/selected_spec.json` (`tests/test_architecture_selection.py`). The
+per-procedure March comparison is retained as a diagnostic and for the rank/blend
+challenger references.
+
+Two further constants are also **data-driven**, profiled on the same frozen OOS
+surface and recorded in `selected_spec.json`: the margin-of-victory offset
+(`mov_offset_selection`, empirically confirmed at 2.2 — kept because it is within
+one SE of the grid best) and an early-season provisional-K warmup
+(`cold_start_selection`, profiled and kept **off** because it does not beat
+no-warmup). Neither changes the deployed numbers; both replace an unexamined
+constant with an auditable choice.
 
 ## Deployed champion — Elo-only
 
@@ -95,11 +114,22 @@ All challenger coefficients live under the `challenger` block of
 
 ## Selection and promotion rule
 
-Each procedure minimizes its own March log loss (architecture-name tie-break).
-The **champion** is then chosen by the nested rolling-origin audit: promote the
-blend over Elo-only only if it beats Elo-only on **both** log loss and Brier
-with the block-bootstrap upper CI below zero. That bar is not met, so the
-decision under both information policies is **keep_elo_only**.
+The deployed architecture is fixed by the one-standard-error stability rule
+above. The **champion model family** is then decided by the nested rolling-origin
+audit under a strict promotion bar: a challenger is promoted over Elo-only only if
+it beats Elo-only on **both** log loss and Brier with the block-bootstrap upper CI
+below zero, under both information policies. Three challengers are evaluated and
+**all three are rejected**:
+
+- **Convex blend** (Elo + Bradley-Terry/trend): worse on both proper scores →
+  `keep_elo_only`.
+- **Calibrated Elo** (cross-fitted, identity-shrunk `α + β·logit(p_elo)`):
+  over-corrects out-of-sample (β ≈ 1.79 vs raw 1.34) → `keep_raw_elo`.
+- **Schedule Elo** (Elo + rest + back-to-back, strongly regularized): slightly
+  worse OOS on both scores → `keep_raw_elo`.
+
+The single statistically strong claim is exactly this rejection of the more
+complex challengers; the simplest model is deployed.
 
 The deployed coefficients are not copied into scoring source code. They are
 written by selection to `artifacts/selected_spec.json`, and the scorer refits

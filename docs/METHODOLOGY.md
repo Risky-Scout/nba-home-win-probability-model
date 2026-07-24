@@ -72,6 +72,21 @@ than an expected result, and keeps the update team-swap symmetric at zero home
 advantage. The denominator is guarded in code against pathological values, and
 the behaviour is pinned by `tests/test_elo_mov_winner_diff.py`.
 
+The multiplier offset (the `2.2`) and slope (`0.001`) are **data-driven** rather
+than merely borrowed from FiveThirtyEight: the offset is profiled on the
+frozen-policy rolling out-of-sample surface over the grid
+\(\{1.6, 2.0, 2.2, 2.6, 3.0\}\), and `2.2` is kept because it is within one
+standard error of the nominal best (`3.0`), so it is now empirically confirmed
+on our data. Both `mov_offset` and `mov_slope` are exposed as tunable fields;
+see `mov_offset_selection` in `artifacts/selected_spec.json`.
+
+An Elo cold-start refinement — a provisional-K warmup for a team's first few
+games — was also implemented and profiled on the same surface, but kept **off**
+(`warmup_games = 0`) because every warmup configuration worsened out-of-sample
+log loss (`cold_start_selection` in `selected_spec.json`). A same-season record
+prior was intentionally *not* added, being redundant with Elo, which already
+incorporates same-season results.
+
 The raw Elo feature (called `elo_diff`) is
 
 \[
@@ -104,9 +119,14 @@ s = 0.2690252334,
 \]
 
 equivalent to a raw-unit weight of \(3.4464512465\) per unit of `elo_diff`
-(\(w/s\)). All five values are stored in `artifacts/selected_spec.json` under
+(\(w/s\)). All values are stored in `artifacts/selected_spec.json` under
 `elo_model`, and the primary April prices recompute from them (pinned by
-`tests/test_champion_promotion.py`).
+`tests/test_champion_promotion.py`). The raw form is also exposed directly:
+alongside `raw_unit_coefficient` the spec now carries `raw_intercept`
+\(= c - w\mu/s = -0.2437680682\), the correct raw-space intercept. When pricing
+from the raw-unit coefficient, pair it with `raw_intercept`, **not** with the
+standardized `intercept` \(c\) — `raw_intercept` already absorbs the centering
+shift (pinned by `tests/test_workbook_reconstruction.py`).
 
 Elo-only is the champion because the nested rolling-origin audit (see
 `docs/VALIDATION_AND_GOVERNANCE.md`) rejects the Elo + rank blend: the blend

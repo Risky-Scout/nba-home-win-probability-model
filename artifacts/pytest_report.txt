@@ -1,8 +1,17 @@
-.........................                                                [100%]
+.......................................                                  [100%]
 ==================================== PASSES ====================================
 =========================== short test summary info ============================
+PASSED tests/test_architecture_selection.py::test_architecture_selection_block_present
+PASSED tests/test_architecture_selection.py::test_chosen_matches_deployed_architecture
+PASSED tests/test_architecture_selection.py::test_chosen_is_within_one_standard_error_band
+PASSED tests/test_architecture_selection.py::test_ranking_is_sorted_by_mean_log_loss
+PASSED tests/test_architecture_selection.py::test_chosen_is_simplest_within_band
 PASSED tests/test_artifacts.py::test_selection_proof_excludes_april
 PASSED tests/test_artifacts.py::test_saved_metrics_recompute_from_predictions
+PASSED tests/test_calibration_challenger.py::test_small_sample_falls_back_to_identity
+PASSED tests/test_calibration_challenger.py::test_huge_n0_shrinks_to_identity
+PASSED tests/test_calibration_challenger.py::test_underconfident_base_is_sharpened_between_1_and_mle
+PASSED tests/test_calibration_challenger.py::test_apply_calibrator_identity_is_noop
 PASSED tests/test_champion_promotion.py::test_selected_spec_is_elo_only_after_promotion
 PASSED tests/test_champion_promotion.py::test_final_metrics_model_family_matches_selected_spec
 PASSED tests/test_champion_promotion.py::test_deployed_model_matches_champion_decision
@@ -26,4 +35,9 @@ PASSED tests/test_real_data_contract.py::test_real_data_audit
 PASSED tests/test_real_data_contract.py::test_april_mutation_cannot_change_march_features
 PASSED tests/test_stacker_temperature_floor.py::test_stacker_temperature_floor_removes_sharpening
 PASSED tests/test_stacker_temperature_floor.py::test_stacker_weights_are_convex_when_stacker_is_used
-25 passed in 13.52s
+PASSED tests/test_workbook_reconstruction.py::test_raw_intercept_present_and_consistent
+PASSED tests/test_workbook_reconstruction.py::test_standardized_form_reproduces_deployed_prices
+PASSED tests/test_workbook_reconstruction.py::test_raw_form_reproduces_deployed_prices
+PASSED tests/test_workbook_reconstruction.py::test_naive_raw_coef_with_standardized_intercept_is_wrong
+PASSED tests/test_workbook_reconstruction.py::test_workbook_reconciliation_artifact_passes
+39 passed in 14.24s

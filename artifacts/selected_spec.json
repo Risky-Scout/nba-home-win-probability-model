@@ -1,7 +1,7 @@
 {
   "model_family": "elo_only",
   "champion": "elo_only",
-  "selected_using": "March 2026 one-step-ahead validation (Elo-only log loss)",
+  "selected_using": "Aggregate frozen-policy rolling OOS log loss (one-standard-error stability rule)",
   "selection_data_max_date": "2026-03-31",
   "april_rows_loaded_during_selection": 0,
   "selection_rule": "Each procedure (Elo-only, rank-only, blend) selects its own architecture by its own March log loss (Brier tie-break). Champion is Elo-only: the nested rolling-origin audit shows the blend does not beat Elo-only out-of-sample on log loss or Brier, so the simpler model is deployed. The blend is retained as a rejected challenger.",
@@ -20,7 +20,150 @@
     "trend_half_life_days": 60.0,
     "trend_short_games": 12,
     "elo_model_c": 10.0,
-    "rank_model_c": 0.1
+    "rank_model_c": 0.1,
+    "mov_offset": 2.2,
+    "mov_slope": 0.001,
+    "warmup_games": 0,
+    "elo_k_warmup": 0.0
+  },
+  "architecture_selection": {
+    "rule": "Deployed Elo architecture chosen by aggregate frozen-policy out-of-sample log loss over pre-holdout weekly origins, with a one-standard-error rule preferring the simplest/most stable architecture inside the noise band. Policy-matched to the frozen April deliverable; no holdout row is used.",
+    "chosen": "conservative",
+    "one_se_threshold": 0.5608210098150276,
+    "within_one_se": [
+      "conservative",
+      "hfa_75",
+      "balanced",
+      "lower_bt_shrinkage",
+      "responsive"
+    ],
+    "ranking": [
+      {
+        "architecture": "conservative",
+        "elo_k": 7.5,
+        "n_folds": 9,
+        "mean_log_loss": 0.5420432901426099,
+        "se_log_loss": 0.018777719672417755,
+        "std_log_loss": 0.05633315901725327,
+        "mean_brier": 0.180996208184342
+      },
+      {
+        "architecture": "hfa_75",
+        "elo_k": 10.0,
+        "n_folds": 9,
+        "mean_log_loss": 0.5443516518648966,
+        "se_log_loss": 0.018412310603434102,
+        "std_log_loss": 0.05523693181030231,
+        "mean_brier": 0.18202841060381453
+      },
+      {
+        "architecture": "balanced",
+        "elo_k": 10.0,
+        "n_folds": 9,
+        "mean_log_loss": 0.5444781558528758,
+        "se_log_loss": 0.01842626630392778,
+        "std_log_loss": 0.05527879891178333,
+        "mean_brier": 0.1820608508336049
+      },
+      {
+        "architecture": "lower_bt_shrinkage",
+        "elo_k": 10.0,
+        "n_folds": 9,
+        "mean_log_loss": 0.5444781558528758,
+        "se_log_loss": 0.01842626630392778,
+        "std_log_loss": 0.05527879891178333,
+        "mean_brier": 0.1820608508336049
+      },
+      {
+        "architecture": "responsive",
+        "elo_k": 15.0,
+        "n_folds": 9,
+        "mean_log_loss": 0.5500193674297347,
+        "se_log_loss": 0.018136777460057086,
+        "std_log_loss": 0.054410332380171254,
+        "mean_brier": 0.18450150373120297
+      }
+    ],
+    "march_single_split_would_choose": "conservative"
+  },
+  "mov_offset_selection": {
+    "rule": "MOV multiplier offset profiled on the frozen-policy rolling OOS surface; the literature value 2.2 is kept unless a grid value beats it beyond one standard error.",
+    "chosen_offset": 2.2,
+    "rationale": "default_within_one_se_of_best",
+    "best_offset": 3.0,
+    "grid": [
+      1.6,
+      2.0,
+      2.2,
+      2.6,
+      3.0
+    ],
+    "profile": [
+      {
+        "mov_offset": 3.0,
+        "mean_log_loss": 0.5417432311528817,
+        "se_log_loss": 0.018817125553773056,
+        "mean_brier": 0.18087064190223862
+      },
+      {
+        "mov_offset": 2.6,
+        "mean_log_loss": 0.5418682943979971,
+        "se_log_loss": 0.01880007645310258,
+        "mean_brier": 0.18092290810077427
+      },
+      {
+        "mov_offset": 2.2,
+        "mean_log_loss": 0.5420432901426099,
+        "se_log_loss": 0.018777719672417755,
+        "mean_brier": 0.180996208184342
+      },
+      {
+        "mov_offset": 2.0,
+        "mean_log_loss": 0.5421598092510234,
+        "se_log_loss": 0.018763736251631084,
+        "mean_brier": 0.1810451157644318
+      },
+      {
+        "mov_offset": 1.6,
+        "mean_log_loss": 0.5424915843850303,
+        "se_log_loss": 0.018727491610527093,
+        "mean_brier": 0.18118478535890828
+      }
+    ]
+  },
+  "cold_start_selection": {
+    "rule": "Provisional-K warmup profiled on the frozen-policy rolling OOS surface; kept OFF unless a configuration beats no-warmup by more than one standard error. A same-season record prior is omitted as redundant with Elo.",
+    "chosen": {
+      "warmup_games": 0,
+      "elo_k_warmup": 0.0
+    },
+    "rationale": "off_within_one_se_of_best",
+    "profile": [
+      {
+        "warmup_games": 0,
+        "elo_k_warmup": 0.0,
+        "mean_log_loss": 0.5420432901426099,
+        "se_log_loss": 0.018777719672417755
+      },
+      {
+        "warmup_games": 5,
+        "elo_k_warmup": 15.0,
+        "mean_log_loss": 0.5446915209332813,
+        "se_log_loss": 0.01861426857099353
+      },
+      {
+        "warmup_games": 10,
+        "elo_k_warmup": 15.0,
+        "mean_log_loss": 0.545230131049433,
+        "se_log_loss": 0.01857155310996935
+      },
+      {
+        "warmup_games": 10,
+        "elo_k_warmup": 22.5,
+        "mean_log_loss": 0.549379287035013,
+        "se_log_loss": 0.018338737265257577
+      }
+    ]
   },
   "elo_model": {
     "method": "logistic_on_elo_diff",
@@ -30,8 +173,9 @@
     "training_mean": 0.14081468771906555,
     "training_scale": 0.2690252333909796,
     "raw_unit_coefficient": 3.4464512465385932,
+    "raw_intercept": -0.2437680681655872,
     "C": 10.0,
-    "note": "Deployed champion is Elo-only: p = sigmoid(intercept + coef * z(elo_diff)) where z standardizes elo_diff by the training mean/scale. The Elo + rank blend was rejected by the nested rolling-origin audit (worse out-of-sample log loss and Brier)."
+    "note": "Deployed champion is Elo-only. Two EQUIVALENT forms: (standardized) p = sigmoid(intercept + standardized_coefficient * (elo_diff - training_mean)/training_scale); (raw) p = sigmoid(raw_intercept + raw_unit_coefficient * elo_diff). Do NOT combine raw_unit_coefficient with the standardized intercept: raw_intercept = intercept - standardized_coefficient*training_mean/training_scale already absorbs the centering shift. The Elo + rank blend was rejected by the nested rolling-origin audit (worse out-of-sample log loss and Brier)."
   },
   "march_validation_metrics": {
     "log_loss": 0.5065900312308793,
@@ -52,7 +196,11 @@
       "trend_half_life_days": 60.0,
       "trend_short_games": 12,
       "elo_model_c": 10.0,
-      "rank_model_c": 0.1
+      "rank_model_c": 0.1,
+      "mov_offset": 2.2,
+      "mov_slope": 0.001,
+      "warmup_games": 0,
+      "elo_k_warmup": 0.0
     },
     "calibration": {
       "method": "logistic_stack",
@@ -86,7 +234,11 @@
       "trend_half_life_days": 45.0,
       "trend_short_games": 10,
       "elo_model_c": 100.0,
-      "rank_model_c": 0.1
+      "rank_model_c": 0.1,
+      "mov_offset": 2.2,
+      "mov_slope": 0.001,
+      "warmup_games": 0,
+      "elo_k_warmup": 0.0
     },
     "march_metrics": {
       "log_loss": 0.5291287695685651,
@@ -97,8 +249,8 @@
   },
   "architecture_count": 5,
   "notes": [
-    "Elo architecture selected by Elo-only March log loss (base fit through February).",
-    "Deployed Elo-only probability map is refit on all rows through March 31.",
+    "Elo architecture selected by aggregate frozen-policy rolling OOS log loss with a one-standard-error stability rule (pre-holdout only).",
+    "Deployed Elo-only probability map is refit on all rows through the selection cutoff.",
     "March state features update only after each completed game date.",
     "No April row is loaded by model selection.",
     "March is used for both architecture selection and reported March metrics, so March is in-sample for selection and is not a pristine holdout. The out-of-sample evidence is the nested audit.",

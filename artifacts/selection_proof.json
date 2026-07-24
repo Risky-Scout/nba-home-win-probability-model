@@ -12,8 +12,9 @@
     "training_mean": 0.14081468771906555,
     "training_scale": 0.2690252333909796,
     "raw_unit_coefficient": 3.4464512465385932,
+    "raw_intercept": -0.2437680681655872,
     "C": 10.0,
-    "note": "Deployed champion is Elo-only: p = sigmoid(intercept + coef * z(elo_diff)) where z standardizes elo_diff by the training mean/scale. The Elo + rank blend was rejected by the nested rolling-origin audit (worse out-of-sample log loss and Brier)."
+    "note": "Deployed champion is Elo-only. Two EQUIVALENT forms: (standardized) p = sigmoid(intercept + standardized_coefficient * (elo_diff - training_mean)/training_scale); (raw) p = sigmoid(raw_intercept + raw_unit_coefficient * elo_diff). Do NOT combine raw_unit_coefficient with the standardized intercept: raw_intercept = intercept - standardized_coefficient*training_mean/training_scale already absorbs the centering shift. The Elo + rank blend was rejected by the nested rolling-origin audit (worse out-of-sample log loss and Brier)."
   },
   "rejected_challenger": "logistic-stacked blend: Elo + Bradley-Terry/recent-trend",
   "selection_rule": "Each procedure (Elo-only, rank-only, blend) selects its own architecture by its own March log loss (Brier tie-break). Champion is Elo-only: the nested rolling-origin audit shows the blend does not beat Elo-only out-of-sample on log loss or Brier, so the simpler model is deployed. The blend is retained as a rejected challenger."

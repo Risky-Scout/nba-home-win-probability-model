@@ -48,10 +48,15 @@ where the temperature floor / convex-stacker note belongs.
 
 - Declared candidates: `configs/architecture_candidates.json` (all five)
 - All five scored: `artifacts/march_architecture_results.csv`
-- Rule: model-specific — each procedure (Elo-only, rank-only, blend) selects its
-  own architecture by its own March log loss (Brier tie-break); champion is
-  Elo-only because the nested audit rejects the blend
-  (`selected_spec.json`: `model_family = "elo_only"`, `champion = "elo_only"`)
+- Rule: the deployed Elo architecture is chosen by **aggregate frozen-policy
+  rolling OOS log loss with a one-standard-error stability rule** (simplest/lowest-K
+  within the band; `conservative` wins outright and a single March split agrees).
+  See `architecture_selection` in `selected_spec.json` and
+  `tests/test_architecture_selection.py`. The MOV offset (2.2) and cold-start
+  warmup (off) are likewise data-driven (`mov_offset_selection`,
+  `cold_start_selection`). Champion family is Elo-only because the nested audit
+  rejects every challenger (`selected_spec.json`: `model_family = "elo_only"`,
+  `champion = "elo_only"`)
 - April exclusion proof: `artifacts/selection_proof.json`
   (`selection_input_max_date = 2026-03-31`, zero April rows; the selection
   function raises otherwise)
@@ -66,8 +71,12 @@ protocol. The decisive out-of-sample comparison is the **nested rolling-origin
 audit** (`scripts/nested_validation.py`): pooled Elo-only 0.532 log loss /
 0.177 Brier versus blend 0.548 / 0.183, with block-bootstrap blend − Elo-only
 CIs entirely above zero on both metrics (0 of 4,000 replicates favored the
-blend). See `artifacts/nested_frozen_block_summary.json` and
-`artifacts/nested_daily_sequential_summary.json`.
+blend). Two further challengers are also rejected on the same surface: a
+cross-fitted **calibrated Elo** (0.548 / 0.183; over-corrects, β ≈ 1.79) and a
+**schedule Elo** (Elo + rest + back-to-back, 0.531 / 0.177; slightly worse on
+both scores). See `artifacts/nested_frozen_block_summary.json` and
+`artifacts/nested_daily_sequential_summary.json` (`calibration_challenger`,
+`schedule_challenger`).
 
 ## 7. Results
 

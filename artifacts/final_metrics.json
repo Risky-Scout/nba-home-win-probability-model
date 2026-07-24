@@ -12,7 +12,11 @@
       "trend_half_life_days": 60.0,
       "trend_short_games": 12,
       "elo_model_c": 10.0,
-      "rank_model_c": 0.1
+      "rank_model_c": 0.1,
+      "mov_offset": 2.2,
+      "mov_slope": 0.001,
+      "warmup_games": 0,
+      "elo_k_warmup": 0.0
     },
     "elo_model": {
       "method": "logistic_on_elo_diff",
@@ -22,8 +26,9 @@
       "training_mean": 0.14081468771906555,
       "training_scale": 0.2690252333909796,
       "raw_unit_coefficient": 3.4464512465385932,
+      "raw_intercept": -0.2437680681655872,
       "C": 10.0,
-      "note": "Deployed champion is Elo-only: p = sigmoid(intercept + coef * z(elo_diff)) where z standardizes elo_diff by the training mean/scale. The Elo + rank blend was rejected by the nested rolling-origin audit (worse out-of-sample log loss and Brier)."
+      "note": "Deployed champion is Elo-only. Two EQUIVALENT forms: (standardized) p = sigmoid(intercept + standardized_coefficient * (elo_diff - training_mean)/training_scale); (raw) p = sigmoid(raw_intercept + raw_unit_coefficient * elo_diff). Do NOT combine raw_unit_coefficient with the standardized intercept: raw_intercept = intercept - standardized_coefficient*training_mean/training_scale already absorbs the centering shift. The Elo + rank blend was rejected by the nested rolling-origin audit (worse out-of-sample log loss and Brier)."
     }
   },
   "primary_april_policy": "frozen_pre_april",
@@ -110,5 +115,5 @@
     },
     "note": "Blend shown for transparency only; rejected by the nested rolling-origin audit (worse out-of-sample than Elo-only)."
   },
-  "information_policy_note": "Champion is Elo-only. Primary April output is frozen_pre_april: performance state is frozen at 2026-03-31 and the Elo probability map is fit on all rows through March 31. april_predictions_sequential_backtest.csv is a live-update simulation only. March is used for architecture selection and is in-sample for selection; the honest out-of-sample evidence is the nested audit (artifacts/nested_*_summary.json)."
+  "information_policy_note": "Champion is Elo-only. Primary April output is frozen_pre_april: performance state is frozen at 2026-03-31 and the Elo probability map is fit on all rows through 2026-03-31. april_predictions_sequential_backtest.csv is a live-update simulation only. March is used for architecture selection and is in-sample for selection; the honest out-of-sample evidence is the nested audit (artifacts/nested_*_summary.json)."
 }

@@ -21,10 +21,23 @@ class Architecture:
     trend_short_games: int
     elo_model_c: float
     rank_model_c: float
+    # Margin-of-victory multiplier constants (FiveThirtyEight form). Defaults
+    # reproduce the historical borrowed values; both are now tunable so the
+    # offset can be empirically profiled on out-of-sample data instead of
+    # inherited unquestioned. multiplier = ln(|margin|+1) * offset /
+    # (slope * winner_rating_diff + offset).
+    mov_offset: float = 2.2
+    mov_slope: float = 0.001
+    # Cold-start: a team uses ``elo_k_warmup`` for its first ``warmup_games``
+    # games so early-season ratings differentiate faster. warmup_games=0 (default)
+    # disables it and the update stays exactly the historical zero-sum form.
+    warmup_games: int = 0
+    elo_k_warmup: float = 0.0
 
     @classmethod
     def from_dict(cls, values: dict[str, Any]) -> "Architecture":
-        return cls(**values)
+        allowed = {f for f in cls.__dataclass_fields__}
+        return cls(**{k: v for k, v in values.items() if k in allowed})
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -132,14 +145,17 @@ def _elo_multiplier(
     margin: float,
     rating_difference_without_hfa: float,
     mode: str,
+    *,
+    offset: float = 2.2,
+    slope: float = 0.001,
 ) -> float:
     if mode == "none":
         return 1.0
     if mode == "log":
-        denominator = rating_difference_without_hfa * 0.001 + 2.2
+        denominator = rating_difference_without_hfa * slope + offset
         # Guard against a pathological denominator if a future dataset is extreme.
         denominator = max(0.25, denominator)
-        return float(np.log(abs(margin) + 1.0) * (2.2 / denominator))
+        return float(np.log(abs(margin) + 1.0) * (offset / denominator))
     raise ValueError(f"Unsupported Elo margin mode: {mode}")
 
 
@@ -305,14 +321,24 @@ def build_features(
                 abs(margin),
                 winner_rating_diff,
                 architecture.elo_mov,
+                offset=architecture.mov_offset,
+                slope=architecture.mov_slope,
             )
-            delta = (
-                architecture.elo_k
-                * multiplier
-                * (int(row.home_win) - expected_home)
+            # Per-team provisional K (cold-start). With warmup_games=0 this is a
+            # single K for both teams and the update is exactly zero-sum.
+            k_home = (
+                architecture.elo_k_warmup
+                if len(histories[home]) < architecture.warmup_games
+                else architecture.elo_k
             )
-            ratings[home] += delta
-            ratings[away] -= delta
+            k_away = (
+                architecture.elo_k_warmup
+                if len(histories[away]) < architecture.warmup_games
+                else architecture.elo_k
+            )
+            step = multiplier * (int(row.home_win) - expected_home)
+            ratings[home] += k_home * step
+            ratings[away] -= k_away * step
 
             histories[home].append(
                 {

@@ -48,16 +48,22 @@ from sklearn.metrics import brier_score_loss, log_loss, roc_auc_score
 
 from nba_wp.data import load_games
 from nba_wp.features import Architecture, build_features
+from nba_wp.periods import derive_periods
 from nba_wp.model import (
+    apply_calibrator,
     apply_logit_stacker,
     component_probabilities,
     fit_base_models,
+    fit_identity_shrunk_calibrator,
     fit_logit_stacker,
+    fit_schedule_model,
     logit,
+    schedule_probability,
+    sigmoid,
 )
 
 EPS = 1e-12
-CANDIDATES = ["constant", "elo_only", "rank_only", "blend"]
+CANDIDATES = ["constant", "elo_only", "rank_only", "blend", "calibrated_elo", "schedule_elo"]
 
 
 def _clip(p: np.ndarray) -> np.ndarray:
@@ -80,23 +86,62 @@ def _weekly(start: pd.Timestamp, end: pd.Timestamp, step: int = 7) -> list[pd.Ti
     return out
 
 
-def _inner_oof(features: pd.DataFrame, arch: Architecture, origin: pd.Timestamp,
-               inner_start: pd.Timestamp, min_base: int) -> pd.DataFrame:
-    """Expanding-window inner OOF component predictions on data before origin."""
-    train_all = features[features["game_date"] < origin]
-    rows: list[pd.DataFrame] = []
-    for io in _weekly(inner_start, origin - pd.Timedelta(days=1)):
-        tr = train_all[train_all["game_date"] < io]
-        fold = train_all[(train_all["game_date"] >= io) & (train_all["game_date"] < io + pd.Timedelta(days=7))]
+def _make_inner_fold_computer(games, seq_cache, arch_by_name, min_base):
+    """Return a memoized ``inner_fold(policy, arch_name, io)`` function.
+
+    An inner fold [io, io+7) trained on data before ``io`` is *independent of the
+    outer origin*, so it is computed exactly once and reused across every outer
+    fold. Two information policies are supported and never mixed:
+
+      * ``"sequential"`` : uses the causal (daily-updating) feature cache, so
+        earlier games in an inner week update later games in that week. This is
+        the information policy of the daily-sequential live simulation.
+      * ``"frozen"``     : builds features with ``freeze_date=io`` so every
+        prediction in [io, io+7) uses only performance available before ``io``.
+        This is the information policy of the frozen month-start deliverable, and
+        it is the policy under which the frozen block's architecture MUST be
+        selected (fixes the auditor's sequential-inner / frozen-outer mismatch).
+    """
+    frozen_feat_cache: dict[tuple[str, str], pd.DataFrame] = {}
+    fold_cache: dict[tuple[str, str, str], pd.DataFrame | None] = {}
+
+    def _frozen_features(name: str, io: pd.Timestamp) -> pd.DataFrame:
+        key = (name, io.strftime("%Y-%m-%d"))
+        if key not in frozen_feat_cache:
+            frozen_feat_cache[key] = build_features(games, arch_by_name[name], freeze_date=io)
+        return frozen_feat_cache[key]
+
+    def inner_fold(policy: str, name: str, io: pd.Timestamp):
+        key = (policy, name, io.strftime("%Y-%m-%d"))
+        if key in fold_cache:
+            return fold_cache[key]
+        feat = _frozen_features(name, io) if policy == "frozen" else seq_cache[name]
+        tr = feat[feat["game_date"] < io]
+        fold = feat[(feat["game_date"] >= io) & (feat["game_date"] < io + pd.Timedelta(days=7))]
         if len(fold) == 0 or len(tr) < min_base or tr["home_win"].nunique() < 2:
-            continue
-        base = fit_base_models(tr, arch)
+            fold_cache[key] = None
+            return None
+        base = fit_base_models(tr, arch_by_name[name])
         pe, pr = component_probabilities(base, fold)
-        rows.append(pd.DataFrame({
+        res = pd.DataFrame({
             "game_date": fold["game_date"].to_numpy(),
             "home_win": fold["home_win"].to_numpy(dtype=int),
             "pe": pe, "pr": pr,
-        }))
+        })
+        fold_cache[key] = res
+        return res
+
+    return inner_fold
+
+
+def _inner_oof(inner_fold, policy: str, arch: Architecture, origin: pd.Timestamp,
+               inner_start: pd.Timestamp) -> pd.DataFrame:
+    """Concatenate every cached inner fold strictly before ``origin`` under ``policy``."""
+    rows: list[pd.DataFrame] = []
+    for io in _weekly(inner_start, origin - pd.Timedelta(days=1)):
+        res = inner_fold(policy, arch.name, io)
+        if res is not None and len(res):
+            rows.append(res)
     if not rows:
         return pd.DataFrame(columns=["game_date", "home_win", "pe", "pr"])
     return pd.concat(rows, ignore_index=True)
@@ -120,13 +165,16 @@ def _inner_blend_ll(oof: pd.DataFrame, min_stacker: int) -> float:
     return float(num / den) if den else float("inf")
 
 
-def _select_architectures(feature_cache, architectures, origin, inner_start, min_base, min_stacker):
-    """Independently pick the best architecture for Elo, rank, and blend."""
+def _select_architectures(inner_fold, policy, architectures, origin, inner_start, min_base, min_stacker):
+    """Independently pick the best architecture for Elo, rank, and blend under one
+    information policy. The inner OOF used here is built with the SAME policy that
+    the outer evaluation will use, so frozen deployment is validated by frozen
+    inner selection and daily deployment by sequential inner selection."""
     best = {"elo_only": (float("inf"), None, None),
             "rank_only": (float("inf"), None, None),
             "blend": (float("inf"), None, None)}
     for arch in architectures:
-        oof = _inner_oof(feature_cache[arch.name], arch, origin, inner_start, min_base)
+        oof = _inner_oof(inner_fold, policy, arch, origin, inner_start)
         if len(oof) < min_base:
             continue
         y = oof["home_win"].to_numpy(int)
@@ -235,6 +283,8 @@ def _summarize(preds: pd.DataFrame, policy: str, rng, n_boot: int) -> dict:
         "elo_minus_constant": boot_paired(cand["elo_only"], cand["constant"]),
         "elo_minus_rank": boot_paired(cand["elo_only"], cand["rank_only"]),
         "blend_minus_constant": boot_paired(cand["blend"], cand["constant"]),
+        "calibrated_elo_minus_elo": boot_paired(cand["calibrated_elo"], cand["elo_only"]),
+        "schedule_elo_minus_elo": boot_paired(cand["schedule_elo"], cand["elo_only"]),
     }
 
     calibration = {c: _calibration_report(y, cand[c], block_id, blocks, rng) for c in CANDIDATES}
@@ -252,10 +302,39 @@ def _summarize(preds: pd.DataFrame, policy: str, rng, n_boot: int) -> dict:
         "blend_beats_elo_stable": bool(stable),
         "decision": "promote_blend" if (blend_beats_elo and stable) else "keep_elo_only",
     }
+
+    cal_beats = (pooled["calibrated_elo"]["log_loss"] < pooled["elo_only"]["log_loss"]
+                 and pooled["calibrated_elo"]["brier"] < pooled["elo_only"]["brier"])
+    cal_stable = (paired["calibrated_elo_minus_elo"]["delta_log_loss_ci_97_5"] < 0.0
+                  and paired["calibrated_elo_minus_elo"]["delta_brier_ci_97_5"] < 0.0)
+    calibration_verdict = {
+        "champion": "elo_only",
+        "challenger": "calibrated_elo",
+        "rule": ("Promote the cross-fitted identity-shrunk calibrator only if it beats raw "
+                 "Elo-only on BOTH pooled log loss and Brier with block-bootstrap upper CI < 0."),
+        "calibrated_beats_elo_point_estimate_both": bool(cal_beats),
+        "calibrated_beats_elo_stable": bool(cal_stable),
+        "decision": "promote_calibrated_elo" if (cal_beats and cal_stable) else "keep_raw_elo",
+    }
+    sched_beats = (pooled["schedule_elo"]["log_loss"] < pooled["elo_only"]["log_loss"]
+                   and pooled["schedule_elo"]["brier"] < pooled["elo_only"]["brier"])
+    sched_stable = (paired["schedule_elo_minus_elo"]["delta_log_loss_ci_97_5"] < 0.0
+                    and paired["schedule_elo_minus_elo"]["delta_brier_ci_97_5"] < 0.0)
+    schedule_verdict = {
+        "champion": "elo_only",
+        "challenger": "schedule_elo",
+        "rule": ("Promote the Elo+schedule challenger only if it beats raw Elo-only on "
+                 "BOTH pooled log loss and Brier with block-bootstrap upper CI < 0."),
+        "schedule_beats_elo_point_estimate_both": bool(sched_beats),
+        "schedule_beats_elo_stable": bool(sched_stable),
+        "decision": "promote_schedule_elo" if (sched_beats and sched_stable) else "keep_raw_elo",
+    }
     return {"policy": policy, "pooled_games": int(len(preds)),
             "pooled_metrics": pooled, "paired_block_bootstrap": paired,
             "calibration": calibration, "tail_counts": tails,
-            "champion_challenger": verdict}
+            "champion_challenger": verdict,
+            "calibration_challenger": calibration_verdict,
+            "schedule_challenger": schedule_verdict}
 
 
 def _reliability_figure(preds, summary, path, title):
@@ -281,8 +360,8 @@ def _reliability_figure(preds, summary, path, title):
 
 
 def run(data_path, config_path, artifact_dir, figure_dir, *,
-        outer_start="2026-02-01", inner_start="2025-11-15",
-        min_base=40, min_stacker=40, n_boot=4000, seed=2026):
+        outer_start=None, inner_start=None,
+        min_base=40, min_stacker=40, n_boot=4000, seed=2026, cal_n0=200.0, schedule_c=0.5):
     artifact_dir = Path(artifact_dir)
     figure_dir = Path(figure_dir)
     artifact_dir.mkdir(parents=True, exist_ok=True)
@@ -291,6 +370,15 @@ def run(data_path, config_path, artifact_dir, figure_dir, *,
     architectures = [Architecture.from_dict(a) for a in json.loads(Path(config_path).read_text())["architectures"]]
     arch_by_name = {a.name: a for a in architectures}
     games = load_games(data_path)
+
+    # Data-driven rolling-origin anchors (no hard-coded season boundaries):
+    #   outer_start = one month before the selection month (derived);
+    #   inner_start = ~4 weeks after the first game (warmup for the first Elo fit).
+    periods = derive_periods(games)
+    if outer_start is None:
+        outer_start = periods.s(periods.outer_start)
+    if inner_start is None:
+        inner_start = (games["game_date"].min().normalize() + pd.Timedelta(weeks=4)).strftime("%Y-%m-%d")
 
     # Sequential (causal) features once per architecture; slicing by date is exact.
     seq_cache = {a.name: build_features(games, a) for a in architectures}
@@ -302,6 +390,10 @@ def run(data_path, config_path, artifact_dir, figure_dir, *,
         if key not in frozen_cache:
             frozen_cache[key] = build_features(games, arch_by_name[name], freeze_date=origin)
         return frozen_cache[key]
+
+    # Memoized inner folds for BOTH policies. Frozen deployment is now selected
+    # under frozen inner folds and daily deployment under sequential inner folds.
+    inner_fold = _make_inner_fold_computer(games, seq_cache, arch_by_name, min_base)
 
     inner_start_ts = pd.Timestamp(inner_start)
     max_date = games["game_date"].max()
@@ -321,7 +413,13 @@ def run(data_path, config_path, artifact_dir, figure_dir, *,
         if len(sample[sample["game_date"] < origin]) < min_base:
             continue
 
-        best = _select_architectures(seq_cache, architectures, origin, inner_start_ts, min_base, min_stacker)
+        best_frozen = _select_architectures(inner_fold, "frozen", architectures, origin,
+                                            inner_start_ts, min_base, min_stacker)
+        best_daily = _select_architectures(inner_fold, "sequential", architectures, origin,
+                                           inner_start_ts, min_base, min_stacker)
+
+        # ---------- FROZEN-BLOCK (architecture selected under the FROZEN policy) ----------
+        best = best_frozen
         elo_arch = best["elo_only"][1]
         rank_arch = best["rank_only"][1]
         blend_arch = best["blend"][1]
@@ -333,7 +431,6 @@ def run(data_path, config_path, artifact_dir, figure_dir, *,
         stacker = fit_logit_stacker(blend_oof["home_win"].to_numpy(int), blend_oof["pe"].to_numpy(),
                                     blend_oof["pr"].to_numpy(), min_temperature=1.0)
 
-        # ---------- FROZEN-BLOCK ----------
         elo_base = fit_base_models(seq_cache[elo_arch][seq_cache[elo_arch]["game_date"] < origin], arch_by_name[elo_arch])
         rank_base = fit_base_models(seq_cache[rank_arch][seq_cache[rank_arch]["game_date"] < origin], arch_by_name[rank_arch])
         blend_base = fit_base_models(seq_cache[blend_arch][seq_cache[blend_arch]["game_date"] < origin], arch_by_name[blend_arch])
@@ -351,11 +448,23 @@ def run(data_path, config_path, artifact_dir, figure_dir, *,
         p_blend = apply_logit_stacker(stacker, pe_b, pr_b)
         y = be["home_win"].to_numpy(int)
 
+        # Calibration challenger: fit alpha/beta on the elo arch's FROZEN inner
+        # OOF only, shrink toward identity, apply to the untouched outer block.
+        elo_oof_f = _inner_oof(inner_fold, "frozen", arch_by_name[elo_arch], origin, inner_start_ts)
+        a_cal, b_cal = fit_identity_shrunk_calibrator(elo_oof_f["pe"], elo_oof_f["home_win"], cal_n0)
+        p_cal_elo = apply_calibrator(a_cal, b_cal, p_elo)
+
+        # Schedule/rest challenger: fit on the elo arch's train (< origin), apply
+        # to the frozen block. Uses elo_diff + rest + back-to-back only.
+        sched_train = seq_cache[elo_arch][seq_cache[elo_arch]["game_date"] < origin]
+        p_sched = schedule_probability(fit_schedule_model(sched_train, schedule_c), be)
+
         frozen_rows.append(pd.DataFrame({
             "game_id": be["game_id"].to_numpy(), "game_date": be["game_date"].to_numpy(),
             "origin": origin.strftime("%Y-%m-%d"), "home_win": y,
             "p_constant": np.full(len(be), const_rate),
             "p_elo_only": p_elo, "p_rank_only": p_rank, "p_blend": p_blend,
+            "p_calibrated_elo": p_cal_elo, "p_schedule_elo": p_sched,
         }))
         frozen_folds.append({"origin": origin.strftime("%Y-%m-%d"), "policy": "frozen_block",
                              "selected_elo_architecture": elo_arch, "selected_rank_architecture": rank_arch,
@@ -364,9 +473,12 @@ def run(data_path, config_path, artifact_dir, figure_dir, *,
                              "inner_blend_log_loss": best["blend"][0],
                              "blend_elo_weight": float(stacker.coef_[0, 0] / (stacker.coef_[0, 0] + stacker.coef_[0, 1])),
                              "blend_temperature": float(1.0 / (stacker.coef_[0, 0] + stacker.coef_[0, 1])),
+                             "calibrator_alpha": a_cal, "calibrator_beta": b_cal,
                              "fold_games": int(len(be)),
                              "log_loss_elo": _ll(y, p_elo), "log_loss_blend": _ll(y, p_blend),
-                             "brier_elo": _brier(y, p_elo), "brier_blend": _brier(y, p_blend)})
+                             "log_loss_calibrated_elo": _ll(y, p_cal_elo),
+                             "brier_elo": _brier(y, p_elo), "brier_blend": _brier(y, p_blend),
+                             "brier_calibrated_elo": _brier(y, p_cal_elo)})
 
         # Leakage guarantee check on the first frozen block: mutating block
         # outcomes must not change block predictions.
@@ -383,11 +495,23 @@ def run(data_path, config_path, artifact_dir, figure_dir, *,
             p_elo2 = component_probabilities(elo_base, be2)[0]
             leakage_ok = bool(np.allclose(p_elo, p_elo2, atol=1e-12))
 
-        # ---------- DAILY-SEQUENTIAL ----------
+        # ---------- DAILY-SEQUENTIAL (architecture selected under the SEQUENTIAL policy) ----------
+        d_elo_arch = best_daily["elo_only"][1]
+        d_rank_arch = best_daily["rank_only"][1]
+        d_blend_arch = best_daily["blend"][1]
+        d_blend_oof = best_daily["blend"][2]
+        if None in (d_elo_arch, d_rank_arch, d_blend_arch) or d_blend_oof is None or len(d_blend_oof) < min_stacker:
+            continue
+        d_const_rate = float(seq_cache[d_elo_arch][seq_cache[d_elo_arch]["game_date"] < origin]["home_win"].mean())
+        d_stacker = fit_logit_stacker(d_blend_oof["home_win"].to_numpy(int), d_blend_oof["pe"].to_numpy(),
+                                      d_blend_oof["pr"].to_numpy(), min_temperature=1.0)
+        d_elo_oof = _inner_oof(inner_fold, "sequential", arch_by_name[d_elo_arch], origin, inner_start_ts)
+        da_cal, db_cal = fit_identity_shrunk_calibrator(d_elo_oof["pe"], d_elo_oof["home_win"], cal_n0)
+
         block_dates = sorted(sample[(sample["game_date"] >= origin) & (sample["game_date"] < block_end)]["game_date"].unique())
         for t in block_dates:
             t = pd.Timestamp(t)
-            def day_pred(arch_name, base_train_lt_t, which):
+            def day_pred(arch_name, which):
                 seq = seq_cache[arch_name]
                 tr = seq[seq["game_date"] < t]
                 fold = seq[seq["game_date"] == t].sort_values("game_id")
@@ -396,27 +520,34 @@ def run(data_path, config_path, artifact_dir, figure_dir, *,
                 base = fit_base_models(tr, arch_by_name[arch_name])
                 pe, pr = component_probabilities(base, fold)
                 return fold, (pe if which == "elo" else pr)
-            fold_e, pe_d = day_pred(elo_arch, None, "elo")
-            fold_r, pr_d = day_pred(rank_arch, None, "rank")
-            # blend uses its own arch; refit base through t-1 and OOF stacker (reuse block stacker)
-            seqb = seq_cache[blend_arch]
+            fold_e, pe_d = day_pred(d_elo_arch, "elo")
+            fold_r, pr_d = day_pred(d_rank_arch, "rank")
+            # blend uses its own arch; refit base through t-1 (block-level OOF stacker reused)
+            seqb = seq_cache[d_blend_arch]
             trb = seqb[seqb["game_date"] < t]
             foldb = seqb[seqb["game_date"] == t].sort_values("game_id")
             if fold_e is None or fold_r is None or len(foldb) == 0 or trb["home_win"].nunique() < 2:
                 continue
-            base_b = fit_base_models(trb, arch_by_name[blend_arch])
+            base_b = fit_base_models(trb, arch_by_name[d_blend_arch])
             peb, prb = component_probabilities(base_b, foldb)
-            p_blend_d = apply_logit_stacker(stacker, peb, prb)
+            p_blend_d = apply_logit_stacker(d_stacker, peb, prb)
             yd = fold_e["home_win"].to_numpy(int)
+            sched_tr_d = seq_cache[d_elo_arch][seq_cache[d_elo_arch]["game_date"] < t]
+            p_sched_d = schedule_probability(fit_schedule_model(sched_tr_d, schedule_c), fold_e)
             daily_rows.append(pd.DataFrame({
                 "game_id": fold_e["game_id"].to_numpy(), "game_date": fold_e["game_date"].to_numpy(),
                 "origin": origin.strftime("%Y-%m-%d"), "home_win": yd,
-                "p_constant": np.full(len(fold_e), const_rate),
+                "p_constant": np.full(len(fold_e), d_const_rate),
                 "p_elo_only": pe_d, "p_rank_only": pr_d, "p_blend": p_blend_d,
+                "p_calibrated_elo": apply_calibrator(da_cal, db_cal, pe_d),
+                "p_schedule_elo": p_sched_d,
             }))
         daily_folds.append({"origin": origin.strftime("%Y-%m-%d"), "policy": "daily_sequential",
-                            "selected_elo_architecture": elo_arch, "selected_rank_architecture": rank_arch,
-                            "selected_blend_architecture": blend_arch,
+                            "selected_elo_architecture": d_elo_arch, "selected_rank_architecture": d_rank_arch,
+                            "selected_blend_architecture": d_blend_arch,
+                            "inner_elo_log_loss": best_daily["elo_only"][0],
+                            "inner_rank_log_loss": best_daily["rank_only"][0],
+                            "inner_blend_log_loss": best_daily["blend"][0],
                             "week_dates": len(block_dates)})
 
     rng = np.random.default_rng(seed)
@@ -431,10 +562,14 @@ def run(data_path, config_path, artifact_dir, figure_dir, *,
     frozen_summary["frozen_block_leakage_guarantee_verified"] = bool(leakage_ok)
     frozen_summary["design"] = ("Per outer weekly origin O, performance state frozen at O-1 (build_features "
                                 "freeze_date=O); block [O,O+7) scored with base models fit strictly before O; "
-                                "architectures selected per-procedure by inner OOF; blend uses inner-OOF stacker.")
+                                "architectures selected per-procedure by FROZEN inner OOF (each inner origin I "
+                                "uses build_features(freeze_date=I)); blend uses frozen inner-OOF stacker. "
+                                "Inner and outer information policies now match (frozen/frozen).")
     daily_summary = _summarize(daily_preds, "daily_sequential", rng, n_boot)
     daily_summary["design"] = ("One game date per fold; base models refit through t-1; architectures selected "
-                               "per-procedure weekly by inner OOF; blend uses inner-OOF stacker. Live simulation.")
+                               "per-procedure weekly by SEQUENTIAL inner OOF; blend uses sequential inner-OOF "
+                               "stacker. Inner and outer information policies now match (sequential/sequential). "
+                               "Live simulation.")
 
     (artifact_dir / "nested_frozen_block_summary.json").write_text(json.dumps(frozen_summary, indent=2))
     (artifact_dir / "nested_daily_sequential_summary.json").write_text(json.dumps(daily_summary, indent=2))
@@ -453,12 +588,19 @@ def _digest(policy_summary: dict) -> dict:
         "pooled_metrics": {c: {k: policy_summary["pooled_metrics"][c][k] for k in ["log_loss", "brier", "auc"]}
                            for c in CANDIDATES},
         "blend_minus_elo": policy_summary["paired_block_bootstrap"]["blend_minus_elo"],
+        "calibrated_elo_minus_elo": policy_summary["paired_block_bootstrap"]["calibrated_elo_minus_elo"],
         "elo_calibration": {k: policy_summary["calibration"]["elo_only"][k]
                             for k in ["calibration_intercept_alpha", "alpha_ci_2_5", "alpha_ci_97_5",
                                       "calibration_slope_beta", "beta_ci_2_5", "beta_ci_97_5",
                                       "ece_10bin", "ece_ci_2_5", "ece_ci_97_5",
                                       "mean_forecast", "observed_rate"]},
+        "calibrated_elo_calibration": {k: policy_summary["calibration"]["calibrated_elo"][k]
+                                       for k in ["calibration_intercept_alpha", "calibration_slope_beta",
+                                                 "ece_10bin", "mean_forecast", "observed_rate"]},
+        "schedule_elo_minus_elo": policy_summary["paired_block_bootstrap"]["schedule_elo_minus_elo"],
         "champion_challenger": policy_summary["champion_challenger"],
+        "calibration_challenger": policy_summary["calibration_challenger"],
+        "schedule_challenger": policy_summary["schedule_challenger"],
     }
 
 

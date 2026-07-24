@@ -31,11 +31,19 @@ prediction. Model selection receives only rows dated no later than March 31.
 
 ## Selection and March honesty
 
-Each procedure (Elo-only, rank-only, blend) selects its **own** architecture by
-its **own** March log loss (Brier tie-break); no procedure is represented by an
-architecture chosen for another. March is used for selection, so **March is
-in-sample for selection** — reported March metrics are selection-period scores,
-not a pristine holdout. The honest out-of-sample evidence is the nested audit.
+The deployed Elo architecture is chosen by **aggregate frozen-policy rolling
+out-of-sample log loss** across pre-holdout weekly origins, with a
+**one-standard-error stability rule** (prefer the simplest/lowest-K architecture
+inside the noise band). All five candidates fall within one SE; `conservative`
+wins because it has the lowest mean OOS log loss *and* the lowest K — and a
+single March split would have chosen the same architecture. The MOV offset (2.2)
+and the (off) Elo cold-start warmup are likewise profiled on that surface, so 2.2
+is now empirically confirmed on our data rather than merely borrowed. The
+season-boundary dates are derived from the data (`nba_wp/periods.py`), resolving
+to a March 31 selection cutoff here. March is still used for reported March
+metrics, so **March is in-sample for selection** — reported March metrics are
+selection-period scores, not a pristine holdout. The honest out-of-sample
+evidence is the nested audit.
 
 ## Primary April deliverable
 
@@ -71,11 +79,18 @@ under-forecasting, i.e. not overconfident).
 |---|---:|---:|---:|
 | **Elo-only (champion)** | **0.532 / 0.532** | **0.177 / 0.177** | 1.37 / 1.32 |
 | Rank-only | 0.550 / 0.549 | 0.184 / 0.184 | 1.70 / 1.64 |
-| Blend | 0.548 / 0.547 | 0.183 / 0.182 | 1.80 / 1.75 |
+| Blend (rejected) | 0.548 / 0.547 | 0.183 / 0.182 | 1.80 / 1.75 |
+| Calibrated Elo (rejected) | 0.548 / 0.549 | 0.183 / 0.184 | 1.78 / 1.76 |
+| Schedule Elo (rejected) | 0.531 / 0.533 | 0.177 / 0.177 | 1.33 / 1.33 |
 
 Blend − Elo-only block-bootstrap CIs are entirely above zero on both proper
 scores; **0 of 4,000** replicates favored the blend. Champion–challenger
-decision under both policies: `keep_elo_only`.
+decision under both policies: `keep_elo_only`. Two further challengers were
+added and also rejected under both policies (`keep_raw_elo`): a cross-fitted,
+identity-shrunk **calibrated Elo** (it over-corrects — slope rises to ~1.79,
+ECE worsens to ~0.09) and an Elo + rest/back-to-back **schedule Elo** (slightly
+worse OOS proper scores). The single statistically strong claim is that these
+more complex challengers are rejected out-of-sample.
 
 ## Interview position
 

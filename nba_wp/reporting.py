@@ -14,6 +14,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from .features import Architecture, CANDIDATE_FEATURES, build_features, feature_dictionary
+from .periods import derive_periods
 from .model import (
     BaseModels,
     apply_logit_stacker,
@@ -347,30 +348,35 @@ def score_and_write(
 
     architecture = Architecture.from_dict(selected_spec["architecture"])
 
+    periods = derive_periods(games)
+    sel_start = periods.selection_start
+    hold_start = periods.holdout_start
+    sel_max = periods.selection_max_date
+
     sequential_features = build_features(games, architecture)
     frozen_march_features = build_features(
-        games[games["game_date"] < "2026-04-01"].copy(),
+        games[games["game_date"] < hold_start].copy(),
         architecture,
-        freeze_date="2026-03-01",
+        freeze_date=periods.s(sel_start),
     )
     frozen_april_features = build_features(
         games,
         architecture,
-        freeze_date="2026-04-01",
+        freeze_date=periods.s(hold_start),
     )
 
     train_feb = sequential_features[
-        sequential_features["game_date"] < "2026-03-01"
+        sequential_features["game_date"] < sel_start
     ].copy()
     march = sequential_features[
-        (sequential_features["game_date"] >= "2026-03-01")
-        & (sequential_features["game_date"] < "2026-04-01")
+        (sequential_features["game_date"] >= sel_start)
+        & (sequential_features["game_date"] < hold_start)
     ].copy()
     through_march = sequential_features[
-        sequential_features["game_date"] < "2026-04-01"
+        sequential_features["game_date"] < hold_start
     ].copy()
     april = sequential_features[
-        sequential_features["game_date"] >= "2026-04-01"
+        sequential_features["game_date"] >= hold_start
     ].copy()
 
     # --- Base models. March validation uses the through-February generator;
@@ -409,10 +415,10 @@ def score_and_write(
     )
 
     frozen_march = frozen_march_features[
-        frozen_march_features["game_date"] >= "2026-03-01"
+        frozen_march_features["game_date"] >= sel_start
     ].copy()
     frozen_april = frozen_april_features[
-        frozen_april_features["game_date"] >= "2026-04-01"
+        frozen_april_features["game_date"] >= hold_start
     ].copy()
     # PRIMARY April deliverable: Elo-only fit through March 31, applied to
     # April features whose performance state is frozen at March 31.
@@ -514,8 +520,8 @@ def score_and_write(
         },
         "information_policy_note": (
             "Champion is Elo-only. Primary April output is frozen_pre_april: "
-            "performance state is frozen at 2026-03-31 and the Elo probability "
-            "map is fit on all rows through March 31. "
+            f"performance state is frozen at {periods.s(sel_max)} and the Elo "
+            f"probability map is fit on all rows through {periods.s(sel_max)}. "
             "april_predictions_sequential_backtest.csv is a live-update "
             "simulation only. March is used for architecture selection and is "
             "in-sample for selection; the honest out-of-sample evidence is the "

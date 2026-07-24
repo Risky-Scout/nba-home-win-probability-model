@@ -79,6 +79,18 @@ def main() -> None:
         )
 
     if args.mode == "full":
+        # Nested rolling-origin audit (policy-matched frozen + daily; blend,
+        # calibration and schedule challengers) is the out-of-sample evidence.
+        run([python, "-m", "scripts.nested_validation", "--data", data,
+             "--artifact-dir", str(root / "artifacts"), "--figure-dir", str(root / "figures")])
+        # Rebuild the Excel twin and emit the machine-readable reconciliation.
+        run([python, "-m", "scripts.rebuild_full_workbook"])
+        run([python, "-m", "scripts.workbook_reconciliation"])
+        # Committed test report artifact.
+        report = root / "artifacts" / "pytest_report.txt"
+        with report.open("w") as handle:
+            print("+ python -m pytest -rA", flush=True)
+            subprocess.run([python, "-m", "pytest", "-rA"], check=True, stdout=handle, stderr=subprocess.STDOUT)
         run(
             [
                 python,

@@ -74,7 +74,7 @@ log loss and Brier and is worse calibrated. It is retained only in the
 \textbf{Class} & \textbf{Meaning} \\
 \midrule
 \cls{Fixed} & Hardcoded design choice. Not estimated on this CSV. \\
-\cls{Selected} & Chosen by comparing candidates on \textbf{March log loss}. \\
+\cls{Selected} & Chosen by comparing candidates on the \textbf{aggregate frozen-policy rolling out-of-sample surface} (one-standard-error stability rule). \\
 \cls{Fitted} & Numeric solution of an optimization / MLE on data. \\
 \cls{Derived} & Algebraic consequence of other constants (no new information). \\
 \cls{Numerical} & Solver / clip / RNG setting; not a modeling claim. \\
@@ -84,8 +84,10 @@ log loss and Brier and is worse calibrated. It is retained only in the
 
 \textbf{Honesty rule used below.}
 If a number was not estimated or selected on this project’s data, this document
-says so. In particular, the MOV constant \(2.2\) is \cls{Fixed} (literature),
-not \cls{Fitted}.
+says so. In particular, the MOV constant \(2.2\) is \cls{Fixed} (literature): it
+is \emph{not} re-fitted, but it \emph{is} profiled on the frozen-policy rolling
+out-of-sample grid and kept because it sits within one standard error of the
+grid best (\(3.0\)); see \S\ref{sec:mov}.
 
 %==============================================================================
 \section{Master ledger --- every constant}
@@ -106,7 +108,7 @@ Elo scale \(S\) & \(400\) & Fixed & Classical Elo logistic scale: a \(400\)-poin
 Base of Elo logistic & \(10\) & Fixed & Classical Elo uses base-\(10\) logistic, not \(e\). Formula \(1/(1+10^{-x})\). \\
 MOV mode & \texttt{log} & Selected$^\star$ & Architecture field \code{elo\_mov}. All five candidates used \texttt{log}; mode itself was not raced against \texttt{none} in selection. \\
 MOV blowout shape & \(\ln(|m|+1)\) & Fixed & FiveThirtyEight / Nate Silver NFL Elo log-MOV form. \\
-MOV constant \(b_{\mathrm{MOV}}\) & \(2.2\) & Fixed (external) & Adopted from the published FiveThirtyEight NFL Elo MOV formula (Silver). \textbf{Not re-estimated on this CSV.} Full professional rationale, benefits, and how to compute a data-optimal alternative: \S\ref{sec:mov}. \\
+MOV constant \(b_{\mathrm{MOV}}\) & \(2.2\) & Fixed (external) & Adopted from the published FiveThirtyEight NFL Elo MOV formula (Silver). \textbf{Not re-fitted on this CSV}, but profiled on the frozen-policy OOS grid \(\{1.6,2.0,2.2,2.6,3.0\}\) and confirmed within one SE of the grid best (\(3.0\)); recorded under \code{mov\_offset\_selection}. Full professional rationale, benefits, and the profile: \S\ref{sec:mov}. \\
 MOV slope \(a_{\mathrm{MOV}}\) & \(0.001\) & Fixed & Paired with \(2.2\) in the same FTE formula. Ratio \(a/b\) sets favorite/underdog discount. Not fit here. \\
 MOV denom floor & \(0.25\) & Fixed & Code guard \code{max(0.25, denom)} against pathological denominators. Not estimated. \\
 \bottomrule
@@ -117,11 +119,17 @@ MOV denom floor & \(0.25\) & Fixed & Code guard \code{max(0.25, denom)} against 
 
 These appear in \code{configs/architecture\_candidates.json} and the winner in
 \code{artifacts/selected\_spec.json}.
-\textbf{Selection rule:} each procedure (Elo-only, rank-only, blend) minimizes
-its own March sequential log loss (\code{nba\_wp/selection.py}); the champion is
-Elo-only. April rows loaded during selection: \(0\). The champion Elo-only model
-depends only on the Elo fields \(K,H,\text{MOV},C_E\); the remaining fields
-govern the rejected challenger.
+\textbf{Selection rule:} the deployed Elo architecture is chosen by the
+\textbf{aggregate frozen-policy rolling out-of-sample log loss} with a
+\textbf{one-standard-error stability rule} (simplest / lowest-\(K\) architecture
+within one SE of the best; \code{nba\_wp/selection.py},
+\code{architecture\_selection} in \code{selected\_spec.json}). \texttt{conservative}
+wins outright (lowest mean OOS log loss \emph{and} lowest \(K\)), and a single
+March one-step split agrees. The MOV offset (\(2.2\)) and an early-season
+provisional-\(K\) warmup (kept \emph{off}) are profiled on the same surface. The
+champion is Elo-only; April rows loaded during selection: \(0\). The champion
+depends only on the Elo fields \(K,H,\text{MOV},C_E\); the remaining fields govern
+the rejected challenger.
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.35in}
 >{\raggedright\arraybackslash}p{0.55in}
@@ -131,14 +139,14 @@ govern the rejected challenger.
 \textbf{Constant} & \textbf{Value} & \textbf{Class} & \textbf{Provenance / calculation} \\
 \midrule
 \endhead
-\(K\) (Elo step) & \(7.5\) & Selected & Member of \texttt{conservative} candidate. Chosen because it had lowest Elo-only March LL among 5 candidates (Table~\ref{tab:march}). Not a continuous MLE. \\
+\(K\) (Elo step) & \(7.5\) & Selected & Member of \texttt{conservative} candidate. Chosen by the one-SE stability rule on the aggregate frozen-policy OOS surface (lowest mean OOS log loss and lowest \(K\); Table~\ref{tab:march} shows the March cross-check). Not a continuous MLE. \\
 \(H\) (home Elo pts) & \(55\) & Selected & Same bundle. Equal-team home edge \(\Rightarrow 1/(1+10^{-55/400})\approx 0.578\). \\
 Elo logistic \(C_E\) & \(10\) & Selected & Regularization for the deployed Elo calibrator. From \texttt{conservative}. \\
 \(C_{\mathrm{BT}}\) & \(0.1\) & Selected$^\dagger$ & Bradley--Terry regularization (challenger only). \\
 Trend half-life \(\tau_{1/2}\) & \(60\) days & Selected$^\dagger$ & EWMA weight \(2^{-\Delta\mathrm{days}/60}\) (challenger only). \\
 Trend short window \(n_S\) & \(12\) games & Selected$^\dagger$ & Mean of last \(\min(12,n_i)\) margins (challenger only). \\
 Rank logistic \(C_R\) & \(0.1\) & Selected$^\dagger$ & BT+trend calibrator regularization (challenger only). \\
-Architecture name & \texttt{conservative} & Selected & Argmin of Elo-only March LL over 5 named bundles. \\
+Architecture name & \texttt{conservative} & Selected & One-SE stability winner on the aggregate frozen-policy OOS surface over 5 named bundles (March split agrees). \\
 \bottomrule
 \end{longtable}
 {\footnotesize $^\dagger$These fields do not enter the deployed Elo-only champion; they parameterize the rejected challenger blend.}
@@ -229,9 +237,9 @@ Density windows & \(4\), \(6\) days & Fixed & Games-in-window counts. Ablation p
 \textbf{Constant} & \textbf{Value} & \textbf{Class} & \textbf{Provenance} \\
 \midrule
 \endhead
-Train-through (base, March scoring) & 2026-02-28 & Fixed policy & \code{selection\_policy.json} / selection code. \\
-Selection window & 2026-03-01--03-31 & Fixed policy & Same. \\
-April holdout start & 2026-04-01 & Fixed policy & Contract: selection raises if April present. \\
+Train-through (base, March scoring) & 2026-02-28 & Derived & Derived from the data (\code{nba\_wp/periods.py}), not hard-coded. \\
+Selection window & 2026-03-01--03-31 & Derived & Month before the holdout (\code{derive\_periods}). \\
+April holdout start & 2026-04-01 & Derived & Last calendar month in the data (\code{derive\_periods}); selection raises if April present. \\
 Accuracy cutoff & \(0.5\) & Fixed & \code{p >= 0.5} in metrics. Not optimized. \\
 Primary metric & log loss & Fixed policy & Selection rule text. \\
 \# architectures raced & \(5\) & Fixed design & Length of candidate list. \\
@@ -376,11 +384,12 @@ features get the same Elo path. Replacing it with an in-sample tuned value on
 one partial season would add a free parameter, widen the selection surface, and
 invite overfit to March noise.
 \item \textbf{Separation of concerns in the validation design.}
-This project deliberately concentrates selection effort on quantities that move
-prices most (home advantage \(H\), step size \(K\), BT/trend regularization)
-under a March log-loss rule, while holding the MOV \emph{shape} at a known
-industry default. That is a standard bias--variance trade: fix low-sensitivity
-shape parameters; select high-sensitivity ones.
+This project concentrates selection effort on quantities that move prices most
+(home advantage \(H\), step size \(K\), BT/trend regularization) under a rolling
+out-of-sample stability rule, while holding the MOV \emph{shape} at a known
+industry default and profiling only its offset (which the one-SE rule keeps at
+\(2.2\)). That is a standard bias--variance trade: fix low-sensitivity shape
+parameters; select high-sensitivity ones.
 \item \textbf{Empirical support that the choice is not fragile.}
 Varying the constant in a neighborhood of \(2.2\) changes the Elo-only March log
 loss only in the fourth decimal place (flat likelihood). So the \emph{presence}
@@ -393,11 +402,14 @@ derivation of \(d=2200=2.2/0.001\)). That is preferable to an opaque
 tuned scalar with no external meaning.
 \end{enumerate}
 
-\paragraph{How to calculate the value that would have been most optimal.}
-If the goal is a \emph{data-optimal} MOV constant \(b^\star\) for this pipeline
-(rather than the published \(2.2\)), compute it by the same selection principle
-already used for architectures---minimize March sequential log loss---while
-holding the champion architecture fixed:
+\paragraph{How the offset is profiled (now implemented).}
+This is no longer a thought experiment: \code{nba\_wp/selection.py::profile\_mov\_offset}
+profiles the offset on the same \textbf{frozen-policy rolling out-of-sample surface}
+used for architecture selection, and keeps the literature value \(2.2\) unless a
+grid value beats it beyond one standard error (recorded under
+\code{mov\_offset\_selection} in \code{selected\_spec.json}). If instead one wanted
+the raw \emph{data-optimal} constant \(b^\star\), compute it by the same principle
+while holding the champion architecture fixed:
 
 \begin{enumerate}
 \item Fix architecture \texttt{conservative} except replace the literal \(2.2\) by a
@@ -428,14 +440,13 @@ b^{\star}
 \)
 \vspace{0.55em}}}
 \end{center}
-That is: choose the MOV constant \(b\) that minimizes March sequential log loss.
-This \(b^{\star}\) is the March-optimal MOV constant for this model and metric.
-On a quick profile of the current code path, \(\mathrm{LL}(b)\) was
-minimized toward the high end of the tested grid (near \(b=4\)), with only a
-tiny improvement over \(2.2\) (\(\Delta\mathrm{LL}\sim 4\times 10^{-5}\)).
-Hence \(2.2\) is not claimed as \(b^{\star}\); it is claimed as a published,
-stable default whose March performance is essentially tied with nearby
-optima.
+On the committed frozen-policy OOS grid \(b\in\{1.6,2.0,2.2,2.6,3.0\}\) the
+\emph{nominal} minimizer is \(b^{\star}=3.0\) (mean OOS LL \(0.54174\)), but \(2.2\)
+(mean OOS LL \(0.54204\)) sits well within one standard error of it
+(SE \(\approx 0.019 \gg \Delta\mathrm{LL}\approx 3\times10^{-4}\)). Hence the
+one-standard-error rule \textbf{keeps \(2.2\)}: it is not claimed as \(b^{\star}\),
+but as a published, stable default that is statistically tied with the grid
+optimum on our data.
 \item \textbf{Stronger production estimator (multi-season).}
 On a longer NBA history, estimate the literature intercept directly:
 regress bin-wise
@@ -517,8 +528,11 @@ p_g^{R}
 \label{tab:march}
 
 \textbf{Elo-only} March sequential log loss (base fit through February) from
-\code{artifacts/march\_architecture\_results.csv} (lower LL wins). The champion
-is chosen by this Elo-only surface:
+\code{artifacts/march\_architecture\_results.csv} (lower LL wins). This single
+March split is a \emph{cross-check}: the deployed architecture is actually chosen
+by the aggregate frozen-policy rolling OOS one-standard-error stability rule
+(\code{architecture\_selection} in \code{selected\_spec.json}), and it agrees with
+this table:
 
 \begin{center}
 \begin{tabular}{@{}lcccc@{}}
@@ -534,11 +548,13 @@ responsive & \(15\) & \(65\) & \(0.51470876\) & \\
 \end{tabular}
 \end{center}
 
-\noindent This is the \textbf{entire calculation} behind calling \(K=7.5\),
-\(H=55\), \(C_E=10\) ``selected'' for the deployed Elo-only champion: they are
-the coordinate values of the bundle with minimal Elo-only March LL. They are not
-independently profiled. (Each other procedure selects its own architecture by
-its own March LL; see \code{march\_architecture\_results.csv}.)
+\noindent \(K=7.5\), \(H=55\), \(C_E=10\) are the coordinate values of the
+\texttt{conservative} bundle, which is the one-SE stability winner on the
+aggregate frozen-policy OOS surface (and the minimum of this March cross-check).
+The MOV offset (\(2.2\)) and provisional-\(K\) warmup (off) \emph{are} profiled on
+the same OOS surface (\code{mov\_offset\_selection}, \code{cold\_start\_selection}
+in \code{selected\_spec.json}). (Each other procedure additionally selects its own
+architecture; see \code{march\_architecture\_results.csv}.)
 
 %==============================================================================
 \section{Metrics (definitions; cutoffs Fixed)}
@@ -577,10 +593,15 @@ Elo-only LL \(0.532\)/Brier \(0.177\); rank-only \(0.550\)/\(0.184\); blend
 \(0.548\)/\(0.183\); constant \(0.688\)/\(0.247\). Block-bootstrap
 blend\(-\)Elo: \(\Delta\mathrm{LL}=+0.017\) (95\% CI \([+0.010,+0.023]\)),
 \(\Delta\mathrm{Brier}=+0.006\) (95\% CI \([+0.004,+0.009]\)); \textbf{0 of
-4{,}000} week-block replicates favored the blend. Calibration (frozen-block):
-Elo-only slope \(\beta\approx1.37\) (95\% CI \([1.22,1.57]\)), ECE \(\approx
-0.059\) --- better calibrated than the blend (\(\beta\approx1.80\)). Decision
-under both policies: \textbf{keep Elo-only}. Artifacts:
+4{,}000} week-block replicates favored the blend. Two further challengers are
+added to the same audit and \textbf{also rejected} under both policies: a
+cross-fitted \textbf{calibrated Elo} (identity-shrunk \(\alpha+\beta\operatorname{logit}(p_E)\);
+over-corrects out-of-sample, \(\beta\approx1.79\); \(0.548/0.183\)) and a
+\textbf{schedule Elo} (Elo + rest + back-to-back, regularized; \(0.531/0.177\),
+slightly worse on both scores). Calibration (frozen-block): Elo-only slope
+\(\beta\approx1.37\) (95\% CI \([1.22,1.57]\)), ECE \(\approx 0.059\) --- better
+calibrated than the blend (\(\beta\approx1.80\)). Decision under both policies:
+\textbf{keep Elo-only}. Artifacts:
 \code{nested\_frozen\_block\_summary.json},
 \code{nested\_daily\_sequential\_summary.json}.
 
@@ -602,7 +623,7 @@ p^{E}=p.
 \noindent\textbf{Code map.}
 \code{nba\_wp/features.py} (Fixed Elo/MOV; Selected architecture fields),
 \code{nba\_wp/model.py} (Fitted Elo \(c,w\); challenger \(a,b,c\)),
-\code{nba\_wp/selection.py} (model-specific selection via March LL),
+\code{nba\_wp/selection.py} (aggregate frozen-policy OOS one-SE architecture selection; MOV/cold-start profiling),
 \code{artifacts/selected\_spec.json} (persisted Elo-only champion + rejected challenger).
 
 \end{document}

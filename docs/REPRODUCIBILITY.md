@@ -32,8 +32,24 @@ source .venv/bin/activate
 python run_submission.py   --root .   --data "/absolute/path/to/nba-win-probability-data.csv"   --mode full
 ```
 
-This regenerates the audit, March selection, selected specification, model
-outputs, evidence tables, figures, and integrity manifest.
+This regenerates the audit, architecture selection (stability rule + MOV/cold-start
+profiling), selected specification, model outputs, evidence tables, figures, the
+full nested rolling-origin validation (both information policies), the
+`NBA_Model_Fully_Formulated.xlsx` workbook, the machine-readable
+`artifacts/workbook_reconciliation.json`, the pytest report, and the integrity
+manifest. Period boundaries are derived from the data (`nba_wp/periods.py`), and
+`openpyxl` is pinned (`3.1.5`) so the workbook rebuild is deterministic.
+
+The workbook's "reconciles to ~0" claim is auditable from one command:
+
+```bash
+python -m scripts.workbook_reconciliation
+```
+
+It independently recomputes the champion April prices from `selected_spec.json`
+(both the standardized and raw-intercept closed forms) and writes a PASS/FAIL
+report to `artifacts/workbook_reconciliation.json` (current max abs price diff
+< 1e-9).
 
 ## Verification levels
 

@@ -34,6 +34,7 @@ from openpyxl.styles import Font
 from nba_wp.data import load_games
 from nba_wp.features import Architecture, build_features
 from nba_wp.model import fit_base_models, standardized_coefficient_rows
+from nba_wp.periods import derive_periods
 
 ROOT = Path(__file__).resolve().parents[1]
 WB_PATH = ROOT / "NBA_Model_Fully_Formulated.xlsx"
@@ -42,8 +43,8 @@ BLUE = Font(color="1F4E78")
 BOLD = Font(bold=True)
 
 
-def _rank_rows(games: pd.DataFrame, arch: Architecture, max_date: str) -> dict[str, pd.Series]:
-    feats = build_features(games[games["game_date"] < "2026-04-01"].copy(), arch)
+def _rank_rows(games: pd.DataFrame, arch: Architecture, holdout_start, max_date) -> dict[str, pd.Series]:
+    feats = build_features(games[games["game_date"] < holdout_start].copy(), arch)
     train = feats[feats["game_date"] < max_date].copy()
     models = fit_base_models(train, arch)
     rows = pd.DataFrame(standardized_coefficient_rows(models))
@@ -77,7 +78,9 @@ def main() -> None:
     elo_int = elo_row("(intercept)")
 
     games = load_games(ROOT / "data" / "nba-win-probability-data.csv")
-    rank_march = _rank_rows(games, arch, "2026-04-01")  # through-March challenger rank
+    periods = derive_periods(games)
+    # through-selection challenger rank (fit on all rows before the holdout month)
+    rank_march = _rank_rows(games, arch, periods.holdout_start, periods.holdout_start)
     bt_std = rank_march["bt_logit"]
     tr_std = rank_march["trend_diff"]
     rank_int = rank_march["(intercept)"]

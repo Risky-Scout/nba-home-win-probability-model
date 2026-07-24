@@ -10,35 +10,49 @@
       "mean_probability": 0.5455388295963215
     },
     "elo_only": {
-      "log_loss": 0.5317484819450348,
-      "brier": 0.1769223921404944,
-      "auc": 0.812223513836417,
+      "log_loss": 0.5292573170308734,
+      "brier": 0.17617443580088224,
+      "auc": 0.8118844651102716,
       "accuracy": 0.7445109780439122,
-      "mean_probability": 0.5538697822678739
+      "mean_probability": 0.553623019004831
     },
     "rank_only": {
-      "log_loss": 0.5498691659258514,
-      "brier": 0.18355433477869068,
-      "auc": 0.809672575801608,
-      "accuracy": 0.7524950099800399,
-      "mean_probability": 0.5371398619483215
+      "log_loss": 0.5474472969089408,
+      "brier": 0.18269114388256166,
+      "auc": 0.810608996092867,
+      "accuracy": 0.7485029940119761,
+      "mean_probability": 0.5373789369910326
     },
     "blend": {
-      "log_loss": 0.5482928301507891,
-      "brier": 0.18304050418535395,
-      "auc": 0.812933901643579,
-      "accuracy": 0.7524950099800399,
-      "mean_probability": 0.5403403724965253
+      "log_loss": 0.547977830861672,
+      "brier": 0.18280909677363996,
+      "auc": 0.8148551777584035,
+      "accuracy": 0.7445109780439122,
+      "mean_probability": 0.5401819053714563
+    },
+    "calibrated_elo": {
+      "log_loss": 0.5481006009980035,
+      "brier": 0.1832159153583507,
+      "auc": 0.8113193839000291,
+      "accuracy": 0.7445109780439122,
+      "mean_probability": 0.5429564234072726
+    },
+    "schedule_elo": {
+      "log_loss": 0.5306586103293299,
+      "brier": 0.17674891251920768,
+      "auc": 0.8101327133585199,
+      "accuracy": 0.7485029940119761,
+      "mean_probability": 0.5531166230475653
     }
   },
   "paired_block_bootstrap": {
     "blend_minus_elo": {
-      "delta_log_loss_mean": 0.016560675611728064,
-      "delta_log_loss_ci_2_5": 0.010063676870575458,
-      "delta_log_loss_ci_97_5": 0.02324911995875213,
-      "delta_brier_mean": 0.006122280703239612,
-      "delta_brier_ci_2_5": 0.0035415500495443583,
-      "delta_brier_ci_97_5": 0.008923791658654265,
+      "delta_log_loss_mean": 0.018649272346012474,
+      "delta_log_loss_ci_2_5": 0.012423717730654172,
+      "delta_log_loss_ci_97_5": 0.023918670763561713,
+      "delta_brier_mean": 0.006601034702116472,
+      "delta_brier_ci_2_5": 0.004156753025902408,
+      "delta_brier_ci_97_5": 0.008715995032960075,
       "replicates": 4000,
       "replicates_favoring_model_log_loss": 0,
       "replicates_favoring_model_brier": 0,
@@ -46,12 +60,12 @@
       "brier_statement": "0 of 4000 week-block bootstrap replicates favored the model"
     },
     "elo_minus_constant": {
-      "delta_log_loss_mean": -0.15540297223197683,
-      "delta_log_loss_ci_2_5": -0.18918174924342648,
-      "delta_log_loss_ci_97_5": -0.12162799655916393,
-      "delta_brier_mean": -0.07014656904022169,
-      "delta_brier_ci_2_5": -0.08405647142262437,
-      "delta_brier_ci_97_5": -0.05649234253843343,
+      "delta_log_loss_mean": -0.15786634272852176,
+      "delta_log_loss_ci_2_5": -0.1918734967368552,
+      "delta_log_loss_ci_97_5": -0.1221209685371031,
+      "delta_brier_mean": -0.07088519375502444,
+      "delta_brier_ci_2_5": -0.08495557980504086,
+      "delta_brier_ci_97_5": -0.056426372180252614,
       "replicates": 4000,
       "replicates_favoring_model_log_loss": 4000,
       "replicates_favoring_model_brier": 4000,
@@ -59,43 +73,69 @@
       "brier_statement": "4000 of 4000 week-block bootstrap replicates favored the model"
     },
     "elo_minus_rank": {
-      "delta_log_loss_mean": -0.01807383013971483,
-      "delta_log_loss_ci_2_5": -0.029862896250493213,
-      "delta_log_loss_ci_97_5": -0.006756444269577404,
-      "delta_brier_mean": -0.006630533419520319,
-      "delta_brier_ci_2_5": -0.011544095995380907,
-      "delta_brier_ci_97_5": -0.0017653649459537374,
+      "delta_log_loss_mean": -0.01814351136993218,
+      "delta_log_loss_ci_2_5": -0.02944116623802619,
+      "delta_log_loss_ci_97_5": -0.007368667151588997,
+      "delta_brier_mean": -0.006511642727068915,
+      "delta_brier_ci_2_5": -0.01110596224326229,
+      "delta_brier_ci_97_5": -0.002085169640958141,
       "replicates": 4000,
       "replicates_favoring_model_log_loss": 3998,
-      "replicates_favoring_model_brier": 3987,
+      "replicates_favoring_model_brier": 3985,
       "log_loss_statement": "3998 of 4000 week-block bootstrap replicates favored the model",
-      "brier_statement": "3987 of 4000 week-block bootstrap replicates favored the model"
+      "brier_statement": "3985 of 4000 week-block bootstrap replicates favored the model"
     },
     "blend_minus_constant": {
-      "delta_log_loss_mean": -0.13914419157495037,
-      "delta_log_loss_ci_2_5": -0.1701234063385948,
-      "delta_log_loss_ci_97_5": -0.10762633856300509,
-      "delta_brier_mean": -0.06412845948743563,
-      "delta_brier_ci_2_5": -0.07741088088502253,
-      "delta_brier_ci_97_5": -0.05052808888686128,
+      "delta_log_loss_mean": -0.1395056553157312,
+      "delta_log_loss_ci_2_5": -0.1712155886523742,
+      "delta_log_loss_ci_97_5": -0.10797952275460085,
+      "delta_brier_mean": -0.06438114410724514,
+      "delta_brier_ci_2_5": -0.0778113195180536,
+      "delta_brier_ci_97_5": -0.05092695652525142,
       "replicates": 4000,
       "replicates_favoring_model_log_loss": 4000,
       "replicates_favoring_model_brier": 4000,
       "log_loss_statement": "4000 of 4000 week-block bootstrap replicates favored the model",
       "brier_statement": "4000 of 4000 week-block bootstrap replicates favored the model"
+    },
+    "calibrated_elo_minus_elo": {
+      "delta_log_loss_mean": 0.018862207622969612,
+      "delta_log_loss_ci_2_5": 0.01485965487287314,
+      "delta_log_loss_ci_97_5": 0.023579757783639348,
+      "delta_brier_mean": 0.0070689724736054775,
+      "delta_brier_ci_2_5": 0.005667413293299156,
+      "delta_brier_ci_97_5": 0.00867313152298964,
+      "replicates": 4000,
+      "replicates_favoring_model_log_loss": 0,
+      "replicates_favoring_model_brier": 0,
+      "log_loss_statement": "0 of 4000 week-block bootstrap replicates favored the model",
+      "brier_statement": "0 of 4000 week-block bootstrap replicates favored the model"
+    },
+    "schedule_elo_minus_elo": {
+      "delta_log_loss_mean": 0.0014355617317828634,
+      "delta_log_loss_ci_2_5": 1.6551931967687184e-07,
+      "delta_log_loss_ci_97_5": 0.0032858497984172156,
+      "delta_brier_mean": 0.0005917935175463414,
+      "delta_brier_ci_2_5": -0.00011717363550048582,
+      "delta_brier_ci_97_5": 0.0014586693956015308,
+      "replicates": 4000,
+      "replicates_favoring_model_log_loss": 100,
+      "replicates_favoring_model_brier": 210,
+      "log_loss_statement": "100 of 4000 week-block bootstrap replicates favored the model",
+      "brier_statement": "210 of 4000 week-block bootstrap replicates favored the model"
     }
   },
   "calibration": {
     "constant": {
       "calibration_intercept_alpha": 1.2970142771722268,
-      "alpha_ci_2_5": -1.185933507729778,
-      "alpha_ci_97_5": 2.670919915214861,
+      "alpha_ci_2_5": -1.017273421891616,
+      "alpha_ci_97_5": 2.701905458667669,
       "calibration_slope_beta": -5.843923355164453,
-      "beta_ci_2_5": -13.389664265697874,
-      "beta_ci_97_5": 7.162457174342584,
+      "beta_ci_2_5": -13.497203311473932,
+      "beta_ci_97_5": 6.488989603540168,
       "ece_10bin": 0.06048165821263245,
-      "ece_ci_2_5": 0.04332842317272218,
-      "ece_ci_97_5": 0.10172070636394343,
+      "ece_ci_2_5": 0.04353700118802435,
+      "ece_ci_97_5": 0.10241468341848722,
       "mean_forecast": 0.5455388295963215,
       "observed_rate": 0.5568862275449101,
       "reliability_table": [
@@ -150,226 +190,376 @@
       ]
     },
     "elo_only": {
-      "calibration_intercept_alpha": -0.05078029191489026,
-      "alpha_ci_2_5": -0.3216394559267977,
-      "alpha_ci_97_5": 0.21702549691929454,
-      "calibration_slope_beta": 1.369671809796255,
-      "beta_ci_2_5": 1.2153274698484824,
-      "beta_ci_97_5": 1.5668723625870682,
-      "ece_10bin": 0.058668702639665664,
-      "ece_ci_2_5": 0.05708146935064279,
-      "ece_ci_97_5": 0.11897880560681048,
-      "mean_forecast": 0.5538697822678739,
+      "calibration_intercept_alpha": -0.04066435012420255,
+      "alpha_ci_2_5": -0.30015791803112274,
+      "alpha_ci_97_5": 0.23979815550602063,
+      "calibration_slope_beta": 1.3211434009439558,
+      "beta_ci_2_5": 1.1698232068179835,
+      "beta_ci_97_5": 1.502381195353758,
+      "ece_10bin": 0.05322851098470199,
+      "ece_ci_2_5": 0.05250497910327489,
+      "ece_ci_97_5": 0.11268462508757282,
+      "mean_forecast": 0.553623019004831,
       "observed_rate": 0.5568862275449101,
       "reliability_table": [
         {
-          "bin": "(0.0631, 0.24]",
+          "bin": "(0.061399999999999996, 0.23]",
           "games": 51,
-          "mean_probability": 0.15919886284254978,
+          "mean_probability": 0.15000756962451964,
           "observed_home_win_rate": 0.0784313725490196
         },
         {
-          "bin": "(0.24, 0.344]",
+          "bin": "(0.23, 0.34]",
           "games": 50,
-          "mean_probability": 0.29672104901618335,
-          "observed_home_win_rate": 0.22
+          "mean_probability": 0.2849882858251396,
+          "observed_home_win_rate": 0.2
         },
         {
-          "bin": "(0.344, 0.43]",
+          "bin": "(0.34, 0.423]",
           "games": 50,
-          "mean_probability": 0.39467622903637545,
-          "observed_home_win_rate": 0.32
+          "mean_probability": 0.3895389331537026,
+          "observed_home_win_rate": 0.36
         },
         {
-          "bin": "(0.43, 0.51]",
+          "bin": "(0.423, 0.501]",
           "games": 50,
-          "mean_probability": 0.46862152538534424,
-          "observed_home_win_rate": 0.46
+          "mean_probability": 0.4652107216684399,
+          "observed_home_win_rate": 0.44
         },
         {
-          "bin": "(0.51, 0.569]",
+          "bin": "(0.501, 0.572]",
           "games": 50,
-          "mean_probability": 0.5420064426028103,
-          "observed_home_win_rate": 0.56
+          "mean_probability": 0.5414074633692857,
+          "observed_home_win_rate": 0.54
         },
         {
-          "bin": "(0.569, 0.635]",
+          "bin": "(0.572, 0.639]",
           "games": 50,
-          "mean_probability": 0.6004908854704069,
+          "mean_probability": 0.6041990168700964,
           "observed_home_win_rate": 0.7
         },
         {
-          "bin": "(0.635, 0.695]",
+          "bin": "(0.639, 0.706]",
           "games": 50,
-          "mean_probability": 0.6647685751974808,
-          "observed_home_win_rate": 0.66
+          "mean_probability": 0.6730026096251117,
+          "observed_home_win_rate": 0.7
         },
         {
-          "bin": "(0.695, 0.761]",
+          "bin": "(0.706, 0.77]",
           "games": 50,
-          "mean_probability": 0.7316673440440148,
-          "observed_home_win_rate": 0.86
+          "mean_probability": 0.7336091701881393,
+          "observed_home_win_rate": 0.82
         },
         {
-          "bin": "(0.761, 0.836]",
+          "bin": "(0.77, 0.843]",
           "games": 50,
-          "mean_probability": 0.7967927368200908,
-          "observed_home_win_rate": 0.86
+          "mean_probability": 0.8061656884974986,
+          "observed_home_win_rate": 0.88
         },
         {
-          "bin": "(0.836, 0.975]",
+          "bin": "(0.843, 0.975]",
           "games": 50,
-          "mean_probability": 0.8916475906519881,
+          "mean_probability": 0.8961730402139823,
           "observed_home_win_rate": 0.86
         }
       ]
     },
     "rank_only": {
-      "calibration_intercept_alpha": 0.026866410195053127,
-      "alpha_ci_2_5": -0.24813719896337494,
-      "alpha_ci_97_5": 0.2960224369904141,
-      "calibration_slope_beta": 1.6963144059502997,
-      "beta_ci_2_5": 1.5302270267976206,
-      "beta_ci_97_5": 1.9105884428374769,
-      "ece_10bin": 0.09724774880453246,
-      "ece_ci_2_5": 0.07962576864537997,
-      "ece_ci_97_5": 0.1267401063051599,
-      "mean_forecast": 0.5371398619483215,
+      "calibration_intercept_alpha": 0.032252812453148864,
+      "alpha_ci_2_5": -0.2620608493837014,
+      "alpha_ci_97_5": 0.3059465585042276,
+      "calibration_slope_beta": 1.6523146651718787,
+      "beta_ci_2_5": 1.4667192083332308,
+      "beta_ci_97_5": 1.8760196509835347,
+      "ece_10bin": 0.09015421411292046,
+      "ece_ci_2_5": 0.07430614832781943,
+      "ece_ci_97_5": 0.12633771861451384,
+      "mean_forecast": 0.5373789369910326,
       "observed_rate": 0.5568862275449101,
       "reliability_table": [
         {
-          "bin": "(0.121, 0.279]",
+          "bin": "(0.0982, 0.271]",
           "games": 51,
-          "mean_probability": 0.21490435981617345,
-          "observed_home_win_rate": 0.0392156862745098
+          "mean_probability": 0.2051595999523466,
+          "observed_home_win_rate": 0.058823529411764705
         },
         {
-          "bin": "(0.279, 0.37]",
+          "bin": "(0.271, 0.366]",
           "games": 50,
-          "mean_probability": 0.3298642766534253,
-          "observed_home_win_rate": 0.28
+          "mean_probability": 0.3285398007167932,
+          "observed_home_win_rate": 0.2
         },
         {
-          "bin": "(0.37, 0.429]",
+          "bin": "(0.366, 0.427]",
           "games": 50,
-          "mean_probability": 0.401634715025844,
-          "observed_home_win_rate": 0.3
-        },
-        {
-          "bin": "(0.429, 0.484]",
-          "games": 50,
-          "mean_probability": 0.4575804911800322,
+          "mean_probability": 0.3988435631554293,
           "observed_home_win_rate": 0.4
         },
         {
-          "bin": "(0.484, 0.538]",
+          "bin": "(0.427, 0.484]",
           "games": 50,
-          "mean_probability": 0.5114344513701709,
+          "mean_probability": 0.4561384943626177,
+          "observed_home_win_rate": 0.38
+        },
+        {
+          "bin": "(0.484, 0.536]",
+          "games": 50,
+          "mean_probability": 0.5107854509396788,
           "observed_home_win_rate": 0.6
         },
         {
-          "bin": "(0.538, 0.603]",
+          "bin": "(0.536, 0.603]",
           "games": 50,
-          "mean_probability": 0.5770080546110604,
-          "observed_home_win_rate": 0.7
-        },
-        {
-          "bin": "(0.603, 0.647]",
-          "games": 50,
-          "mean_probability": 0.6256032512733714,
+          "mean_probability": 0.575307265606702,
           "observed_home_win_rate": 0.66
         },
         {
-          "bin": "(0.647, 0.706]",
+          "bin": "(0.603, 0.653]",
           "games": 50,
-          "mean_probability": 0.6783620227620077,
+          "mean_probability": 0.6278952207772763,
+          "observed_home_win_rate": 0.68
+        },
+        {
+          "bin": "(0.653, 0.713]",
+          "games": 50,
+          "mean_probability": 0.6807169055365807,
           "observed_home_win_rate": 0.88
         },
         {
-          "bin": "(0.706, 0.782]",
+          "bin": "(0.713, 0.784]",
           "games": 50,
-          "mean_probability": 0.7446071653804681,
+          "mean_probability": 0.7493825534353666,
           "observed_home_win_rate": 0.86
         },
         {
-          "bin": "(0.782, 0.95]",
+          "bin": "(0.784, 0.955]",
           "games": 50,
-          "mean_probability": 0.8368445414533047,
+          "mean_probability": 0.8476649021683077,
           "observed_home_win_rate": 0.86
         }
       ]
     },
     "blend": {
-      "calibration_intercept_alpha": -0.01839405694361961,
-      "alpha_ci_2_5": -0.2958934545902143,
-      "alpha_ci_97_5": 0.26678831937037234,
-      "calibration_slope_beta": 1.7994264252526235,
-      "beta_ci_2_5": 1.6045217035920456,
-      "beta_ci_97_5": 2.0869757239336617,
-      "ece_10bin": 0.09238659052041644,
-      "ece_ci_2_5": 0.08844800328487284,
-      "ece_ci_97_5": 0.14325407732715936,
-      "mean_forecast": 0.5403403724965253,
+      "calibration_intercept_alpha": -0.01774604997512772,
+      "alpha_ci_2_5": -0.29030836747750965,
+      "alpha_ci_97_5": 0.26424122567740205,
+      "calibration_slope_beta": 1.8187690339369091,
+      "beta_ci_2_5": 1.6297951729145077,
+      "beta_ci_97_5": 2.110981938253233,
+      "ece_10bin": 0.09913699523062366,
+      "ece_ci_2_5": 0.09334575949620899,
+      "ece_ci_97_5": 0.14114733363370513,
+      "mean_forecast": 0.5401819053714563,
       "observed_rate": 0.5568862275449101,
       "reliability_table": [
         {
-          "bin": "(0.114, 0.29]",
+          "bin": "(0.11699999999999999, 0.289]",
           "games": 51,
-          "mean_probability": 0.21493238489217137,
-          "observed_home_win_rate": 0.0784313725490196
+          "mean_probability": 0.21692458059728148,
+          "observed_home_win_rate": 0.09803921568627451
         },
         {
-          "bin": "(0.29, 0.379]",
+          "bin": "(0.289, 0.382]",
           "games": 50,
-          "mean_probability": 0.33731509197984044,
+          "mean_probability": 0.33640686984573626,
           "observed_home_win_rate": 0.2
         },
         {
-          "bin": "(0.379, 0.442]",
+          "bin": "(0.382, 0.44]",
           "games": 50,
-          "mean_probability": 0.4120924927876761,
-          "observed_home_win_rate": 0.34
+          "mean_probability": 0.41531774996145693,
+          "observed_home_win_rate": 0.26
         },
         {
-          "bin": "(0.442, 0.502]",
+          "bin": "(0.44, 0.5]",
+          "games": 51,
+          "mean_probability": 0.4707813910085465,
+          "observed_home_win_rate": 0.49019607843137253
+        },
+        {
+          "bin": "(0.5, 0.55]",
+          "games": 49,
+          "mean_probability": 0.5260502686627898,
+          "observed_home_win_rate": 0.5918367346938775
+        },
+        {
+          "bin": "(0.55, 0.604]",
           "games": 50,
-          "mean_probability": 0.4713234673573467,
+          "mean_probability": 0.5774860877003347,
+          "observed_home_win_rate": 0.6
+        },
+        {
+          "bin": "(0.604, 0.643]",
+          "games": 50,
+          "mean_probability": 0.6224599099147592,
+          "observed_home_win_rate": 0.76
+        },
+        {
+          "bin": "(0.643, 0.703]",
+          "games": 50,
+          "mean_probability": 0.6717588363785026,
+          "observed_home_win_rate": 0.84
+        },
+        {
+          "bin": "(0.703, 0.768]",
+          "games": 50,
+          "mean_probability": 0.7346748854983861,
+          "observed_home_win_rate": 0.86
+        },
+        {
+          "bin": "(0.768, 0.95]",
+          "games": 50,
+          "mean_probability": 0.837528998195337,
+          "observed_home_win_rate": 0.88
+        }
+      ]
+    },
+    "calibrated_elo": {
+      "calibration_intercept_alpha": -0.038618265782933134,
+      "alpha_ci_2_5": -0.3477642368678774,
+      "alpha_ci_97_5": 0.2542932955807171,
+      "calibration_slope_beta": 1.7814502870677407,
+      "beta_ci_2_5": 1.5759517280009876,
+      "beta_ci_97_5": 2.1049463530756776,
+      "ece_10bin": 0.08793850943234845,
+      "ece_ci_2_5": 0.08291577714811038,
+      "ece_ci_97_5": 0.13614284391006398,
+      "mean_forecast": 0.5429564234072726,
+      "observed_rate": 0.5568862275449101,
+      "reliability_table": [
+        {
+          "bin": "(0.098, 0.285]",
+          "games": 51,
+          "mean_probability": 0.21028345506683718,
+          "observed_home_win_rate": 0.09803921568627451
+        },
+        {
+          "bin": "(0.285, 0.38]",
+          "games": 50,
+          "mean_probability": 0.33838775803066545,
+          "observed_home_win_rate": 0.18
+        },
+        {
+          "bin": "(0.38, 0.446]",
+          "games": 50,
+          "mean_probability": 0.4211869952744303,
+          "observed_home_win_rate": 0.36
+        },
+        {
+          "bin": "(0.446, 0.502]",
+          "games": 50,
+          "mean_probability": 0.47671973605323137,
           "observed_home_win_rate": 0.44
         },
         {
-          "bin": "(0.502, 0.551]",
+          "bin": "(0.502, 0.555]",
           "games": 50,
-          "mean_probability": 0.5260759839010277,
-          "observed_home_win_rate": 0.56
+          "mean_probability": 0.5316443491429558,
+          "observed_home_win_rate": 0.54
         },
         {
-          "bin": "(0.551, 0.604]",
+          "bin": "(0.555, 0.601]",
           "games": 50,
-          "mean_probability": 0.5786658953157975,
+          "mean_probability": 0.5762483673143758,
           "observed_home_win_rate": 0.66
         },
         {
-          "bin": "(0.604, 0.648]",
+          "bin": "(0.601, 0.65]",
           "games": 50,
-          "mean_probability": 0.6241727470179479,
-          "observed_home_win_rate": 0.74
+          "mean_probability": 0.6265288551464728,
+          "observed_home_win_rate": 0.72
         },
         {
-          "bin": "(0.648, 0.702]",
+          "bin": "(0.65, 0.705]",
           "games": 50,
-          "mean_probability": 0.6741857890768673,
+          "mean_probability": 0.6752390165171434,
+          "observed_home_win_rate": 0.84
+        },
+        {
+          "bin": "(0.705, 0.777]",
+          "games": 50,
+          "mean_probability": 0.7373819577034681,
+          "observed_home_win_rate": 0.86
+        },
+        {
+          "bin": "(0.777, 0.952]",
+          "games": 50,
+          "mean_probability": 0.8425972031899537,
+          "observed_home_win_rate": 0.88
+        }
+      ]
+    },
+    "schedule_elo": {
+      "calibration_intercept_alpha": -0.0389790004547735,
+      "alpha_ci_2_5": -0.3172136618356069,
+      "alpha_ci_97_5": 0.25872910860561715,
+      "calibration_slope_beta": 1.3302589449126014,
+      "beta_ci_2_5": 1.1843444933408083,
+      "beta_ci_97_5": 1.5040461988091183,
+      "ece_10bin": 0.05390349781948884,
+      "ece_ci_2_5": 0.0516425270781717,
+      "ece_ci_97_5": 0.11165650919816852,
+      "mean_forecast": 0.5531166230475653,
+      "observed_rate": 0.5568862275449101,
+      "reliability_table": [
+        {
+          "bin": "(0.0635, 0.232]",
+          "games": 51,
+          "mean_probability": 0.1526957044288322,
+          "observed_home_win_rate": 0.09803921568627451
+        },
+        {
+          "bin": "(0.232, 0.341]",
+          "games": 50,
+          "mean_probability": 0.28741888788740694,
+          "observed_home_win_rate": 0.18
+        },
+        {
+          "bin": "(0.341, 0.422]",
+          "games": 50,
+          "mean_probability": 0.39082003778187185,
+          "observed_home_win_rate": 0.36
+        },
+        {
+          "bin": "(0.422, 0.5]",
+          "games": 50,
+          "mean_probability": 0.4630671972158764,
+          "observed_home_win_rate": 0.44
+        },
+        {
+          "bin": "(0.5, 0.574]",
+          "games": 50,
+          "mean_probability": 0.5428818246088098,
+          "observed_home_win_rate": 0.58
+        },
+        {
+          "bin": "(0.574, 0.637]",
+          "games": 50,
+          "mean_probability": 0.6035835238475598,
+          "observed_home_win_rate": 0.66
+        },
+        {
+          "bin": "(0.637, 0.704]",
+          "games": 50,
+          "mean_probability": 0.6706560489857065,
+          "observed_home_win_rate": 0.7
+        },
+        {
+          "bin": "(0.704, 0.769]",
+          "games": 50,
+          "mean_probability": 0.7310947794951593,
           "observed_home_win_rate": 0.82
         },
         {
-          "bin": "(0.702, 0.773]",
+          "bin": "(0.769, 0.84]",
           "games": 50,
-          "mean_probability": 0.7359486592662455,
+          "mean_probability": 0.8028415804554271,
           "observed_home_win_rate": 0.88
         },
         {
-          "bin": "(0.773, 0.943]",
+          "bin": "(0.84, 0.975]",
           "games": 50,
-          "mean_probability": 0.8351993731224193,
+          "mean_probability": 0.8941150641413768,
           "observed_home_win_rate": 0.86
         }
       ]
@@ -387,30 +577,48 @@
     },
     "elo_only": {
       "n": 501,
-      "p_ge_0_80": 71,
-      "obs_rate_p_ge_0_80": 0.8873239436619719,
-      "p_ge_0_90": 21,
-      "p_le_0_20": 36,
-      "obs_rate_p_le_0_20": 0.05555555555555555,
-      "p_le_0_10": 5
+      "p_ge_0_80": 77,
+      "obs_rate_p_ge_0_80": 0.8961038961038961,
+      "p_ge_0_90": 22,
+      "p_le_0_20": 39,
+      "obs_rate_p_le_0_20": 0.05128205128205128,
+      "p_le_0_10": 9
     },
     "rank_only": {
       "n": 501,
-      "p_ge_0_80": 38,
-      "obs_rate_p_ge_0_80": 0.8421052631578947,
-      "p_ge_0_90": 4,
-      "p_le_0_20": 16,
-      "obs_rate_p_le_0_20": 0.0,
-      "p_le_0_10": 0
+      "p_ge_0_80": 44,
+      "obs_rate_p_ge_0_80": 0.8636363636363636,
+      "p_ge_0_90": 6,
+      "p_le_0_20": 22,
+      "obs_rate_p_le_0_20": 0.045454545454545456,
+      "p_le_0_10": 1
     },
     "blend": {
       "n": 501,
-      "p_ge_0_80": 34,
-      "obs_rate_p_ge_0_80": 0.8823529411764706,
-      "p_ge_0_90": 5,
+      "p_ge_0_80": 37,
+      "obs_rate_p_ge_0_80": 0.8648648648648649,
+      "p_ge_0_90": 6,
       "p_le_0_20": 20,
-      "obs_rate_p_le_0_20": 0.0,
+      "obs_rate_p_le_0_20": 0.05,
       "p_le_0_10": 0
+    },
+    "calibrated_elo": {
+      "n": 501,
+      "p_ge_0_80": 36,
+      "obs_rate_p_ge_0_80": 0.8611111111111112,
+      "p_ge_0_90": 8,
+      "p_le_0_20": 23,
+      "obs_rate_p_le_0_20": 0.043478260869565216,
+      "p_le_0_10": 1
+    },
+    "schedule_elo": {
+      "n": 501,
+      "p_ge_0_80": 77,
+      "obs_rate_p_ge_0_80": 0.8961038961038961,
+      "p_ge_0_90": 20,
+      "p_le_0_20": 39,
+      "obs_rate_p_le_0_20": 0.05128205128205128,
+      "p_le_0_10": 8
     }
   },
   "champion_challenger": {
@@ -421,6 +629,22 @@
     "blend_beats_elo_stable": false,
     "decision": "keep_elo_only"
   },
+  "calibration_challenger": {
+    "champion": "elo_only",
+    "challenger": "calibrated_elo",
+    "rule": "Promote the cross-fitted identity-shrunk calibrator only if it beats raw Elo-only on BOTH pooled log loss and Brier with block-bootstrap upper CI < 0.",
+    "calibrated_beats_elo_point_estimate_both": false,
+    "calibrated_beats_elo_stable": false,
+    "decision": "keep_raw_elo"
+  },
+  "schedule_challenger": {
+    "champion": "elo_only",
+    "challenger": "schedule_elo",
+    "rule": "Promote the Elo+schedule challenger only if it beats raw Elo-only on BOTH pooled log loss and Brier with block-bootstrap upper CI < 0.",
+    "schedule_beats_elo_point_estimate_both": false,
+    "schedule_beats_elo_stable": false,
+    "decision": "keep_raw_elo"
+  },
   "frozen_block_leakage_guarantee_verified": true,
-  "design": "Per outer weekly origin O, performance state frozen at O-1 (build_features freeze_date=O); block [O,O+7) scored with base models fit strictly before O; architectures selected per-procedure by inner OOF; blend uses inner-OOF stacker."
+  "design": "Per outer weekly origin O, performance state frozen at O-1 (build_features freeze_date=O); block [O,O+7) scored with base models fit strictly before O; architectures selected per-procedure by FROZEN inner OOF (each inner origin I uses build_features(freeze_date=I)); blend uses frozen inner-OOF stacker. Inner and outer information policies now match (frozen/frozen)."
 }

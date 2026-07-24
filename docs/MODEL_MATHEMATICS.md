@@ -128,7 +128,10 @@ M_g
 Here $R_{\mathrm{win}},R_{\mathrm{lose}}$ are the pregame ratings of the winning
 and losing team (matching the FiveThirtyEight form). This makes an upset move
 ratings *more* than an expected result and keeps the update team-swap symmetric
-at zero home advantage. (The $\max$ guard is in code; ratings exclude $H$.)
+at zero home advantage. (The $\max$ guard is in code; ratings exclude $H$.) The
+offset $2.2$ is **not** simply borrowed: it is profiled on the frozen-policy
+rolling out-of-sample surface (§8, `mov_offset_selection`) and kept because it lies
+within one standard error of the grid best while being the reference value.
 
 ## 3.3 Calibrated Elo probability
 
@@ -257,13 +260,18 @@ Elo-only model of §3.
 
 # 8. Selection and honest validation
 
-**Deployed selection (April-blind).** Each procedure (Elo-only, rank-only,
-blend) selects its **own** architecture by its **own** March log loss (Brier
-tie-break). April rows are **not** used
+**Deployed selection (April-blind).** The deployed Elo architecture is chosen by
+**aggregate frozen-policy rolling out-of-sample log loss** with a
+**one-standard-error stability rule**: among architectures within one SE of the
+best mean OOS log loss, the simplest (lowest $K$) is deployed. The winner is
+**`conservative`** (lowest mean OOS log loss *and* lowest $K$; a single March
+one-step split agrees). The MOV offset ($2.2$) and an early-season provisional-$K$
+warmup (kept **off**) are profiled on the same OOS surface (`mov_offset_selection`,
+`cold_start_selection`). April rows are **not** used
 ($N_{\mathrm{April}}^{\mathrm{selection}}=0$, max selection date
-$2026$-$03$-$31$). The Elo-only winner is **`conservative`**; its probability map
-is then refit on all rows through March 31. Because March is used to select, it
-is in-sample for selection and is not a pristine holdout.
+$2026$-$03$-$31$). The probability map is then refit on all rows through March 31.
+Because March is also used as an in-sample diagnostic, it is not a pristine
+holdout.
 
 **Nested rolling-origin audit** (`scripts/nested_validation.py`, 11 weekly outer
 folds, 501 out-of-sample games) validates the whole procedure under two
@@ -277,15 +285,21 @@ out-of-fold predictions. Pooled out-of-sample:
 \text{Elo-only (champion)} & 0.532 & 0.177\\
 \text{rank-only} & 0.550 & 0.184\\
 \text{blend} & 0.548 & 0.183\\
+\text{calibrated Elo} & 0.548 & 0.183\\
+\text{schedule Elo} & 0.531 & 0.177\\
 \text{constant} & 0.688 & 0.247
 \end{array}
 \]
 Block-bootstrap blend$-$Elo: $\Delta\mathrm{LL}=+0.017$ (95% CI
 $[+0.010,+0.023]$), $\Delta\mathrm{Brier}=+0.006$ (95% CI $[+0.004,+0.009]$);
-**0 of 4{,}000** week-block replicates favored the blend. Champion–challenger
-decision under both policies: **keep Elo-only**. Elo-only calibration:
-$\alpha\approx-0.05$, $\beta\approx1.37$ (95% CI $[1.22,1.57]$), ECE $\approx
-0.059$.
+**0 of 4{,}000** week-block replicates favored the blend. Two further challengers
+are added to the same audit and also rejected under both policies: a cross-fitted
+**calibrated Elo** (identity-shrunk $\alpha+\beta\,\mathrm{logit}(p_E)$;
+over-corrects out-of-sample, $\beta\approx1.79$; `keep_raw_elo`) and a **schedule
+Elo** (Elo $+$ rest $+$ back-to-back, strongly regularized; slightly worse on both
+proper scores; `keep_raw_elo`). Champion–challenger decision under both policies:
+**keep Elo-only**. Elo-only calibration: $\alpha\approx-0.05$, $\beta\approx1.37$
+(95% CI $[1.22,1.57]$), ECE $\approx 0.059$.
 
 ---
 

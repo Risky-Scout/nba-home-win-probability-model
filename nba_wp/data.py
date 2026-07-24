@@ -204,13 +204,20 @@ def audit_games(frame: pd.DataFrame, source_path: str | Path | None = None) -> d
 
 
 def split_dates(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
-    """Return the fixed chronological periods used throughout the project."""
+    """Return the chronological periods used throughout the project.
+
+    Boundaries are derived from the data (last month = holdout, prior month =
+    selection); the dict keys keep their historical names for compatibility.
+    """
+    from .periods import derive_periods
+
+    p = derive_periods(frame)
+    sel, hold = p.selection_start, p.holdout_start
     return {
-        "train_through_february": frame[frame["game_date"] < "2026-03-01"].copy(),
+        "train_through_february": frame[frame["game_date"] < sel].copy(),
         "march": frame[
-            (frame["game_date"] >= "2026-03-01")
-            & (frame["game_date"] < "2026-04-01")
+            (frame["game_date"] >= sel) & (frame["game_date"] < hold)
         ].copy(),
-        "through_march": frame[frame["game_date"] < "2026-04-01"].copy(),
-        "april": frame[frame["game_date"] >= "2026-04-01"].copy(),
+        "through_march": frame[frame["game_date"] < hold].copy(),
+        "april": frame[frame["game_date"] >= hold].copy(),
     }
