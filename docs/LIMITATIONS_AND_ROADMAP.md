@@ -25,6 +25,14 @@
    independent sample.
 9. **Pricing layer omitted.** Fair odds contain no overround, liability, limits,
    or trader adjustment.
+10. **Deliberately uncalibrated champion.** The nested calibration slope is
+    mildly > 1 (slight underconfidence). A dedicated calibration-risk audit
+    (`scripts/calibration_challenger.py`) tested identity-shrunk Platt and Beta
+    recalibrators under both information policies against a strict multi-gate
+    promotion rule; both over-corrected out-of-sample, so the raw-Elo champion is
+    kept uncalibrated (`decision: keep_raw_elo`). The in-sample slope is a
+    diagnostic only. With more data, a properly validated recalibration layer
+    (or the dynamic hierarchical model below) could revisit this.
 
 ## Highest-value next data
 

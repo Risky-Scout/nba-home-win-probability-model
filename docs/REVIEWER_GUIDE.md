@@ -68,8 +68,8 @@ where the temperature floor / convex-stacker note belongs.
 `artifacts/feature_group_ablation.csv` — constant prior through record-only,
 Elo-only, BT+trend, a rich linear challenger, and the blend, all on the same
 protocol. The decisive out-of-sample comparison is the **nested rolling-origin
-audit** (`scripts/nested_validation.py`): pooled Elo-only 0.532 log loss /
-0.177 Brier versus blend 0.548 / 0.183, with block-bootstrap blend − Elo-only
+audit** (`scripts/nested_validation.py`): pooled Elo-only 0.529 log loss /
+0.176 Brier versus blend 0.548 / 0.183, with block-bootstrap blend − Elo-only
 CIs entirely above zero on both metrics (0 of 4,000 replicates favored the
 blend). Two further challengers are also rejected on the same surface: a
 cross-fitted **calibrated Elo** (0.548 / 0.183; over-corrects, β ≈ 1.79) and a

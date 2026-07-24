@@ -75,7 +75,9 @@ python validate_submission.py   --root .   --data "/absolute/path/to/nba-win-pro
 ```
 
 This rebuilds the selected features, refits the deployed Elo-only champion, and
-compares every saved March and April probability within `1e-12`.
+compares every saved March and April probability within `5e-8` (probability
+tolerance), with reported metrics compared within `1e-8` (see
+`docs/NUMERICAL_REPRODUCIBILITY.md`).
 
 ### Level 3 - source-to-selection reproduction
 
@@ -97,6 +99,8 @@ prove where the selected parameters came from.
 
 ## Floating point
 
-CSV probabilities are stored at normal double precision. Tests use absolute
-tolerance `1e-12`. A different BLAS implementation or dependency version can
-produce smaller harmless differences, which is why versions are pinned.
+CSV probabilities are stored at normal double precision. The validator uses an
+absolute probability tolerance of `5e-8` and a metric tolerance of `1e-8`
+(relative tolerance 0), matching `docs/NUMERICAL_REPRODUCIBILITY.md`. A
+different BLAS implementation or dependency version can produce smaller harmless
+differences, which is why versions are pinned.

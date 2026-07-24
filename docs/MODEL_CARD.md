@@ -51,6 +51,16 @@ generated for audit, ablation, and the rejected challenger blend — they are
   belong to it, not to the champion. Two further challengers — a cross-fitted
   calibrated Elo and an Elo + rest/back-to-back schedule Elo — were added to the
   audit and are **also rejected** under both policies (`keep_raw_elo`).
+- Calibration-risk audit: a dedicated investigation
+  (`scripts/calibration_challenger.py`) tests whether a post-hoc recalibrator
+  (identity-shrunk Platt-on-logit or Beta) should replace the raw-Elo champion.
+  Fit only on strictly-causal inner out-of-fold rows and judged under both
+  policies against a strict multi-gate rule (both proper scores, block-bootstrap
+  upper CI < 0, leave-one-fold-out stability, no single-fold dominance, no tail
+  degradation), both recalibrators over-correct out-of-sample. Decision:
+  `keep_raw_elo`; no calibration is applied to the deployed prices
+  (`artifacts/calibration_challenger_decision.json`,
+  `tests/test_calibration_risk.py`).
 - April primary policy: **frozen** — the deployed Elo-only model, April
   performance state frozen at March 31, no April result updating any April
   price. This is the headline `outputs/april_predictions.csv`.

@@ -124,7 +124,7 @@ below zero, under both information policies. Three challengers are evaluated and
 - **Convex blend** (Elo + Bradley-Terry/trend): worse on both proper scores →
   `keep_elo_only`.
 - **Calibrated Elo** (cross-fitted, identity-shrunk `α + β·logit(p_elo)`):
-  over-corrects out-of-sample (β ≈ 1.79 vs raw 1.34) → `keep_raw_elo`.
+  over-corrects out-of-sample (β ≈ 1.79 vs raw 1.32) → `keep_raw_elo`.
 - **Schedule Elo** (Elo + rest + back-to-back, strongly regularized): slightly
   worse OOS on both scores → `keep_raw_elo`.
 
@@ -156,14 +156,14 @@ through \(t-1\)); a live one-step-ahead simulation.
 For every outer fold, each procedure independently selects its own architecture
 by its own inner out-of-fold score; the convex stacker is trained on inner
 out-of-fold component predictions. 11 weekly outer folds, 501 out-of-sample
-games. Pooled log loss / Brier (frozen-block ≈ daily-sequential): constant
-0.688 / 0.247, **Elo-only 0.532 / 0.177**, rank-only 0.550 / 0.184, blend
+games. Pooled log loss / Brier (frozen-block): constant
+0.688 / 0.247, **Elo-only 0.529 / 0.176**, rank-only 0.547 / 0.183, blend
 0.548 / 0.183.
 
-Block-bootstrap blend − Elo-only (frozen-block): ΔlogLoss +0.0166
-(95% CI [+0.0101, +0.0232]), ΔBrier +0.0061 (95% CI [+0.0035, +0.0089]);
-daily-sequential ΔlogLoss +0.0149 (95% CI [+0.0076, +0.0220]), ΔBrier +0.0055
-(95% CI [+0.0025, +0.0086]). **0 of 4,000 week-block bootstrap replicates
+Block-bootstrap blend − Elo-only (frozen-block): ΔlogLoss +0.0186
+(95% CI [+0.0124, +0.0239]), ΔBrier +0.0066 (95% CI [+0.0042, +0.0087]);
+daily-sequential ΔlogLoss +0.0166 (95% CI [+0.0100, +0.0234]), ΔBrier +0.0062
+(95% CI [+0.0037, +0.0087]). **0 of 4,000 week-block bootstrap replicates
 favored the blend** on either metric. With only ~11 weekly blocks this is
 strong directional evidence, not production-grade certainty. Outputs:
 `artifacts/nested_frozen_block_summary.json`,
@@ -171,6 +171,35 @@ strong directional evidence, not production-grade certainty. Outputs:
 `*_predictions.csv`, and reliability figures
 `figures/nested_frozen_block_reliability.png` /
 `figures/nested_daily_sequential_reliability.png`.
+
+## Calibration-risk investigation
+
+`scripts/calibration_challenger.py` is a dedicated model-risk audit of whether a
+post-hoc probability calibrator legitimately improves on the deployed raw-Elo
+champion. It scores three complete procedures on **identical** outer-fold rows —
+**raw Elo** (deployed, no calibration), an **identity-shrunk Platt-on-logit**
+recalibrator, and an **identity-shrunk Beta** recalibrator — under both the
+frozen-block and daily-sequential policies, reusing the same policy-matched
+nested engine. Each recalibrator is fit only on the Elo architecture's
+policy-matched inner out-of-fold rows strictly earlier than the outer origin;
+its L2 shrinkage strength is selected only by chronological inner validation; and
+any degeneracy falls back to the numerical identity, so no outer-fold outcome is
+seen while fitting or tuning.
+
+The promotion bar is strict: a recalibrator replaces raw Elo **only if**, under
+**both** policies, **all** gates hold — mean Δ log loss < 0, mean Δ Brier < 0,
+week-block bootstrap upper 95% CI < 0 for both proper scores, every
+leave-one-outer-fold-out aggregate Δ < 0 for both, no single outer fold
+contributing ≥ 50% of the total improvement, and no material tail degradation
+(challenger calibration gap in p ≥ 0.90 or p ≤ 0.10 not worse than raw by more
+than 0.02). Neither recalibrator clears every gate: identity-shrunk calibration
+over-corrects out-of-sample, so the decision is `keep_raw_elo` and the champion
+is unchanged. The pooled in-sample slope (~1.3) is flagged as diagnostic-only
+and is never applied in deployment. Evidence:
+`artifacts/calibration_challenger_decision.json`,
+`artifacts/calibration_challenger_frozen_predictions.csv`,
+`artifacts/calibration_challenger_daily_predictions.csv`, and
+`tests/test_calibration_risk.py`.
 
 ## Primary (frozen) versus sequential state
 

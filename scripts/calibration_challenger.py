@@ -575,9 +575,9 @@ def run(data_path, config_path, artifact_dir, *, outer_start=None, inner_start=N
             promoted = ch
 
     integrity_ok = bool(outer_rows_identical and not outer_outcomes_used_for_fitting)
-    decision = f"promote_{promoted}" if (promoted is not None and integrity_ok) else "keep_elo_raw"
+    decision = f"promote_{promoted}" if (promoted is not None and integrity_ok) else "keep_raw_elo"
 
-    if decision == "keep_elo_raw":
+    if decision == "keep_raw_elo":
         reason = ("No challenger passed every promotion gate under both information "
                   "policies; the deployed raw-Elo champion is retained unchanged. The "
                   "in-sample calibration slope (~1.3) is diagnostic-only and is NOT "

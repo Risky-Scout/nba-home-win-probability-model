@@ -77,9 +77,9 @@ under-forecasting, i.e. not overconfident).
 
 | Candidate | LL (frozen / daily) | Brier (frozen / daily) | Cal. slope β |
 |---|---:|---:|---:|
-| **Elo-only (champion)** | **0.532 / 0.532** | **0.177 / 0.177** | 1.37 / 1.32 |
-| Rank-only | 0.550 / 0.549 | 0.184 / 0.184 | 1.70 / 1.64 |
-| Blend (rejected) | 0.548 / 0.547 | 0.183 / 0.182 | 1.80 / 1.75 |
+| **Elo-only (champion)** | **0.529 / 0.532** | **0.176 / 0.177** | 1.32 / 1.32 |
+| Rank-only | 0.547 / 0.545 | 0.183 / 0.182 | 1.65 / 1.58 |
+| Blend (rejected) | 0.548 / 0.548 | 0.183 / 0.183 | 1.82 / 1.80 |
 | Calibrated Elo (rejected) | 0.548 / 0.549 | 0.183 / 0.184 | 1.78 / 1.76 |
 | Schedule Elo (rejected) | 0.531 / 0.533 | 0.177 / 0.177 | 1.33 / 1.33 |
 

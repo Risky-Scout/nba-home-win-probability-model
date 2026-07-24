@@ -66,16 +66,16 @@ Pooled nested metrics (frozen-block / daily-sequential):
 | Model | Log loss | Brier | AUC |
 |---|---:|---:|---:|
 | Constant home rate | 0.688 / 0.688 | 0.247 / 0.247 | — |
-| **Elo-only (champion)** | **0.532 / 0.532** | **0.177 / 0.177** | 0.813 / 0.811 |
-| Rank-only (BT + trend) | 0.550 / 0.549 | 0.184 / 0.184 | — |
-| Blend (rejected) | 0.548 / 0.547 | 0.183 / 0.182 | — |
+| **Elo-only (champion)** | **0.529 / 0.532** | **0.176 / 0.177** | 0.812 / 0.812 |
+| Rank-only (BT + trend) | 0.547 / 0.545 | 0.183 / 0.182 | — |
+| Blend (rejected) | 0.548 / 0.548 | 0.183 / 0.183 | — |
 
 Block-bootstrap, blend − Elo-only:
 
-- Frozen-block: ΔlogLoss +0.0166 (95% CI [+0.0101, +0.0232]),
-  ΔBrier +0.0061 (95% CI [+0.0035, +0.0089]).
-- Daily-sequential: ΔlogLoss +0.0149 (95% CI [+0.0076, +0.0220]),
-  ΔBrier +0.0055 (95% CI [+0.0025, +0.0086]).
+- Frozen-block: ΔlogLoss +0.0186 (95% CI [+0.0124, +0.0239]),
+  ΔBrier +0.0066 (95% CI [+0.0042, +0.0087]).
+- Daily-sequential: ΔlogLoss +0.0166 (95% CI [+0.0100, +0.0234]),
+  ΔBrier +0.0062 (95% CI [+0.0037, +0.0087]).
 
 Positive deltas mean the blend is worse. **0 of 4,000 week-block bootstrap
 replicates favored the blend** on either metric, under either policy. With only
@@ -95,18 +95,43 @@ Calibration is computed for every candidate (constant, Elo-only, rank-only,
 blend) with intercept α, slope β, week-block bootstrap CIs, ECE with
 uncertainty, reliability tables, mean-forecast-vs-observed, and tail counts.
 
-- Elo-only, frozen-block: α = −0.05 (95% CI [−0.32, +0.22]),
-  β = 1.37 (95% CI [1.22, 1.57]), ECE ≈ 0.059, mean forecast 0.554 vs
+- Elo-only, frozen-block: α = −0.04 (95% CI [−0.30, +0.24]),
+  β = 1.32 (95% CI [1.17, 1.50]), ECE ≈ 0.053, mean forecast 0.554 vs
   observed 0.557.
-- Elo-only, daily-sequential: α = −0.04, β = 1.32 (95% CI [1.19, 1.49]),
-  ECE ≈ 0.063.
-- Blend: β ≈ 1.75–1.80, ECE ≈ 0.092–0.115 — more compressed toward 0.5 and
+- Elo-only, daily-sequential: α = −0.04, β = 1.32 (95% CI [1.19, 1.47]),
+  ECE ≈ 0.061.
+- Blend: β ≈ 1.80–1.82, ECE ≈ 0.099–0.104 — more compressed toward 0.5 and
   worse calibrated.
 
 β > 1 means Elo-only is mildly **under**confident (probabilities could be
 sharpened by roughly 1.3×), a safer failure mode than overconfidence.
 Reliability diagrams are in `figures/nested_frozen_block_reliability.png` and
 `figures/nested_daily_sequential_reliability.png`.
+
+## Calibration-risk investigation
+
+Because the champion's nested calibration slope is > 1, an obvious temptation is
+to "fix" it with a post-hoc recalibrator. `scripts/calibration_challenger.py`
+tests exactly that as a formal model-risk audit. Three complete procedures are
+scored on **identical** outer-fold rows: the deployed **raw Elo** (no
+calibration), an **identity-shrunk Platt-on-logit** recalibrator, and an
+**identity-shrunk Beta** recalibrator. Each recalibrator is fit **only** on the
+Elo architecture's policy-matched inner out-of-fold rows strictly earlier than
+the outer origin, its L2 shrinkage strength is chosen only by chronological
+inner validation, and any degeneracy falls back to the numerical identity — so
+no outer-fold outcome is ever seen while fitting or tuning.
+
+A recalibrator may replace raw Elo **only if**, under **both** the frozen-block
+and daily-sequential policies, **every** promotion gate holds: mean Δ log loss
+< 0, mean Δ Brier < 0, week-block bootstrap upper 95% CI < 0 for both proper
+scores, every leave-one-outer-fold-out aggregate Δ < 0 for both, no single outer
+fold contributing ≥ 50% of the improvement, and no material tail degradation.
+Neither recalibrator clears the bar: identity-shrunk calibration **over-corrects
+out-of-sample** (worse pooled log loss and Brier, with bootstrap upper CIs above
+zero), so the decision is `keep_raw_elo` and the champion is unchanged. The
+in-sample slope (~1.3) is therefore treated as a **diagnostic only** and is never
+applied in deployment. See `artifacts/calibration_challenger_decision.json` and
+`tests/test_calibration_risk.py`.
 
 ## Ablation interpretation
 
@@ -126,7 +151,6 @@ The March ablation (`artifacts/feature_group_ablation.csv`) shows:
 Paired game-level bootstrap log-loss differences are stored in:
 
 - `artifacts/paired_bootstrap_champion_vs_blend.json` (Elo-only vs blend)
-- `artifacts/paired_bootstrap_vs_elo.json`
 - `artifacts/paired_bootstrap_vs_rank.json`
 - `artifacts/paired_bootstrap_vs_constant.json`
 

@@ -66,4 +66,4 @@ PASSED tests/test_workbook_reconstruction.py::test_standardized_form_reproduces_
 PASSED tests/test_workbook_reconstruction.py::test_raw_form_reproduces_deployed_prices
 PASSED tests/test_workbook_reconstruction.py::test_naive_raw_coef_with_standardized_intercept_is_wrong
 PASSED tests/test_workbook_reconstruction.py::test_workbook_reconciliation_artifact_passes
-65 passed in 51.95s
+65 passed in 49.47s

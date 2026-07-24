@@ -589,17 +589,17 @@ information policies (frozen-block and daily-sequential; never mixed), 11 weekly
 outer folds, 501 out-of-sample games. Each procedure independently selects its
 own architecture by its own inner out-of-fold score; the challenger stacker
 trains on inner out-of-fold predictions. Pooled out-of-sample (frozen-block):
-Elo-only LL \(0.532\)/Brier \(0.177\); rank-only \(0.550\)/\(0.184\); blend
+Elo-only LL \(0.529\)/Brier \(0.176\); rank-only \(0.547\)/\(0.183\); blend
 \(0.548\)/\(0.183\); constant \(0.688\)/\(0.247\). Block-bootstrap
-blend\(-\)Elo: \(\Delta\mathrm{LL}=+0.017\) (95\% CI \([+0.010,+0.023]\)),
-\(\Delta\mathrm{Brier}=+0.006\) (95\% CI \([+0.004,+0.009]\)); \textbf{0 of
+blend\(-\)Elo: \(\Delta\mathrm{LL}=+0.019\) (95\% CI \([+0.012,+0.024]\)),
+\(\Delta\mathrm{Brier}=+0.007\) (95\% CI \([+0.004,+0.009]\)); \textbf{0 of
 4{,}000} week-block replicates favored the blend. Two further challengers are
 added to the same audit and \textbf{also rejected} under both policies: a
 cross-fitted \textbf{calibrated Elo} (identity-shrunk \(\alpha+\beta\operatorname{logit}(p_E)\);
 over-corrects out-of-sample, \(\beta\approx1.79\); \(0.548/0.183\)) and a
 \textbf{schedule Elo} (Elo + rest + back-to-back, regularized; \(0.531/0.177\),
 slightly worse on both scores). Calibration (frozen-block): Elo-only slope
-\(\beta\approx1.37\) (95\% CI \([1.22,1.57]\)), ECE \(\approx 0.059\) --- better
+\(\beta\approx1.32\) (95\% CI \([1.17,1.50]\)), ECE \(\approx 0.053\) --- better
 calibrated than the blend (\(\beta\approx1.80\)). Decision under both policies:
 \textbf{keep Elo-only}. Artifacts:
 \code{nested\_frozen\_block\_summary.json},

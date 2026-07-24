@@ -162,7 +162,7 @@ From all prior games (before date $d$), fit team strengths $q_i$ and home interc
 P(Y_g=1)
 =
 \sigma\!\bigl(\alpha + q_h - q_a\bigr),
-\qquad C_{\mathrm{BT}} = 0.15.
+\qquad C_{\mathrm{BT}} = 0.1.
 \]
 The pregame feature is the decision value
 \[
@@ -178,27 +178,27 @@ x_g^{\mathrm{BT}}
 For team $i$ on date $d$, let $m_{ik}$ be that team’s point margin in prior game $k$,
 and $\Delta_{kd}$ the age of that game in days.
 
-**Long form** (exponentially weighted, half-life $45$ days):
+**Long form** (exponentially weighted, half-life $60$ days):
 \[
 L_{i,d}
 =
 \frac{
 \sum_{k:\,\mathrm{date}_k < d}
-2^{-\Delta_{kd}/45}\, m_{ik}
+2^{-\Delta_{kd}/60}\, m_{ik}
 }{
 \sum_{k:\,\mathrm{date}_k < d}
-2^{-\Delta_{kd}/45}
+2^{-\Delta_{kd}/60}
 }.
 \]
 
-**Short form** (mean of the last $\min(10,n_i)$ games):
+**Short form** (mean of the last $\min(12,n_i)$ games):
 \[
 S_{i,d}
 =
 \frac{1}{n_i^{\mathrm{short}}}
 \sum_{\text{last } n_i^{\mathrm{short}}} m_{ik},
 \qquad
-n_i^{\mathrm{short}}=\min(10,n_i).
+n_i^{\mathrm{short}}=\min(12,n_i).
 \]
 
 **Trend and matchup feature:**
@@ -253,7 +253,7 @@ block of `artifacts/selected_spec.json`. Convexity is pinned by
 
 **This blend is not deployed.** Under nested rolling-origin validation (§8) it is
 worse than Elo-only on both proper scores and worse calibrated
-(slope $\beta\approx1.8$ vs. Elo-only $\beta\approx1.35$), so the champion is the
+(slope $\beta\approx1.8$ vs. Elo-only $\beta\approx1.32$), so the champion is the
 Elo-only model of §3.
 
 ---
@@ -278,28 +278,28 @@ folds, 501 out-of-sample games) validates the whole procedure under two
 information policies — *frozen-block* (state frozen at each outer origin) and
 *daily-sequential* (results strictly before date $t$). Each procedure picks its
 own architecture by its own inner OOF score; the stacker trains on inner
-out-of-fold predictions. Pooled out-of-sample:
+out-of-fold predictions. Pooled out-of-sample (frozen-block):
 \[
 \begin{array}{lcc}
 \text{candidate} & \mathrm{LL} & \mathrm{Brier}\\\hline
-\text{Elo-only (champion)} & 0.532 & 0.177\\
-\text{rank-only} & 0.550 & 0.184\\
+\text{Elo-only (champion)} & 0.529 & 0.176\\
+\text{rank-only} & 0.547 & 0.183\\
 \text{blend} & 0.548 & 0.183\\
 \text{calibrated Elo} & 0.548 & 0.183\\
 \text{schedule Elo} & 0.531 & 0.177\\
 \text{constant} & 0.688 & 0.247
 \end{array}
 \]
-Block-bootstrap blend$-$Elo: $\Delta\mathrm{LL}=+0.017$ (95% CI
-$[+0.010,+0.023]$), $\Delta\mathrm{Brier}=+0.006$ (95% CI $[+0.004,+0.009]$);
+Block-bootstrap blend$-$Elo (frozen-block): $\Delta\mathrm{LL}=+0.019$ (95% CI
+$[+0.012,+0.024]$), $\Delta\mathrm{Brier}=+0.007$ (95% CI $[+0.004,+0.009]$);
 **0 of 4{,}000** week-block replicates favored the blend. Two further challengers
 are added to the same audit and also rejected under both policies: a cross-fitted
 **calibrated Elo** (identity-shrunk $\alpha+\beta\,\mathrm{logit}(p_E)$;
 over-corrects out-of-sample, $\beta\approx1.79$; `keep_raw_elo`) and a **schedule
 Elo** (Elo $+$ rest $+$ back-to-back, strongly regularized; slightly worse on both
 proper scores; `keep_raw_elo`). Champion–challenger decision under both policies:
-**keep Elo-only**. Elo-only calibration: $\alpha\approx-0.05$, $\beta\approx1.37$
-(95% CI $[1.22,1.57]$), ECE $\approx 0.059$.
+**keep Elo-only**. Elo-only calibration: $\alpha\approx-0.04$, $\beta\approx1.32$
+(95% CI $[1.17,1.50]$), ECE $\approx 0.053$.
 
 ---
 

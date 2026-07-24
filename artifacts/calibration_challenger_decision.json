@@ -1,7 +1,7 @@
 {
   "status": "PASS",
   "deployed_before": "elo_raw",
-  "decision": "keep_elo_raw",
+  "decision": "keep_raw_elo",
   "candidates_evaluated": [
     "elo_raw",
     "elo_platt_identity_shrunk",

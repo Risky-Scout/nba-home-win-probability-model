@@ -191,22 +191,22 @@ component predictions. Six candidates are priced on identical outer-fold rows
 | Candidate (nested OOS, 501 games) | LL (frozen) | Brier (frozen) | LL (daily) | Brier (daily) | Cal. slope β |
 |---|---:|---:|---:|---:|---:|
 | Constant home rate | 0.688 | 0.247 | 0.688 | 0.247 | — |
-| **Elo-only (champion)** | **0.532** | **0.177** | **0.532** | **0.177** | 1.32–1.37 |
-| Rank-only (BT + trend) | 0.550 | 0.184 | 0.549 | 0.184 | 1.64–1.70 |
-| Convex blend (rejected) | 0.548 | 0.183 | 0.547 | 0.182 | 1.75–1.80 |
+| **Elo-only (champion)** | **0.529** | **0.176** | **0.532** | **0.177** | 1.32 |
+| Rank-only (BT + trend) | 0.547 | 0.183 | 0.545 | 0.182 | 1.58–1.65 |
+| Convex blend (rejected) | 0.548 | 0.183 | 0.548 | 0.183 | 1.80–1.82 |
 | Calibrated Elo (rejected) | 0.548 | 0.183 | 0.549 | 0.184 | 1.76–1.78 |
 | Schedule Elo (rejected) | 0.531 | 0.177 | 0.533 | 0.177 | 1.33 |
 
-Week-block bootstrap, blend − Elo-only (frozen-block): **ΔlogLoss = +0.017**
-(95% CI `[+0.010, +0.023]`), **ΔBrier = +0.006** (95% CI `[+0.004, +0.009]`).
+Week-block bootstrap, blend − Elo-only (frozen-block): **ΔlogLoss = +0.019**
+(95% CI `[+0.012, +0.024]`), **ΔBrier = +0.007** (95% CI `[+0.004, +0.009]`).
 **0 of 4,000** week-block bootstrap replicates favored the blend on either
 metric (with only ~11 weekly blocks, treat this as strong directional evidence,
 not production-grade certainty from a large independent sample).
 
 **Calibration is now reported for every candidate**, not just the loser. On the
 frozen-block policy the Elo-only champion is the best-calibrated candidate:
-intercept α = −0.05 (95% CI `[−0.32, +0.22]`), slope β = 1.37 (95% CI
-`[1.22, 1.57]`), ECE ≈ 0.059, mean forecast 0.554 vs. observed 0.557. The blend
+intercept α = −0.04 (95% CI `[−0.30, +0.24]`), slope β = 1.32 (95% CI
+`[1.17, 1.50]`), ECE ≈ 0.053, mean forecast 0.554 vs. observed 0.557. The blend
 is worse: β ≈ 1.80 and ECE ≈ 0.092–0.115 (more compressed toward 0.5). β > 1
 means the Elo-only champion is *mildly under*confident (it could be sharpened
 ~1.3×), which is a much safer failure mode for pricing than overconfidence.
@@ -255,6 +255,7 @@ policies** (both `decision: keep_raw_elo`):
 | Nested rolling-origin validation under two policies (frozen-block + daily-sequential), policy-matched inner selection (frozen-inner/frozen-outer, sequential-inner/sequential-outer) + OOF stacker, candidate comparison, block-bootstrap, calibration for every candidate, champion-challenger | `scripts/nested_validation.py`, `artifacts/nested_frozen_block_summary.json`, `artifacts/nested_daily_sequential_summary.json`, `artifacts/nested_frozen_block_folds.csv`, `figures/nested_frozen_block_reliability.png`, `figures/nested_daily_sequential_reliability.png` |
 | Calibrated-Elo challenger (cross-fitted, identity-shrunk) is rejected — it over-corrects out-of-sample | `scripts/nested_validation.py`, `artifacts/nested_frozen_block_summary.json` / `artifacts/nested_daily_sequential_summary.json` (`calibration_challenger`), `tests/test_calibration_challenger.py` |
 | Schedule-Elo challenger (Elo + rest + back-to-back) is rejected — slightly worse OOS proper scores | `scripts/nested_validation.py`, `artifacts/nested_frozen_block_summary.json` / `artifacts/nested_daily_sequential_summary.json` (`schedule_challenger`) |
+| Calibration-risk investigation (raw Elo vs. identity-shrunk Platt/Beta) keeps the raw champion under a strict multi-gate rule (`keep_raw_elo`) | `scripts/calibration_challenger.py`, `artifacts/calibration_challenger_decision.json`, `tests/test_calibration_risk.py` |
 | `raw_unit_coefficient` must be paired with `raw_intercept` (not the standardized intercept) | `artifacts/selected_spec.json` (`elo_model.raw_intercept`), `tests/test_workbook_reconstruction.py` |
 | Excel workbook reconciles to the spec and metrics from one command | `scripts/workbook_reconciliation.py` (`python -m scripts.workbook_reconciliation`), `artifacts/workbook_reconciliation.json` (status PASS), `tests/test_workbook_reconstruction.py` |
 | Metrics recompute from individual prices | `validate_submission.py`, `tests/test_artifacts.py` |
@@ -297,11 +298,16 @@ chain:
 3. March and April scoring (ablation, coefficients, permutation importance,
    calibration bins, figures);
 4. nested rolling-origin validation (both policies);
-5. Excel workbook rebuild;
-6. workbook reconciliation (`artifacts/workbook_reconciliation.json`);
-7. pytest report;
-8. manifest generation;
-9. independent metric verification.
+5. calibration-risk investigation (`scripts/calibration_challenger.py`): raw Elo
+   vs. identity-shrunk Platt and Beta recalibrators, evaluated under both the
+   frozen-block and daily-sequential policies with a strict multi-gate promotion
+   rule → decision `keep_raw_elo`, champion unchanged
+   (`artifacts/calibration_challenger_decision.json`);
+6. Excel workbook rebuild;
+7. workbook reconciliation (`artifacts/workbook_reconciliation.json`);
+8. pytest report;
+9. manifest generation;
+10. independent metric verification.
 
 For a faster live demonstration:
 
@@ -350,10 +356,17 @@ future untouched period or a separate season. The repository reconstructs a
 machine-enforced pre-April selection path and reports these limitations rather
 than claiming perfect historical blindness.
 
-Honest verdict: the fully nested rolling-origin audit
+## License
+
+Released under the MIT License. See [`LICENSE`](LICENSE). Copyright (c) 2026
+Risky-Scout.
+
+## Honest verdict
+
+The fully nested rolling-origin audit
 (`scripts/nested_validation.py`) shows the Elo + rank blend does **not** beat
 Elo-only out-of-sample — it is worse on log loss and Brier under both
-information policies and worse calibrated (blend β ≈ 1.8 vs. Elo-only β ≈ 1.35).
+information policies and worse calibrated (blend β ≈ 1.8 vs. Elo-only β ≈ 1.32).
 Two further challengers — a cross-fitted calibrated Elo and an Elo + schedule
 (rest/back-to-back) logistic — were added to the same audit and are **also
 rejected** under both policies. The single statistically strong claim is

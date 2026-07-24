@@ -168,20 +168,20 @@ L_{i,d}
 =
 \frac{
 \sum_{k<d}
-2^{-\Delta days_{kd}/45} m_{ik}
+2^{-\Delta days_{kd}/60} m_{ik}
 }{
 \sum_{k<d}
-2^{-\Delta days_{kd}/45}
+2^{-\Delta days_{kd}/60}
 }.
 \]
 
-Short-form margin is the mean over the most recent ten games:
+Short-form margin is the mean over the most recent twelve games:
 
 \[
 S_{i,d}
 =
 \frac{1}{n_i}
-\sum_{\text{last } \min(10,n_i)} m_{ik}.
+\sum_{\text{last } \min(12,n_i)} m_{ik}.
 \]
 
 Trend is the change relative to long-form strength:

@@ -17,7 +17,7 @@ raw-Elo champion is protected:
   12. Promotion requires BOTH policies to pass.
   13. Fixed reliability bins and tail counts are present in the decision artifact.
   14. LOFO stability is recorded in the decision artifact.
-  15. Raw-Elo public output hashes are unchanged when decision == keep_elo_raw.
+  15. Raw-Elo public output hashes are unchanged when decision == keep_raw_elo.
 """
 from __future__ import annotations
 
@@ -126,7 +126,7 @@ def test_pooled_calibration_never_deployed() -> None:
     # The decision artifact flags its pooled slope as diagnostic-only and keeps raw.
     doc = _decision()
     assert doc["pooled_calibration_slope_is_diagnostic_only"] is True
-    assert doc["decision"] == "keep_elo_raw"
+    assert doc["decision"] == "keep_raw_elo"
     # The diagnostic pooled slope (~1.3) must not appear in the deployed spec or prices.
     diag_slope = doc["policies"]["frozen_block"]["candidates"]["elo_raw"]["calibration_slope_beta"]
     assert 1.2 < diag_slope < 1.5
@@ -376,11 +376,11 @@ def test_lofo_stability_recorded() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# 15. Raw-Elo public output hashes unchanged when decision == keep_elo_raw.
+# 15. Raw-Elo public output hashes unchanged when decision == keep_raw_elo.
 # --------------------------------------------------------------------------- #
 def test_raw_elo_output_hashes_unchanged() -> None:
     doc = _decision()
-    if doc["decision"] != "keep_elo_raw":
+    if doc["decision"] != "keep_raw_elo":
         pytest.skip("A challenger was promoted; champion hashes are expected to change.")
     if not BASELINE_HASHES.exists():
         pytest.skip("Baseline hash file /tmp/nba_baseline_hashes.txt not present.")

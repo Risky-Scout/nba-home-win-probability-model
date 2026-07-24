@@ -6,3 +6,8 @@ __pycache__/
 data/*.csv
 !data/README.md
 artifacts/*.tmp
+
+# Local-only interview/presentation helper scripts (leak personal paths / employer name)
+open_interview.sh
+open_the_presentation.sh
+present.sh
