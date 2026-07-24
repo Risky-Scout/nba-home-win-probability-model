@@ -645,5 +645,17 @@
     "schedule_beats_elo_stable": false,
     "decision": "keep_raw_elo"
   },
+  "blend_vs_elo_fold_counts": {
+    "tol": 1e-12,
+    "n_outer_folds": 11,
+    "blend_worse_log_loss_folds": 10,
+    "blend_better_log_loss_folds": 1,
+    "blend_tied_log_loss_folds": 0,
+    "blend_worse_brier_folds": 9,
+    "blend_better_brier_folds": 2,
+    "blend_tied_brier_folds": 0,
+    "blend_worse_both_folds": 9,
+    "blend_better_both_folds": 1
+  },
   "design": "One game date per fold; base models refit through t-1; architectures selected per-procedure weekly by SEQUENTIAL inner OOF; blend uses sequential inner-OOF stacker. Inner and outer information policies now match (sequential/sequential). Live simulation."
 }

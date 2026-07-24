@@ -508,13 +508,32 @@ def score_and_write(
             "april": primary_april_metrics,
         },
         "rejected_challenger_blend": {
+            "status": "rejected_challenger_reference",
             "april_frozen": evaluate(
                 frozen_april["home_win"],
                 challenger_frozen_april_probability,
             ),
+            "base_model_training_window_for_stacker_fit": (
+                f"Elo/rank base models fit on all rows with game_date < "
+                f"{periods.s(sel_start)}; the logit stacker is then fit on the "
+                f"resulting one-step March base predictions over "
+                f"[{periods.s(sel_start)}, {periods.s(hold_start)})."
+            ),
+            "full_refit_base_model_window": (
+                f"Elo/rank base models refit on all rows with game_date < "
+                f"{periods.s(hold_start)} and combined with the March-fit stacker "
+                f"to produce the challenger's frozen-April predictions."
+            ),
             "note": (
                 "Blend shown for transparency only; rejected by the nested "
-                "rolling-origin audit (worse out-of-sample than Elo-only)."
+                "rolling-origin audit (worse out-of-sample than Elo-only). The "
+                "single March stacker fit is NOT pristine validation; the rejection "
+                "evidence is the nested out-of-fold artifacts "
+                "(artifacts/nested_*_summary.json and nested_*_folds.csv). No "
+                "deployed Elo-only probability depends on this stacker; the "
+                "champion frozen-April probability equals frozen_april_elo "
+                "(home_win_probability == elo_component_probability in "
+                "outputs/april_predictions.csv)."
             ),
         },
         "information_policy_note": (

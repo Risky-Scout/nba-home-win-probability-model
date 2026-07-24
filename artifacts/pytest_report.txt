@@ -1,4 +1,4 @@
-.......................................                                  [100%]
+.................................................                        [100%]
 ==================================== PASSES ====================================
 =========================== short test summary info ============================
 PASSED tests/test_architecture_selection.py::test_architecture_selection_block_present
@@ -33,6 +33,16 @@ PASSED tests/test_leakage_mutations.py::test_positive_control_february_outcome_c
 PASSED tests/test_primary_april_frozen.py::test_primary_april_probabilities_ignore_all_april_results
 PASSED tests/test_real_data_contract.py::test_real_data_audit
 PASSED tests/test_real_data_contract.py::test_april_mutation_cannot_change_march_features
+PASSED tests/test_selection_provenance.py::test_selection_provenance_is_single_source_of_truth
+PASSED tests/test_selection_provenance.py::test_deployed_selection_text_is_frozen_oos_one_se
+PASSED tests/test_selection_provenance.py::test_march_reference_metadata_status
+PASSED tests/test_selection_provenance.py::test_march_single_split_is_labelled_reference_only
+PASSED tests/test_selection_provenance.py::test_march_reference_metrics_recompute_from_final_profiled_arch
+PASSED tests/test_selection_provenance.py::test_nested_fold_counts_reconcile_to_artifacts[nested_frozen_block_folds.csv-nested_frozen_block_summary.json]
+PASSED tests/test_selection_provenance.py::test_nested_fold_counts_reconcile_to_artifacts[nested_daily_sequential_folds.csv-nested_daily_sequential_summary.json]
+PASSED tests/test_selection_provenance.py::test_no_hardcoded_fold_count_phrase
+PASSED tests/test_selection_provenance.py::test_champion_april_probability_is_elo_component
+PASSED tests/test_selection_provenance.py::test_final_metrics_champion_is_elo_only_and_blend_is_separate
 PASSED tests/test_stacker_temperature_floor.py::test_stacker_temperature_floor_removes_sharpening
 PASSED tests/test_stacker_temperature_floor.py::test_stacker_weights_are_convex_when_stacker_is_used
 PASSED tests/test_workbook_reconstruction.py::test_raw_intercept_present_and_consistent
@@ -40,4 +50,4 @@ PASSED tests/test_workbook_reconstruction.py::test_standardized_form_reproduces_
 PASSED tests/test_workbook_reconstruction.py::test_raw_form_reproduces_deployed_prices
 PASSED tests/test_workbook_reconstruction.py::test_naive_raw_coef_with_standardized_intercept_is_wrong
 PASSED tests/test_workbook_reconstruction.py::test_workbook_reconciliation_artifact_passes
-39 passed in 14.24s
+49 passed in 38.78s

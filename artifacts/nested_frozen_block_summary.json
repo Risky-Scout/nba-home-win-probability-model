@@ -645,6 +645,18 @@
     "schedule_beats_elo_stable": false,
     "decision": "keep_raw_elo"
   },
+  "blend_vs_elo_fold_counts": {
+    "tol": 1e-12,
+    "n_outer_folds": 11,
+    "blend_worse_log_loss_folds": 9,
+    "blend_better_log_loss_folds": 2,
+    "blend_tied_log_loss_folds": 0,
+    "blend_worse_brier_folds": 9,
+    "blend_better_brier_folds": 2,
+    "blend_tied_brier_folds": 0,
+    "blend_worse_both_folds": 9,
+    "blend_better_both_folds": 2
+  },
   "frozen_block_leakage_guarantee_verified": true,
   "design": "Per outer weekly origin O, performance state frozen at O-1 (build_features freeze_date=O); block [O,O+7) scored with base models fit strictly before O; architectures selected per-procedure by FROZEN inner OOF (each inner origin I uses build_features(freeze_date=I)); blend uses frozen inner-OOF stacker. Inner and outer information policies now match (frozen/frozen)."
 }

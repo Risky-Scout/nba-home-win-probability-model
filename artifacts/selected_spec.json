@@ -4,7 +4,15 @@
   "selected_using": "Aggregate frozen-policy rolling OOS log loss (one-standard-error stability rule)",
   "selection_data_max_date": "2026-03-31",
   "april_rows_loaded_during_selection": 0,
-  "selection_rule": "Each procedure (Elo-only, rank-only, blend) selects its own architecture by its own March log loss (Brier tie-break). Champion is Elo-only: the nested rolling-origin audit shows the blend does not beat Elo-only out-of-sample on log loss or Brier, so the simpler model is deployed. The blend is retained as a rejected challenger.",
+  "selection_rule": "The deployed Elo architecture is selected by aggregate pre-holdout frozen-policy rolling out-of-sample log loss using a one-standard-error stability rule, preferring the simplest and most stable architecture inside the noise band. March log loss with Brier tie-break is used only for the descriptive March reference winners for the individual procedures. Policy-matched nested rolling-origin evidence retains Elo-only over the blend; the blend remains a rejected challenger.",
+  "selection_provenance": {
+    "deployed_architecture_method": "frozen_rolling_oos_one_se",
+    "march_reference_method": "march_reference_log_loss_brier_tiebreak",
+    "nested_decision_method": "nested_policy_matched_champion_challenger",
+    "deployed_architecture_method_description": "Aggregate pre-holdout frozen-policy rolling out-of-sample log loss with a one-standard-error stability rule (select_elo_architecture_stability); the MOV offset and cold-start warmup are profiled on the same OOS surface. This is the SELECTOR of the deployed architecture.",
+    "march_reference_method_description": "Per-procedure March log loss with a Brier tie-break, used only to name descriptive March reference winners. This is a cross-check, NOT the selector of the deployed architecture.",
+    "nested_decision_method_description": "Policy-matched nested rolling-origin audit (frozen-block and daily-sequential) retains Elo-only over the blend; the blend is kept as a rejected challenger."
+  },
   "primary_metric": "log_loss",
   "secondary_metrics": [
     "brier",
@@ -84,7 +92,8 @@
         "mean_brier": 0.18450150373120297
       }
     ],
-    "march_single_split_would_choose": "conservative"
+    "march_single_split_would_choose": "conservative",
+    "march_single_split_would_choose_note": "Reference-only descriptive cross-check: the architecture a single March log-loss split would name. It is NOT the selector; the deployed architecture is chosen by the frozen-policy rolling OOS one-standard-error rule above (method=frozen_rolling_oos_one_se). Shown to demonstrate the single-March split happens to agree, not to justify deployment."
   },
   "mov_offset_selection": {
     "rule": "MOV multiplier offset profiled on the frozen-policy rolling OOS surface; the literature value 2.2 is kept unless a grid value beats it beyond one standard error.",
@@ -177,6 +186,38 @@
     "C": 10.0,
     "note": "Deployed champion is Elo-only. Two EQUIVALENT forms: (standardized) p = sigmoid(intercept + standardized_coefficient * (elo_diff - training_mean)/training_scale); (raw) p = sigmoid(raw_intercept + raw_unit_coefficient * elo_diff). Do NOT combine raw_unit_coefficient with the standardized intercept: raw_intercept = intercept - standardized_coefficient*training_mean/training_scale already absorbs the centering shift. The Elo + rank blend was rejected by the nested rolling-origin audit (worse out-of-sample log loss and Brier)."
   },
+  "march_reference_metrics": {
+    "log_loss": 0.5065900312308793,
+    "brier": 0.16588048136759967,
+    "auc": 0.8233918128654971,
+    "accuracy": 0.7698744769874477
+  },
+  "march_reference_metrics_provenance": {
+    "method": "march_reference_log_loss_brier_tiebreak",
+    "architecture": {
+      "name": "conservative",
+      "elo_k": 7.5,
+      "elo_hfa": 55.0,
+      "elo_mov": "log",
+      "bt_c": 0.1,
+      "trend_half_life_days": 60.0,
+      "trend_short_games": 12,
+      "elo_model_c": 10.0,
+      "rank_model_c": 0.1,
+      "mov_offset": 2.2,
+      "mov_slope": 0.001,
+      "warmup_games": 0,
+      "elo_k_warmup": 0.0
+    },
+    "training_end_date": "2026-03-01",
+    "scoring_window_start": "2026-03-01",
+    "scoring_window_end": "2026-04-01",
+    "information_policy": "sequential_daily_march_state",
+    "training_row_count": 895,
+    "scoring_row_count": 239,
+    "status": "descriptive_reference_not_pristine_holdout",
+    "note": "Recomputed from the final profiled deployed architecture (post MOV-offset and cold-start profiling). Training rows are strictly before scoring_window_start. Descriptive March cross-check only; the deployed architecture is selected on the frozen-policy rolling OOS surface, and the out-of-sample evidence is the nested audit."
+  },
   "march_validation_metrics": {
     "log_loss": 0.5065900312308793,
     "brier": 0.16588048136759967,
@@ -186,7 +227,13 @@
   "challenger": {
     "model_family": "logistic-stacked blend: Elo + Bradley-Terry/recent-trend",
     "status": "rejected",
-    "reason": "Nested rolling-origin validation: blend worse than Elo-only on both log loss and Brier (block-bootstrap CIs entirely above zero; blend worse in 10 of 11 outer folds). See artifacts/nested_frozen_block_summary.json and artifacts/nested_daily_sequential_summary.json.",
+    "reason": "Policy-matched nested rolling-origin validation rejects the blend: pooled log loss and Brier are worse than Elo-only under both frozen and daily-sequential policies, and the paired week-block bootstrap confidence intervals for blend-minus-Elo are above zero. See the nested summary and fold artifacts for dynamically generated counts.",
+    "evidence_artifacts": [
+      "artifacts/nested_frozen_block_summary.json",
+      "artifacts/nested_frozen_block_folds.csv",
+      "artifacts/nested_daily_sequential_summary.json",
+      "artifacts/nested_daily_sequential_folds.csv"
+    ],
     "architecture": {
       "name": "conservative",
       "elo_k": 7.5,
@@ -249,11 +296,12 @@
   },
   "architecture_count": 5,
   "notes": [
-    "Elo architecture selected by aggregate frozen-policy rolling OOS log loss with a one-standard-error stability rule (pre-holdout only).",
+    "Deployed Elo architecture selected by aggregate frozen-policy rolling OOS log loss with a one-standard-error stability rule (pre-holdout only); MOV offset and cold-start warmup profiled on the same OOS surface. March log loss is NOT the selector of the deployed architecture.",
+    "march_reference_metrics (and its alias march_validation_metrics) are recomputed from the FINAL profiled deployed architecture as a DESCRIPTIVE March cross-check, not untouched holdout evidence.",
     "Deployed Elo-only probability map is refit on all rows through the selection cutoff.",
     "March state features update only after each completed game date.",
     "No April row is loaded by model selection.",
-    "March is used for both architecture selection and reported March metrics, so March is in-sample for selection and is not a pristine holdout. The out-of-sample evidence is the nested audit.",
+    "March is used for both architecture profiling and the reported March reference metrics, so March is in-sample for selection and is not a pristine holdout. The out-of-sample evidence is the nested audit.",
     "The Elo + rank blend was implemented, validated, and REJECTED: it does not beat Elo-only out-of-sample. Deploying the simpler model is the honest, defensible choice."
   ]
 }

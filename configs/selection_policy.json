@@ -1,6 +1,6 @@
 {
   "selection_period": "2026-03-01 through 2026-03-31",
   "training_period": "2025-10-21 through 2026-02-28",
-  "selection_rule": "Deployed Elo architecture chosen by aggregate frozen-policy rolling out-of-sample log loss with a one-standard-error stability rule; MOV offset and cold-start warmup profiled on the same OOS surface. March is only an in-sample cross-check (single-March split agrees). Period boundaries are derived from the data (nba_wp/periods.py); the dates above are descriptive for this season and are not consumed at runtime.",
+  "selection_rule": "The deployed Elo architecture is selected by aggregate pre-holdout frozen-policy rolling out-of-sample log loss using a one-standard-error stability rule, preferring the simplest and most stable architecture inside the noise band; the MOV offset and cold-start warmup are profiled on the same OOS surface. March log loss with Brier tie-break is only a descriptive reference cross-check (the single-March split happens to agree) and is NOT the selector. Policy-matched nested rolling-origin evidence retains Elo-only over the blend. Period boundaries are derived from the data (nba_wp/periods.py); the dates above are descriptive for this season and are not consumed at runtime.",
   "calibration": "Blend fitted by penalized maximum likelihood (logistic stacking) on March component logits; no grid search."
 }

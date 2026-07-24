@@ -77,6 +77,64 @@ def _brier(y: np.ndarray, p: np.ndarray) -> float:
     return float(brier_score_loss(y, _clip(p)))
 
 
+def _fold_counts(folds_df: pd.DataFrame, tol: float = 1e-12) -> dict:
+    """Reconstruct blend-vs-Elo per-fold win/loss/tie counts from a fold table.
+
+    Definitions (blend relative to Elo-only, per outer fold):
+      * worse  : blend metric > elo metric + tol
+      * better : blend metric < elo metric - tol
+      * tied   : otherwise (|blend - elo| <= tol)
+    The three log-loss categories sum to n_outer_folds (same for Brier). These
+    counts are derived numerically from the fold CSV so the narrative can never
+    hard-code a stale fold count; they reconcile EXACTLY to the fold artifact.
+    """
+    ll_e = folds_df["log_loss_elo"].to_numpy(dtype=float)
+    ll_b = folds_df["log_loss_blend"].to_numpy(dtype=float)
+    br_e = folds_df["brier_elo"].to_numpy(dtype=float)
+    br_b = folds_df["brier_blend"].to_numpy(dtype=float)
+    n = int(len(folds_df))
+    ll_worse = ll_b > ll_e + tol
+    ll_better = ll_b < ll_e - tol
+    ll_tied = ~(ll_worse | ll_better)
+    br_worse = br_b > br_e + tol
+    br_better = br_b < br_e - tol
+    br_tied = ~(br_worse | br_better)
+    return {
+        "tol": float(tol),
+        "n_outer_folds": n,
+        "blend_worse_log_loss_folds": int(ll_worse.sum()),
+        "blend_better_log_loss_folds": int(ll_better.sum()),
+        "blend_tied_log_loss_folds": int(ll_tied.sum()),
+        "blend_worse_brier_folds": int(br_worse.sum()),
+        "blend_better_brier_folds": int(br_better.sum()),
+        "blend_tied_brier_folds": int(br_tied.sum()),
+        "blend_worse_both_folds": int((ll_worse & br_worse).sum()),
+        "blend_better_both_folds": int((ll_better & br_better).sum()),
+    }
+
+
+def _per_origin_blend_elo_metrics(preds: pd.DataFrame) -> pd.DataFrame:
+    """Per-outer-origin Elo/blend log loss and Brier from a predictions frame.
+
+    Used to attach per-fold columns to the daily-sequential fold CSV so its
+    summary counts can be independently reconstructed (the frozen fold CSV
+    already carries these columns)."""
+    records: list[dict] = []
+    for origin, grp in preds.groupby("origin", sort=True):
+        y = grp["home_win"].to_numpy(dtype=int)
+        pe = grp["p_elo_only"].to_numpy()
+        pb = grp["p_blend"].to_numpy()
+        records.append({
+            "origin": origin,
+            "fold_games": int(len(grp)),
+            "log_loss_elo": _ll(y, pe),
+            "log_loss_blend": _ll(y, pb),
+            "brier_elo": _brier(y, pe),
+            "brier_blend": _brier(y, pb),
+        })
+    return pd.DataFrame(records)
+
+
 def _weekly(start: pd.Timestamp, end: pd.Timestamp, step: int = 7) -> list[pd.Timestamp]:
     out, cur = [], start
     while cur <= end:
@@ -554,10 +612,20 @@ def run(data_path, config_path, artifact_dir, figure_dir, *,
     daily_preds = pd.concat(daily_rows, ignore_index=True)
     frozen_preds.to_csv(artifact_dir / "nested_frozen_block_predictions.csv", index=False)
     daily_preds.to_csv(artifact_dir / "nested_daily_sequential_predictions.csv", index=False)
-    pd.DataFrame(frozen_folds).to_csv(artifact_dir / "nested_frozen_block_folds.csv", index=False)
-    pd.DataFrame(daily_folds).to_csv(artifact_dir / "nested_daily_sequential_folds.csv", index=False)
+
+    # Frozen fold CSV already carries per-fold log_loss_elo/log_loss_blend/
+    # brier_elo/brier_blend. Attach the same per-fold columns to the daily fold
+    # CSV (computed by grouping the daily predictions by outer origin) so the
+    # daily summary counts are independently reconstructable from the artifact.
+    frozen_folds_df = pd.DataFrame(frozen_folds)
+    daily_folds_df = pd.DataFrame(daily_folds).merge(
+        _per_origin_blend_elo_metrics(daily_preds), on="origin", how="left"
+    )
+    frozen_folds_df.to_csv(artifact_dir / "nested_frozen_block_folds.csv", index=False)
+    daily_folds_df.to_csv(artifact_dir / "nested_daily_sequential_folds.csv", index=False)
 
     frozen_summary = _summarize(frozen_preds, "frozen_block", rng, n_boot)
+    frozen_summary["blend_vs_elo_fold_counts"] = _fold_counts(frozen_folds_df)
     frozen_summary["frozen_block_leakage_guarantee_verified"] = bool(leakage_ok)
     frozen_summary["design"] = ("Per outer weekly origin O, performance state frozen at O-1 (build_features "
                                 "freeze_date=O); block [O,O+7) scored with base models fit strictly before O; "
@@ -565,6 +633,7 @@ def run(data_path, config_path, artifact_dir, figure_dir, *,
                                 "uses build_features(freeze_date=I)); blend uses frozen inner-OOF stacker. "
                                 "Inner and outer information policies now match (frozen/frozen).")
     daily_summary = _summarize(daily_preds, "daily_sequential", rng, n_boot)
+    daily_summary["blend_vs_elo_fold_counts"] = _fold_counts(daily_folds_df)
     daily_summary["design"] = ("One game date per fold; base models refit through t-1; architectures selected "
                                "per-procedure weekly by SEQUENTIAL inner OOF; blend uses sequential inner-OOF "
                                "stacker. Inner and outer information policies now match (sequential/sequential). "

@@ -24,6 +24,57 @@ from .model import (
 )
 
 
+# --- Single source of truth for selection provenance ------------------------
+# Structured method identifiers. Human-readable provenance text is DERIVED from
+# these so the narrative fields (selection_rule, selected_using, notes,
+# architecture_selection.rule) cannot silently drift from what the code does.
+METHOD_DEPLOYED_ARCH = "frozen_rolling_oos_one_se"
+METHOD_MARCH_REFERENCE = "march_reference_log_loss_brier_tiebreak"
+METHOD_NESTED_DECISION = "nested_policy_matched_champion_challenger"
+
+# The single canonical statement of how the deployed architecture is chosen.
+SELECTION_RULE_TEXT = (
+    "The deployed Elo architecture is selected by aggregate pre-holdout "
+    "frozen-policy rolling out-of-sample log loss using a one-standard-error "
+    "stability rule, preferring the simplest and most stable architecture "
+    "inside the noise band. March log loss with Brier tie-break is used only "
+    "for the descriptive March reference winners for the individual procedures. "
+    "Policy-matched nested rolling-origin evidence retains Elo-only over the "
+    "blend; the blend remains a rejected challenger."
+)
+
+_METHOD_DESCRIPTIONS = {
+    METHOD_DEPLOYED_ARCH: (
+        "Aggregate pre-holdout frozen-policy rolling out-of-sample log loss with "
+        "a one-standard-error stability rule (select_elo_architecture_stability); "
+        "the MOV offset and cold-start warmup are profiled on the same OOS surface. "
+        "This is the SELECTOR of the deployed architecture."
+    ),
+    METHOD_MARCH_REFERENCE: (
+        "Per-procedure March log loss with a Brier tie-break, used only to name "
+        "descriptive March reference winners. This is a cross-check, NOT the "
+        "selector of the deployed architecture."
+    ),
+    METHOD_NESTED_DECISION: (
+        "Policy-matched nested rolling-origin audit (frozen-block and "
+        "daily-sequential) retains Elo-only over the blend; the blend is kept as "
+        "a rejected challenger."
+    ),
+}
+
+
+def selection_provenance_dict() -> dict[str, Any]:
+    """Structured, drift-proof provenance for the selection procedure."""
+    return {
+        "deployed_architecture_method": METHOD_DEPLOYED_ARCH,
+        "march_reference_method": METHOD_MARCH_REFERENCE,
+        "nested_decision_method": METHOD_NESTED_DECISION,
+        "deployed_architecture_method_description": _METHOD_DESCRIPTIONS[METHOD_DEPLOYED_ARCH],
+        "march_reference_method_description": _METHOD_DESCRIPTIONS[METHOD_MARCH_REFERENCE],
+        "nested_decision_method_description": _METHOD_DESCRIPTIONS[METHOD_NESTED_DECISION],
+    }
+
+
 def load_json(path: str | Path) -> dict[str, Any]:
     return json.loads(Path(path).read_text())
 
@@ -323,8 +374,6 @@ def run_selection(
     all_archs = [Architecture.from_dict(a) for a in architecture_config["architectures"]]
     stability = select_elo_architecture_stability(games, all_archs, periods)
     champion_arch = stability["chosen"]["architecture"]
-    elo_by_name = {c["architecture"].name: c for c in elo_candidates}
-    elo_winner = elo_by_name[champion_arch.name]
 
     # Data-driven MOV offset: profile it on the same frozen OOS surface; keep the
     # literature value 2.2 unless a grid value clearly and stably beats it.
@@ -339,6 +388,50 @@ def run_selection(
         elo_k_warmup=cold_start["chosen"]["elo_k_warmup"],
     )
 
+    # --- March reference metrics for the FINAL PROFILED architecture ---------
+    # These describe how the DEPLOYED architecture (after MOV-offset and
+    # cold-start profiling) would have scored on March under the same
+    # chronological one-step Elo protocol used for the per-procedure March
+    # comparison: fit on rows strictly before selection_start, score the March
+    # window. They must be recomputed from champion_arch itself, NOT read back
+    # from the pre-profiling per-architecture loop. These are a DESCRIPTIVE
+    # reference, not pristine holdout evidence (March is in-sample for
+    # selection); the out-of-sample evidence is the nested audit.
+    champion_march_features = build_features(games, champion_arch)
+    champion_march_train = champion_march_features[
+        champion_march_features["game_date"] < sel_start
+    ]
+    champion_march_window = champion_march_features[
+        (champion_march_features["game_date"] >= sel_start)
+        & (champion_march_features["game_date"] < holdout_start)
+    ]
+    champion_march_model = fit_elo_model(champion_march_train, champion_arch)
+    champion_march_prob = elo_probability(champion_march_model, champion_march_window)
+    _march_ref_eval = evaluate(
+        champion_march_window["home_win"].to_numpy(dtype=int), champion_march_prob
+    )
+    march_reference_metrics = {
+        key: _march_ref_eval[key] for key in ["log_loss", "brier", "auc", "accuracy"]
+    }
+    march_reference_metrics_provenance = {
+        "method": METHOD_MARCH_REFERENCE,
+        "architecture": champion_arch.to_dict(),
+        "training_end_date": periods.s(sel_start),
+        "scoring_window_start": periods.s(sel_start),
+        "scoring_window_end": periods.s(holdout_start),
+        "information_policy": "sequential_daily_march_state",
+        "training_row_count": int(len(champion_march_train)),
+        "scoring_row_count": int(len(champion_march_window)),
+        "status": "descriptive_reference_not_pristine_holdout",
+        "note": (
+            "Recomputed from the final profiled deployed architecture (post "
+            "MOV-offset and cold-start profiling). Training rows are strictly "
+            "before scoring_window_start. Descriptive March cross-check only; the "
+            "deployed architecture is selected on the frozen-policy rolling OOS "
+            "surface, and the out-of-sample evidence is the nested audit."
+        ),
+    }
+
     # Deploy the Elo-only champion. Fit the final probability map on ALL
     # eligible rows (through the selection cutoff); no stacker is deployed.
     champion_features = build_features(games, champion_arch)
@@ -351,14 +444,8 @@ def run_selection(
         "april_rows_loaded_during_selection": int(
             (games["game_date"] >= holdout_start).sum()
         ),
-        "selection_rule": (
-            "Each procedure (Elo-only, rank-only, blend) selects its own "
-            "architecture by its own March log loss (Brier tie-break). Champion "
-            "is Elo-only: the nested rolling-origin audit shows the blend does "
-            "not beat Elo-only out-of-sample on log loss or Brier, so the "
-            "simpler model is deployed. The blend is retained as a rejected "
-            "challenger."
-        ),
+        "selection_rule": SELECTION_RULE_TEXT,
+        "selection_provenance": selection_provenance_dict(),
         "primary_metric": "log_loss",
         "secondary_metrics": ["brier", "auc", "accuracy"],
         "architecture": champion_arch.to_dict(),
@@ -386,6 +473,14 @@ def run_selection(
                 for r in stability["ranked"]
             ],
             "march_single_split_would_choose": elo_winner_march["architecture"].name,
+            "march_single_split_would_choose_note": (
+                "Reference-only descriptive cross-check: the architecture a single "
+                "March log-loss split would name. It is NOT the selector; the "
+                "deployed architecture is chosen by the frozen-policy rolling OOS "
+                "one-standard-error rule above (method="
+                f"{METHOD_DEPLOYED_ARCH}). Shown to demonstrate the single-March "
+                "split happens to agree, not to justify deployment."
+            ),
         },
         "mov_offset_selection": {
             "rule": (
@@ -411,20 +506,29 @@ def run_selection(
             "profile": cold_start["profile"],
         },
         "elo_model": elo_calibration_dict(final_elo_model, champion_arch.elo_model_c),
-        "march_validation_metrics": {
-            key: elo_winner["metrics"][key]
-            for key in ["log_loss", "brier", "auc", "accuracy"]
-        },
+        "march_reference_metrics": march_reference_metrics,
+        "march_reference_metrics_provenance": march_reference_metrics_provenance,
+        # Backward-compatible alias: same recomputed values as
+        # march_reference_metrics. Both now reflect the FINAL profiled deployed
+        # architecture (not the pre-profiling per-architecture loop) and are a
+        # descriptive March reference, not untouched holdout evidence.
+        "march_validation_metrics": march_reference_metrics,
         "challenger": {
             "model_family": "logistic-stacked blend: Elo + Bradley-Terry/recent-trend",
             "status": "rejected",
             "reason": (
-                "Nested rolling-origin validation: blend worse than Elo-only on "
-                "both log loss and Brier (block-bootstrap CIs entirely above zero; "
-                "blend worse in 10 of 11 outer folds). See "
-                "artifacts/nested_frozen_block_summary.json and "
-                "artifacts/nested_daily_sequential_summary.json."
+                "Policy-matched nested rolling-origin validation rejects the blend: "
+                "pooled log loss and Brier are worse than Elo-only under both frozen "
+                "and daily-sequential policies, and the paired week-block bootstrap "
+                "confidence intervals for blend-minus-Elo are above zero. See the "
+                "nested summary and fold artifacts for dynamically generated counts."
             ),
+            "evidence_artifacts": [
+                "artifacts/nested_frozen_block_summary.json",
+                "artifacts/nested_frozen_block_folds.csv",
+                "artifacts/nested_daily_sequential_summary.json",
+                "artifacts/nested_daily_sequential_folds.csv",
+            ],
             "architecture": blend_winner["architecture"].to_dict(),
             "calibration": blend_winner["calibration"],
             "march_metrics": {
@@ -441,14 +545,15 @@ def run_selection(
         },
         "architecture_count": len(architecture_config["architectures"]),
         "notes": [
-            "Elo architecture selected by aggregate frozen-policy rolling OOS log loss with a one-standard-error stability rule (pre-holdout only).",
+            "Deployed Elo architecture selected by aggregate frozen-policy rolling OOS log loss with a one-standard-error stability rule (pre-holdout only); MOV offset and cold-start warmup profiled on the same OOS surface. March log loss is NOT the selector of the deployed architecture.",
+            "march_reference_metrics (and its alias march_validation_metrics) are recomputed from the FINAL profiled deployed architecture as a DESCRIPTIVE March cross-check, not untouched holdout evidence.",
             "Deployed Elo-only probability map is refit on all rows through the selection cutoff.",
             "March state features update only after each completed game date.",
             "No April row is loaded by model selection.",
             (
-                "March is used for both architecture selection and reported March "
-                "metrics, so March is in-sample for selection and is not a pristine "
-                "holdout. The out-of-sample evidence is the nested audit."
+                "March is used for both architecture profiling and the reported March "
+                "reference metrics, so March is in-sample for selection and is not a "
+                "pristine holdout. The out-of-sample evidence is the nested audit."
             ),
             (
                 "The Elo + rank blend was implemented, validated, and REJECTED: it "

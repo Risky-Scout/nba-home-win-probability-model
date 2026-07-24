@@ -17,8 +17,8 @@
   },
   "max_abs_metric_diff": 0.0,
   "hashes": {
-    "workbook_sha256": "1967461f446927c42a0f8a68df7b1398a0a24fec154ddb427b6b29a0d2a4dd0f",
-    "selected_spec_sha256": "75e41b017ac50fb1cb3d284c3893752b1c9287a388c65e22dd68c96999dd23df",
+    "workbook_sha256": "0970f13641771b7626f14dfaabf5db9c0fdc0dc6c78eaf51f34c9a4907732e52",
+    "selected_spec_sha256": "1a813099f2450dc4ac373cee947ce33e137bac7870d7198ca19e49f774eceebc",
     "april_predictions_sha256": "43d4d17ec3443419c021d8c02720c7bd92c4ccadaced5708be6898212a6c8a89"
   },
   "note": "Champion is Elo-only. Both closed forms in selected_spec.json reproduce the deployed April prices to < 1e-9; the workbook's sheet-10 formula uses the standardized form. openpyxl cannot evaluate formulas headlessly, so this reconciles artifacts and spec, not the workbook's own recalculated cells."
